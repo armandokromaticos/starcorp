@@ -15,6 +15,11 @@
       "source": "expo/skills",
       "sourceType": "github",
       "computedHash": "16c53e80cacd65369acfd8a4f5cf06a60083cc6d980127b4b2e384b81ce0e547"
+    },
+    "interface-design": {
+      "source": "dammyjay93/interface-design",
+      "sourceType": "github",
+      "computedHash": "4d5fe1dacfebc0c1b3837b061405150ed2e4971c096543afc46c23161c5a4f7a"
     }
   }
 }
