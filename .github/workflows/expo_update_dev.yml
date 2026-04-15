@@ -35,5 +35,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug EAS account
+        run: eas whoami
+
       - name: Publish update
         run: eas update --auto
