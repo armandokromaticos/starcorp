@@ -11,7 +11,9 @@
       "@/stores/*": ["./src/stores/*"],
       "@/theme/*": ["./src/theme/*"],
       "@/types/*": ["./src/types/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "@/tw": ["./src/tw/index"],
+      "@/tw/*": ["./src/tw/*"]
     }
   },
   "include": [

@@ -1,42 +1,73 @@
 /**
  * Tab Layout
  *
- * Bottom tab navigation — matches the mockup's tab structure.
+ * Bottom tab navigation matching the mockup tab bar.
+ * Uses AtIcon (MaterialIcons) instead of emoji strings.
  */
 
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Text } from 'react-native';
-import { tokens } from '@/src/theme/tokens';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: tokens.color.accent.primary,
-        tabBarInactiveTintColor: tokens.color.ink.tertiary,
+        tabBarActiveTintColor: '#E8952E',
+        tabBarInactiveTintColor: '#8892A4',
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: tokens.color.background.primary,
-          borderTopColor: tokens.color.border.default,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: 'rgba(0, 0, 0, 0.08)',
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'Roboto_500Medium',
+          fontSize: 11,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>🏠</Text>
+          title: 'Consolidado',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="financiero"
         options={{
-          title: 'Explorar',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>📊</Text>
+          title: 'Financiero',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="account-balance" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="clientes"
+        options={{
+          title: 'Clientes',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="informes"
+        options={{
+          title: 'Informes',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="campaign" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="reportes"
+        options={{
+          title: 'Reportes',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="bar-chart" size={size} color={color} />
           ),
         }}
       />
