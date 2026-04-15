@@ -4,7 +4,7 @@
     "slug": "starcorp",
     "owner": "armandokromaticos",
     "updates": {
-      "url": "https://u.expo.dev/9bfa9b8f-230a-4d01-9612-29cef567497a",
+      "url": "https://u.expo.dev/2c51a567-7b48-4e86-b073-71c91b063566",
       "enabled": false
     },
     "runtimeVersion": {
@@ -12,7 +12,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "9bfa9b8f-230a-4d01-9612-29cef567497a"
+        "projectId": "2c51a567-7b48-4e86-b073-71c91b063566"
       }
     }
   }
