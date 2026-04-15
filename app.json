@@ -48,6 +48,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9bfa9b8f-230a-4d01-9612-29cef567497a"
+      }
+    },
+    "owner": "kromaticosdan"
   }
 }
