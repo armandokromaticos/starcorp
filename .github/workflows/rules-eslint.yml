@@ -1,0 +1,15 @@
+name: Validar reglas de Eslint
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar reglas de Eslint
+        run: npx eslint .
