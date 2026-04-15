@@ -5,12 +5,9 @@
   },
   "build": {
     "dev": {
-      // "developmentClient": true,
       "distribution": "internal",
-      // "resourceClass": "large",
       "autoIncrement": true,
       "channel": "dev"
-      /*  "distribution": "internal", */
     },
     "preview": {
       "distribution": "internal"
@@ -18,9 +15,6 @@
     "production": {
       "autoIncrement": true
     }
-  },
-  "updates": {
-    "url": "https://u.expo.dev/9bfa9b8f-230a-4d01-9612-29cef567497a"
   },
   "submit": {
     "production": {}
