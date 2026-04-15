@@ -1,29 +1,24 @@
-import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+/**
+ * Modal Screen — placeholder
+ */
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import React from 'react';
+import { View, Text } from 'react-native';
+import { tokens } from '@/src/theme/tokens';
 
 export default function ModalScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
-    </ThemedView>
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: tokens.color.background.primary,
+      }}
+    >
+      <Text style={{ ...tokens.typography.h2, color: tokens.color.ink.primary }}>
+        Modal
+      </Text>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-});
