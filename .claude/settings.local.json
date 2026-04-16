@@ -15,6 +15,6 @@
       "Bash(git status *)"
     ]
   },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["figma"]
+  "enabledMcpjsonServers": ["figma"],
+  "enableAllProjectMcpServers": true
 }

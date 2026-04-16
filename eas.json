@@ -5,12 +5,9 @@
   },
   "build": {
     "dev": {
-      // "developmentClient": true,
       "distribution": "internal",
-      // "resourceClass": "large",
       "autoIncrement": true,
       "channel": "dev"
-      /*  "distribution": "internal", */
     },
     "preview": {
       "distribution": "internal"

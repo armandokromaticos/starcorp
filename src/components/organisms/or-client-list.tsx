@@ -42,7 +42,7 @@ export const OrClientList = memo<OrClientListProps>(
     return (
       <View className={`gap-3 ${className ?? ''}`}>
         {showSearch && (
-          <View className="px-4">
+          <View className="px-4 pt-2">
             <MlSearchBar onSearch={setSearchText} onMenuPress={onMenuPress} />
           </View>
         )}

@@ -1,16 +1,20 @@
 {
   "expo": {
-    "name": "starcorp",
+    "name": "Starcorp",
     "slug": "starcorp",
-    "owner": "kromaticosdan",
+    "owner": "starcorp",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "starcorp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+
     "updates": {
+      "url": "https://u.expo.dev/2c51a567-7b48-4e86-b073-71c91b063566",
       "enabled": false
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "ios": {
       "supportsTablet": true
@@ -22,7 +26,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
+
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -54,7 +58,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9bfa9b8f-230a-4d01-9612-29cef567497a"
+        "projectId": "2c51a567-7b48-4e86-b073-71c91b063566"
       }
     }
   }
