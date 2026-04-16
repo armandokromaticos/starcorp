@@ -5,10 +5,11 @@
  * Structure: Search + Company selector + Metric cards + Drill-down sections
  */
 
-import React, { memo } from 'react';
-import { ScrollView, View } from '@/src/tw';
-import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
-import { AtTypography } from '@/src/components/atoms/at-typography';
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
+import { ScrollView, View } from "@/src/tw";
+import React, { memo } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TmFinancieroProps {
   title?: string;
@@ -17,27 +18,33 @@ interface TmFinancieroProps {
 }
 
 export const TmFinanciero = memo<TmFinancieroProps>(
-  ({ title = 'Financiero', onMenuPress, children }) => {
+  ({ title = "Financiero", onMenuPress, children }) => {
+    const insets = useSafeAreaInsets();
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
+      <View
         className="flex-1 bg-bg-secondary"
-        contentContainerClassName="gap-4 pb-12"
+        style={{ paddingTop: insets.top }}
       >
-        <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={onMenuPress} />
-        </View>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          className="flex-1 bg-bg-secondary"
+          contentContainerClassName="gap-4 pb-12"
+        >
+          <View className="px-4 pt-2">
+            <MlSearchBar onMenuPress={onMenuPress} />
+          </View>
 
-        <View className="px-4">
-          <AtTypography variant="h2">{title}</AtTypography>
-        </View>
+          <View className="px-4">
+            <AtTypography variant="h2">{title}</AtTypography>
+          </View>
 
-        {/* Content: company carousel, metric cards, sections */}
-        {children}
-      </ScrollView>
+          {/* Content: company carousel, metric cards, sections */}
+          {children}
+        </ScrollView>
+      </View>
     );
   },
 );
 
-TmFinanciero.displayName = 'TmFinanciero';
+TmFinanciero.displayName = "TmFinanciero";

@@ -8,7 +8,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "starcorp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+
     "updates": {
       "url": "https://u.expo.dev/2c51a567-7b48-4e86-b073-71c91b063566",
       "enabled": false
@@ -26,7 +26,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
+
       "predictiveBackGestureEnabled": false
     },
     "web": {

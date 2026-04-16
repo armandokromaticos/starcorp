@@ -5,10 +5,11 @@
  * Scrollable with report row items.
  */
 
-import React, { memo } from 'react';
-import { ScrollView, View } from '@/src/tw';
-import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
-import { AtTypography } from '@/src/components/atoms/at-typography';
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
+import { ScrollView, View } from "@/src/tw";
+import React, { memo } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TmInformesProps {
   title?: string;
@@ -18,27 +19,33 @@ interface TmInformesProps {
 }
 
 export const TmInformes = memo<TmInformesProps>(
-  ({ title = 'Informes', onMenuPress, children, className }) => {
+  ({ title = "Informes", onMenuPress, children, className }) => {
+    const insets = useSafeAreaInsets();
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        className={`flex-1 bg-bg-primary ${className ?? ''}`}
-        contentContainerClassName="gap-4 pb-12"
+      <View
+        className="flex-1 bg-bg-secondary"
+        style={{ paddingTop: insets.top }}
       >
-        <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={onMenuPress} />
-        </View>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          className={`flex-1 bg-bg-secondary ${className ?? ""}`}
+          contentContainerClassName="gap-4 pb-12"
+        >
+          <View className="px-4 pt-2">
+            <MlSearchBar onMenuPress={onMenuPress} />
+          </View>
 
-        <View className="px-4">
-          <AtTypography variant="h2">{title}</AtTypography>
-        </View>
+          <View className="px-4">
+            <AtTypography variant="h2">{title}</AtTypography>
+          </View>
 
-        {/* Content: report rows */}
-        {children}
-      </ScrollView>
+          {/* Content: report rows */}
+          {children}
+        </ScrollView>
+      </View>
     );
   },
 );
 
-TmInformes.displayName = 'TmInformes';
+TmInformes.displayName = "TmInformes";

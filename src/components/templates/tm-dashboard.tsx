@@ -6,25 +6,36 @@
  * Migrated to NativeWind.
  */
 
-import React, { memo } from 'react';
-import { ScrollView } from '@/src/tw';
+import { ScrollView, View } from "@/src/tw";
+import React, { memo } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TmDashboardProps {
   children: React.ReactNode;
   className?: string;
+  stickyHeaderIndices?: number[];
 }
 
-export const TmDashboard = memo<TmDashboardProps>(({ children, className }) => {
-  return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-      className={`flex-1 bg-bg-secondary ${className ?? ''}`}
-      contentContainerClassName="gap-6 pb-12 pt-4"
-    >
-      {children}
-    </ScrollView>
-  );
-});
+export const TmDashboard = memo<TmDashboardProps>(
+  ({ children, className, stickyHeaderIndices }) => {
+    const insets = useSafeAreaInsets();
+    return (
+      <View
+        className="flex-1 bg-bg-secondary"
+        style={{ paddingTop: insets.top }}
+      >
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          className={`flex-1 bg-bg-secondary ${className ?? ""}`}
+          contentContainerClassName="gap-6 pb-12"
+          stickyHeaderIndices={stickyHeaderIndices}
+        >
+          {children}
+        </ScrollView>
+      </View>
+    );
+  },
+);
 
-TmDashboard.displayName = 'TmDashboard';
+TmDashboard.displayName = "TmDashboard";
