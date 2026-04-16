@@ -11,5 +11,9 @@
       "Bash(gh pr create --base dev --title 'feat: Atomic Design + NativeWind v5 + Roboto' --body ':*)",
       "Bash(gh auth:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "figma"
+  ],
+  "enableAllProjectMcpServers": true
 }
