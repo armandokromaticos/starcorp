@@ -32,7 +32,7 @@ export const MlClientRow = memo<MlClientRowProps>(
           selected ? 'bg-bg-secondary' : ''
         } ${className ?? ''}`}
       >
-        <AtColorDot color={color} size="lg" shape="square" />
+        <AtColorDot color={color} size="lg" shape="square" gradient />
 
         <View className="flex-1 gap-0.5">
           <AtTypography variant="body" numberOfLines={1}>

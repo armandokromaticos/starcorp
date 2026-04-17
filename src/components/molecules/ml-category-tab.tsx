@@ -1,9 +1,9 @@
 /**
  * Molecule: MlCategoryTab
  *
- * Dark navy card with icon, label, and action link.
- * Used in the horizontal category carousel (Ingresos, Costos, Gastos, Utilidad).
- * Fixed: uses AtIcon + CSS tokens instead of hardcoded hex/emojis.
+ * Dark navy card with icon, label, action link and a radio button in the
+ * top-right corner. Pressing the card selects the category — the radio
+ * indicator reflects the selected state.
  */
 
 import React, { memo } from 'react';
@@ -18,8 +18,9 @@ interface MlCategoryTabProps {
   label: string;
   icon: MaterialIconName;
   actionLabel: string;
-  onPress?: () => void;
-  statusColor?: string;
+  selected?: boolean;
+  onSelect?: () => void;
+  radioColor?: string;
 }
 
 export const MlCategoryTab = memo<MlCategoryTabProps>(
@@ -27,12 +28,15 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
     label,
     icon,
     actionLabel,
-    onPress,
-    statusColor = '#E8952E',
+    selected = false,
+    onSelect,
+    radioColor = '#E8952E',
   }) => {
     return (
       <Pressable
-        onPress={onPress}
+        onPress={onSelect}
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
         className="bg-navy rounded-lg p-4 w-[130px] gap-3 justify-between"
         style={{ borderCurve: 'continuous' }}
       >
@@ -40,19 +44,39 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
           <AtIcon name={icon} size="xl" color="#FFFFFF" />
           <View
             style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: statusColor,
+              width: 18,
+              height: 18,
+              borderRadius: 9,
               borderWidth: 2,
-              borderColor: 'rgba(255,255,255,0.3)',
+              borderColor: radioColor,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
-          />
+          >
+            {selected && (
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: radioColor,
+                }}
+              />
+            )}
+          </View>
         </View>
 
         <AtTypography variant="bodyBold" color="#FFFFFF">
           {label}
         </AtTypography>
+
+        <View
+          style={{
+            height: 1,
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            marginVertical: 2,
+          }}
+        />
 
         <AtTypography variant="caption" color="rgba(255,255,255,0.7)">
           {actionLabel} {'\u2192'}

@@ -53,6 +53,16 @@ export interface NormalizedCategory {
   actionLabel: string;
 }
 
+export interface NormalizedReport {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  total: number;
+  currency: string;
+  deltaPercent: number;
+}
+
 export type TrendDirection = 'up' | 'down' | 'flat';
 
 export type PeriodKey = 'today' | '1w' | '1m' | '3m' | '12m';

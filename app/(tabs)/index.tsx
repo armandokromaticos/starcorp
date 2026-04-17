@@ -14,7 +14,12 @@ import {
   type CategoryItem,
 } from "@/src/components/organisms/or-category-carousel";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
+import {
+  OrFinancieroSection,
+  type CompanySummary,
+} from "@/src/components/organisms/or-financiero-section";
 import { OrGreetingHeader } from "@/src/components/organisms/or-greeting-header";
+import { OrInformesSection } from "@/src/components/organisms/or-informes-section";
 import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { OrTopClientsSection } from "@/src/components/organisms/or-top-clients-section";
 import { TmDashboard } from "@/src/components/templates/tm-dashboard";
@@ -22,6 +27,7 @@ import { useFiltersStore } from "@/src/stores/filters.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS } from "@/src/utils/date";
+import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
@@ -30,6 +36,30 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
     label: PERIOD_LABELS[key],
   }),
 );
+
+const COMPANIES: CompanySummary[] = [
+  {
+    id: "5-stars",
+    name: "5 Stars",
+    totalLabel: "Ingresos totales",
+    totalValue: 100000,
+    deltaPercent: 1.87,
+  },
+  {
+    id: "one-a",
+    name: "One A",
+    totalLabel: "Ingresos totales",
+    totalValue: 100000,
+    deltaPercent: -1.87,
+  },
+  {
+    id: "north",
+    name: "North Co.",
+    totalLabel: "Ingresos totales",
+    totalValue: 86500,
+    deltaPercent: 0.92,
+  },
+];
 
 const CATEGORIES: CategoryItem[] = [
   {
@@ -60,6 +90,7 @@ const CATEGORIES: CategoryItem[] = [
 
 export default function HomeScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("ingresos");
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
 
@@ -67,6 +98,9 @@ export default function HomeScreen() {
     (key: string) => setActivePeriod(key as PeriodKey),
     [setActivePeriod],
   );
+
+  const activeCategory =
+    CATEGORIES.find((c) => c.id === selectedCategory) ?? CATEGORIES[0];
 
   return (
     <TmDashboard stickyHeaderIndices={[0]}>
@@ -89,16 +123,43 @@ export default function HomeScreen() {
       <View className="gap-3">
         <View className="flex-row justify-between items-center px-4">
           <AtTypography variant="h2">Empresas (Consolidado)</AtTypography>
-          <AtStatusBadge label="Hoy" variant="accent" size="sm" />
+          <AtStatusBadge
+            label={PERIOD_LABELS[activePeriodKey]}
+            variant="gradient"
+            size="md"
+          />
         </View>
-        <OrRevenueChartCard />
+        <OrRevenueChartCard
+          categoryId={activeCategory.id}
+          label={activeCategory.label}
+        />
       </View>
 
       {/* Category carousel */}
-      <OrCategoryCarousel categories={CATEGORIES} />
+      <OrCategoryCarousel
+        categories={CATEGORIES}
+        selectedId={selectedCategory}
+        onSelect={setSelectedCategory}
+      />
 
       {/* Top clients */}
-      <OrTopClientsSection periodLabel={PERIOD_LABELS[activePeriodKey]} />
+      <OrTopClientsSection
+        periodLabel={PERIOD_LABELS[activePeriodKey]}
+        onViewClients={() => router.push("/clientes")}
+      />
+
+      {/* Financiero (empresas carousel) */}
+      <OrFinancieroSection
+        periodLabel={PERIOD_LABELS[activePeriodKey]}
+        companies={COMPANIES}
+        onViewAll={() => router.push("/financiero")}
+      />
+
+      {/* Informes (reports) */}
+      <OrInformesSection
+        periodLabel={PERIOD_LABELS[activePeriodKey]}
+        onViewAll={() => router.push("/informes")}
+      />
 
       {/* Drawer */}
       <OrDrawer

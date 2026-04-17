@@ -1,15 +1,17 @@
 /**
  * Molecule: MlCompanyCard
  *
- * Company card with icon, name, total revenue, and delta.
- * Used in Financiero section (5 Stars, One A, etc.).
+ * Dark navy card used inside the Financiero carousel on the dashboard:
+ * logo square + company name + dark delta chip, followed by
+ * "Ingresos totales" label and the amount.
  */
 
-import React, { memo } from 'react';
-import { Pressable, View } from '@/src/tw';
-import { AtTypography } from '@/src/components/atoms/at-typography';
-import { AtIcon } from '@/src/components/atoms/at-icon';
-import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { AtDeltaIndicator } from "@/src/components/atoms/at-delta-indicator";
+import { AtIcon } from "@/src/components/atoms/at-icon";
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { Pressable, View } from "@/src/tw";
+import { formatCurrency } from "@/src/utils/currency";
+import React, { memo } from "react";
 
 interface MlCompanyCardProps {
   name: string;
@@ -18,36 +20,74 @@ interface MlCompanyCardProps {
   deltaPercent?: number;
   onPress?: () => void;
   className?: string;
+  width?: number;
 }
 
 export const MlCompanyCard = memo<MlCompanyCardProps>(
-  ({ name, totalLabel, totalValue, deltaPercent, onPress, className }) => {
+  ({
+    name,
+    totalLabel,
+    totalValue,
+    deltaPercent,
+    onPress,
+    className,
+    width = 280,
+  }) => {
     return (
       <Pressable
         onPress={onPress}
-        className={`bg-navy rounded-lg p-4 gap-2 flex-1 ${className ?? ''}`}
-        style={{ borderCurve: 'continuous' }}
+        className={`bg-navy rounded-lg p-4 gap-3 ${className ?? ""}`}
+        style={{ width, borderCurve: "continuous" }}
       >
-        <View className="flex-row items-center gap-2">
-          <AtIcon name="business" size="md" color="#FFFFFF" />
-          <AtTypography variant="captionBold" color="#FFFFFF">
+        <View className="flex-row items-center gap-3">
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              backgroundColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+              borderCurve: "continuous",
+            }}
+          >
+            <AtIcon name="business" size="md" color="#1A2B6D" />
+          </View>
+
+          <AtTypography
+            variant="h3"
+            color="#FFFFFF"
+            numberOfLines={1}
+            className="flex-1"
+          >
             {name}
           </AtTypography>
+
+          {deltaPercent != null && (
+            <AtDeltaIndicator
+              value={deltaPercent}
+              size="sm"
+              appearance="dark"
+            />
+          )}
         </View>
 
-        {deltaPercent != null && (
-          <AtDeltaIndicator value={deltaPercent} size="sm" />
-        )}
-
-        <AtTypography variant="caption" color="rgba(255,255,255,0.7)">
-          {totalLabel}
-        </AtTypography>
-        <AtTypography variant="metricSmall" color="#FFFFFF" selectable>
-          ${totalValue.toLocaleString()}
-        </AtTypography>
+        <View className="gap-1">
+          <AtTypography variant="bodyBold" color="#FFFFFF">
+            {totalLabel}
+          </AtTypography>
+          <AtTypography
+            variant="metricSmall"
+            color="#FFFFFF"
+            selectable
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
+            {formatCurrency(totalValue, { currency: "USD", compact: false })}
+          </AtTypography>
+        </View>
       </Pressable>
     );
   },
 );
 
-MlCompanyCard.displayName = 'MlCompanyCard';
+MlCompanyCard.displayName = "MlCompanyCard";

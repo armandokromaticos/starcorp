@@ -8,6 +8,7 @@ import type {
   NormalizedCashFlow,
   NormalizedClient,
   NormalizedCategory,
+  NormalizedReport,
   TimeSeriesPoint,
 } from '@/src/types/domain.types';
 
@@ -35,6 +36,43 @@ export const mockRevenue: NormalizedRevenue = {
   trend: 'up',
   series: generateRevenueSeries(),
   period: { start: '2026-01-01', end: '2026-04-14' },
+};
+
+function scaleSeries(
+  series: TimeSeriesPoint[],
+  factor: number,
+): TimeSeriesPoint[] {
+  return series.map((p) => ({ ...p, value: Math.max(0, p.value * factor) }));
+}
+
+const baseSeries = mockRevenue.series;
+
+export const mockCategoryRevenues: Record<string, NormalizedRevenue> = {
+  ingresos: mockRevenue,
+  costos: {
+    ...mockRevenue,
+    total: 15000,
+    deltaPercent: -0.82,
+    deltaAbsolute: -1200,
+    trend: 'down',
+    series: scaleSeries(baseSeries, 0.22),
+  },
+  gastos: {
+    ...mockRevenue,
+    total: 7000,
+    deltaPercent: 0.45,
+    deltaAbsolute: 350,
+    trend: 'up',
+    series: scaleSeries(baseSeries, 0.1),
+  },
+  utilidad: {
+    ...mockRevenue,
+    total: 78000,
+    deltaPercent: 2.41,
+    deltaAbsolute: 78000,
+    trend: 'up',
+    series: scaleSeries(baseSeries, 0.78),
+  },
 };
 
 // ─── Cash Flow ────────────────────────────────────────────────
@@ -77,6 +115,65 @@ export const mockTopClients: NormalizedClient[] = [
   { id: '6', name: 'Cliente 6', revenue: 3200, deltaPercent: -1.3, color: tokens.color.chart[1], source: 'quickbooks' },
   { id: '7', name: 'Cliente 7', revenue: 2100, deltaPercent: 4.5, color: tokens.color.chart[7], source: 'quickbooks' },
   { id: '8', name: 'Cliente 8', revenue: 1250, deltaPercent: 0.2, color: tokens.color.chart[4], source: 'quickbooks' },
+];
+
+// ─── Reports (Informes) ──────────────────────────────────────
+
+export const mockReports: NormalizedReport[] = [
+  {
+    id: 'cartera',
+    label: 'Cartera',
+    icon: 'account-balance-wallet',
+    color: '#E89A3E',
+    total: 8250,
+    currency: 'USD',
+    deltaPercent: 1.87,
+  },
+  {
+    id: 'asociados',
+    label: 'Asociados activos',
+    icon: 'groups',
+    color: '#1B2A6B',
+    total: 1240,
+    currency: 'USD',
+    deltaPercent: 0.62,
+  },
+  {
+    id: 'bancos',
+    label: 'Bancos',
+    icon: 'account-balance',
+    color: '#4A7FD4',
+    total: 42500,
+    currency: 'USD',
+    deltaPercent: -0.45,
+  },
+  {
+    id: 'presupuesto',
+    label: 'Presupuesto',
+    icon: 'assessment',
+    color: '#B4C93A',
+    total: 65000,
+    currency: 'USD',
+    deltaPercent: 2.15,
+  },
+  {
+    id: 'seguro',
+    label: 'Seguro',
+    icon: 'verified-user',
+    color: '#78A63A',
+    total: 3200,
+    currency: 'USD',
+    deltaPercent: 0.12,
+  },
+  {
+    id: 'pagos',
+    label: 'Pagos',
+    icon: 'payments',
+    color: '#3D6F4E',
+    total: 12800,
+    currency: 'USD',
+    deltaPercent: 1.05,
+  },
 ];
 
 // ─── Categories ───────────────────────────────────────────────

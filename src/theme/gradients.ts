@@ -20,13 +20,18 @@ export const gradients = {
     start: { x: 0, y: 0 },
     end: { x: 0, y: 1 },
   },
-  // Placeholder: agregar gradientes del equipo de diseño aquí
-  // ejemplo:
-  // brandPrimary: {
-  //   colors: ['#COLOR1', '#COLOR2'] as const,
-  //   start: { x: 0, y: 0 },
-  //   end: { x: 1, y: 0 },
-  // },
+  // Brand navy (iconos, acentos navy) — vertical, claro → oscuro
+  brandNavy: {
+    colors: ['#20307E', '#0A1537'] as const,
+    start: { x: 0, y: 0 },
+    end: { x: 0, y: 1 },
+  },
+  // Brand orange (icono "Consolidado", acentos cálidos) — vertical, claro → oscuro
+  brandOrange: {
+    colors: ['#F2C87A', '#FFB74A', '#DF6434'] as const,
+    start: { x: 0, y: 0 },
+    end: { x: 0, y: 1 },
+  },
 } as const;
 
 export type GradientName = keyof typeof gradients;
