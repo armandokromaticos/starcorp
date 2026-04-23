@@ -144,7 +144,7 @@ export default function FinancieroScreen() {
       {/* Financial metrics grid */}
       {!metrics ? (
         <View className="gap-3 px-4">
-          <AtSkeleton width="100%" height={140} borderRadius={14} />
+          <AtSkeleton width="100%" height={141} borderRadius={14} />
           <AtSkeleton width="100%" height={120} borderRadius={14} />
         </View>
       ) : (
