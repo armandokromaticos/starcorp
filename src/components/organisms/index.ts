@@ -13,10 +13,23 @@ export { OrClientList } from './or-client-list';
 export type { ClientListItem } from './or-client-list';
 export { OrFinancialSummary } from './or-financial-summary';
 export type { FinancialMetric } from './or-financial-summary';
+export { OrFinancieroSection } from './or-financiero-section';
+export type { CompanySummary } from './or-financiero-section';
+export { OrInformesSection } from './or-informes-section';
 export { OrCategoryList } from './or-category-list';
 export type { CategoryListItem } from './or-category-list';
 export { OrTercerosList } from './or-terceros-list';
 export type { TerceroItem } from './or-terceros-list';
+export { OrPowerBIReport } from './or-powerbi-report';
+export { OrPowerBIMetricCard } from './or-powerbi-metric-card';
+export { OrConsolidadoClientList } from './or-consolidado-client-list';
+export { OrClientDetailHeader } from './or-client-detail-header';
+export { OrClientDetailMetrics } from './or-client-detail-metrics';
+export { OrCostGroupsChartCard } from './or-cost-groups-chart-card';
+export { OrThirdPartiesDonutCard } from './or-third-parties-donut-card';
+export { OrExpenseCentralCard } from './or-expense-central-card';
+export { OrHighlightedBarChartCard } from './or-highlighted-bar-chart-card';
+export type { HighlightedBarChartPoint } from './or-highlighted-bar-chart-card';
 
 // ── Legacy (kept for backward compatibility during migration) ──
 export { GreetingHeader } from './greeting-header';

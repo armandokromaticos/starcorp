@@ -2,8 +2,8 @@
  * Organism: OrCategoryCarousel
  *
  * Horizontal scroll of MlCategoryTab cards.
- * Fixed: accepts data via props (no more hardcoded mock import).
- * Migrated to NativeWind.
+ * Receives the selected category id from the parent so it can drive the
+ * chart data shown in the Empresas (Consolidado) card.
  */
 
 import React, { memo } from 'react';
@@ -18,16 +18,17 @@ export interface CategoryItem {
   label: string;
   icon: MaterialIconName;
   actionLabel: string;
-  statusColor?: string;
 }
 
 interface OrCategoryCarouselProps {
   categories: CategoryItem[];
-  onCategoryPress?: (id: string) => void;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onActionPress?: (id: string) => void;
 }
 
 export const OrCategoryCarousel = memo<OrCategoryCarouselProps>(
-  ({ categories, onCategoryPress }) => {
+  ({ categories, selectedId, onSelect, onActionPress }) => {
     return (
       <ScrollView
         horizontal
@@ -40,8 +41,11 @@ export const OrCategoryCarousel = memo<OrCategoryCarouselProps>(
             label={cat.label}
             icon={cat.icon}
             actionLabel={cat.actionLabel}
-            statusColor={cat.statusColor}
-            onPress={() => onCategoryPress?.(cat.id)}
+            selected={selectedId === cat.id}
+            onSelect={() => onSelect(cat.id)}
+            onActionPress={
+              onActionPress ? () => onActionPress(cat.id) : undefined
+            }
           />
         ))}
       </ScrollView>

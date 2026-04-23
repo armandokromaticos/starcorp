@@ -17,9 +17,10 @@ interface TmConsolidatedListProps {
   breadcrumbs: string[];
   totalLabel?: string;
   totalValue?: number;
-  filterOptions: TimeFilterOption[];
-  selectedFilter: string;
-  onFilterSelect: (key: string) => void;
+  filterOptions?: TimeFilterOption[];
+  selectedFilter?: string;
+  onFilterSelect?: (key: string) => void;
+  showFilter?: boolean;
   onBack?: () => void;
   onMenuPress?: () => void;
   children: React.ReactNode;
@@ -33,6 +34,7 @@ export const TmConsolidatedList = memo<TmConsolidatedListProps>(
     filterOptions,
     selectedFilter,
     onFilterSelect,
+    showFilter = true,
     onBack,
     onMenuPress,
     children,
@@ -53,11 +55,13 @@ export const TmConsolidatedList = memo<TmConsolidatedListProps>(
         <MlBreadcrumb segments={breadcrumbs} onBack={onBack} className="px-4" />
 
         {/* Time filter */}
-        <MlTimeFilterBar
-          options={filterOptions}
-          selectedKey={selectedFilter}
-          onSelect={onFilterSelect}
-        />
+        {showFilter && filterOptions && selectedFilter && onFilterSelect && (
+          <MlTimeFilterBar
+            options={filterOptions}
+            selectedKey={selectedFilter}
+            onSelect={onFilterSelect}
+          />
+        )}
 
         {/* Total metric */}
         {totalValue != null && (

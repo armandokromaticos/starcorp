@@ -2,7 +2,7 @@
  * Date utilities for period calculations
  */
 
-import type { PeriodKey, PeriodRange } from '@/src/types/domain.types';
+import type { PeriodKey, PeriodRange } from "@/src/types/domain.types";
 
 /**
  * Compute a PeriodRange from a PeriodKey.
@@ -13,19 +13,19 @@ export function computePeriod(key: PeriodKey): PeriodRange {
   let start: string;
 
   switch (key) {
-    case 'today':
+    case "today":
       start = end;
       break;
-    case '1w':
+    case "1w":
       start = toISODate(addDays(now, -7));
       break;
-    case '1m':
+    case "1m":
       start = toISODate(addMonths(now, -1));
       break;
-    case '3m':
+    case "3m":
       start = toISODate(addMonths(now, -3));
       break;
-    case '12m':
+    case "12m":
       start = toISODate(addMonths(now, -12));
       break;
     default:
@@ -36,7 +36,7 @@ export function computePeriod(key: PeriodKey): PeriodRange {
 }
 
 function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0];
+  return d.toISOString().split("T")[0];
 }
 
 function addDays(d: Date, days: number): Date {
@@ -52,9 +52,9 @@ function addMonths(d: Date, months: number): Date {
 }
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
-  today: 'Hoy',
-  '1w': '1 semana',
-  '1m': '1 mes',
-  '3m': '3 meses',
-  '12m': '12 meses',
+  today: "Hoy",
+  "1w": "1 sem",
+  "1m": "1 m",
+  "3m": "3 m",
+  "12m": "12 m",
 };

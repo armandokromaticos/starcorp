@@ -91,6 +91,21 @@ export interface PBIReportDataRaw {
   embedUrl: string;
 }
 
+export interface PBIEmbedData {
+  embedUrl: string;
+  embedToken: string;
+  reportId: string;
+  expiration: string;
+}
+
+export interface PBIReportListItem {
+  id: string;
+  name: string;
+  datasetId: string;
+  webUrl: string;
+  embedUrl: string;
+}
+
 export interface PBIFilter {
   table: string;
   column: string;

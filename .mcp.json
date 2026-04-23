@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "figma": {
+      "type": "http",
+      "url": "http://127.0.0.1:3845/mcp"
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=fczbzbtpyycrkxbpwhvl"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_62242d2f795c783286964ae610674ebec1a7e6bf"
+      }
+    }
+  }
+}
