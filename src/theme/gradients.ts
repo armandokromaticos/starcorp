@@ -35,3 +35,15 @@ export const gradients = {
 } as const;
 
 export type GradientName = keyof typeof gradients;
+
+/**
+ * Paleta de gradientes para barras de gráficos (ingresos / costos / egresos / terceros).
+ * Se cicla por índice. Direccion vertical (top claro → bottom oscuro).
+ */
+export const BAR_GRADIENTS: ReadonlyArray<readonly [string, string]> = [
+  ['#215EF7', '#0F2674'], // deep navy
+  ['#3B82F6', '#1E3A8A'], // azure
+  ['#14B8A6', '#0E7490'], // teal
+  ['#D9E021', '#6B8E23'], // lime
+  ['#F6AD55', '#E8952E'], // amber
+];

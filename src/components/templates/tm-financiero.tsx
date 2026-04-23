@@ -5,7 +5,6 @@
  * Structure: Search + Company selector + Metric cards + Drill-down sections
  */
 
-import { AtTypography } from "@/src/components/atoms/at-typography";
 import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
 import { ScrollView, View } from "@/src/tw";
 import React, { memo } from "react";
@@ -33,10 +32,6 @@ export const TmFinanciero = memo<TmFinancieroProps>(
         >
           <View className="px-4 pt-2">
             <MlSearchBar onMenuPress={onMenuPress} />
-          </View>
-
-          <View className="px-4">
-            <AtTypography variant="h2">{title}</AtTypography>
           </View>
 
           {/* Content: company carousel, metric cards, sections */}

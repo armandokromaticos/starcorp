@@ -31,6 +31,8 @@ interface AreaChartProps {
   smooth?: boolean;
   fillGradient?: AreaGradient;
   strokeOpacity?: number;
+  yMin?: number;
+  yMax?: number;
 }
 
 function buildPath(
@@ -38,16 +40,21 @@ function buildPath(
   width: number,
   height: number,
   smooth: boolean,
+  yMin?: number,
+  yMax?: number,
 ): string {
   if (data.length < 2) return '';
 
-  const max = Math.max(...data);
-  const min = Math.min(...data);
+  const hasFixedScale = yMin !== undefined && yMax !== undefined;
+  const min = hasFixedScale ? yMin! : Math.min(...data);
+  const max = hasFixedScale ? yMax! : Math.max(...data);
   const range = max - min || 1;
+  const scaleY = hasFixedScale ? 1 : 0.85;
+  const padY = hasFixedScale ? 0 : height * 0.05;
 
   const points = data.map((value, i) => ({
     x: (i / (data.length - 1)) * width,
-    y: height - ((value - min) / range) * height * 0.85 - height * 0.05,
+    y: height - ((value - min) / range) * height * scaleY - padY,
   }));
 
   if (!smooth) {
@@ -86,10 +93,12 @@ export const AreaChart = memo<AreaChartProps>(
     smooth = true,
     fillGradient,
     strokeOpacity = 1,
+    yMin,
+    yMax,
   }) => {
     const linePath = useMemo(
-      () => buildPath(data, width, height, smooth),
-      [data, width, height, smooth],
+      () => buildPath(data, width, height, smooth, yMin, yMax),
+      [data, width, height, smooth, yMin, yMax],
     );
 
     const areaPath = useMemo(() => {

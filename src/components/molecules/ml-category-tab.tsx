@@ -20,6 +20,7 @@ interface MlCategoryTabProps {
   actionLabel: string;
   selected?: boolean;
   onSelect?: () => void;
+  onActionPress?: () => void;
   radioColor?: string;
 }
 
@@ -30,6 +31,7 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
     actionLabel,
     selected = false,
     onSelect,
+    onActionPress,
     radioColor = '#E8952E',
   }) => {
     return (
@@ -78,9 +80,11 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
           }}
         />
 
-        <AtTypography variant="caption" color="rgba(255,255,255,0.7)">
-          {actionLabel} {'\u2192'}
-        </AtTypography>
+        <Pressable onPress={onActionPress} hitSlop={8}>
+          <AtTypography variant="caption" color="rgba(255,255,255,0.7)">
+            {actionLabel} {'\u2192'}
+          </AtTypography>
+        </Pressable>
       </Pressable>
     );
   },

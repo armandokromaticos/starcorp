@@ -24,10 +24,11 @@ interface OrCategoryCarouselProps {
   categories: CategoryItem[];
   selectedId: string;
   onSelect: (id: string) => void;
+  onActionPress?: (id: string) => void;
 }
 
 export const OrCategoryCarousel = memo<OrCategoryCarouselProps>(
-  ({ categories, selectedId, onSelect }) => {
+  ({ categories, selectedId, onSelect, onActionPress }) => {
     return (
       <ScrollView
         horizontal
@@ -42,6 +43,9 @@ export const OrCategoryCarousel = memo<OrCategoryCarouselProps>(
             actionLabel={cat.actionLabel}
             selected={selectedId === cat.id}
             onSelect={() => onSelect(cat.id)}
+            onActionPress={
+              onActionPress ? () => onActionPress(cat.id) : undefined
+            }
           />
         ))}
       </ScrollView>

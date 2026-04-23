@@ -6,9 +6,10 @@
  */
 
 import React, { memo, useMemo } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
-import { tokens } from '@/src/theme/tokens';
+import { BAR_GRADIENTS } from '@/src/theme/gradients';
 
 interface BarDataPoint {
   label: string;
@@ -51,14 +52,16 @@ export const OrBarChart = memo<OrBarChartProps>(
           <View className="flex-1 flex-row items-end gap-1">
             {data.map((item, i) => {
               const barHeight = (item.value / maxValue) * height * 0.9;
-              const color = item.color ?? tokens.color.chart[i % tokens.color.chart.length];
+              const gradient = BAR_GRADIENTS[i % BAR_GRADIENTS.length];
               return (
                 <View key={i} className="flex-1 items-center">
-                  <View
+                  <LinearGradient
+                    colors={gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
                     style={{
                       width: '70%',
                       height: barHeight,
-                      backgroundColor: color,
                       borderRadius: 4,
                       borderCurve: 'continuous' as const,
                     }}

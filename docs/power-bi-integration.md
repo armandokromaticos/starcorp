@@ -46,8 +46,9 @@ Usamos **service principal** (no delegado por usuario) porque es más simple par
 5. Register.
 
 Anotar de la página overview:
+
 - `Application (client) ID` → será `AZURE_CLIENT_ID`
-- `Directory (tenant) ID`  → será `AZURE_TENANT_ID`
+- `Directory (tenant) ID` → será `AZURE_TENANT_ID`
 
 ### 2.2 Crear Client Secret
 
@@ -69,7 +70,7 @@ Anotar de la página overview:
 
 Por defecto, Power BI ignora las apps de Azure aunque tengan permisos.
 
-1. Power BI Admin Portal → **Tenant settings** → buscar *"Allow service principals to use Power BI APIs"*.
+1. Power BI Admin Portal → **Tenant settings** → buscar _"Allow service principals to use Power BI APIs"_.
 2. **Enable** → aplicar a un grupo de seguridad (crea uno, ej. `starcorp-sp`) que contenga el service principal registrado en 2.1.
 3. Espera ~15 min para que propague.
 
@@ -127,26 +128,30 @@ supabase functions new powerbi-execute-query
 
 ```ts
 // supabase/functions/powerbi-execute-query/index.ts
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const POWERBI_SCOPE = 'https://analysis.windows.net/powerbi/api/.default';
+const POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/.default";
 const TOKEN_CACHE: { value?: string; expiresAt?: number } = {};
 
 async function getAzureToken(tenant: string, clientId: string, secret: string) {
   if (TOKEN_CACHE.value && TOKEN_CACHE.expiresAt! > Date.now() + 60_000) {
     return TOKEN_CACHE.value;
   }
-  const res = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: secret,
-      scope: POWERBI_SCOPE,
-    }),
-  });
-  if (!res.ok) throw new Error(`Azure token ${res.status}: ${await res.text()}`);
+  const res = await fetch(
+    `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: secret,
+        scope: POWERBI_SCOPE,
+      }),
+    },
+  );
+  if (!res.ok)
+    throw new Error(`Azure token ${res.status}: ${await res.text()}`);
   const json = await res.json();
   TOKEN_CACHE.value = json.access_token;
   TOKEN_CACHE.expiresAt = Date.now() + json.expires_in * 1000;
@@ -156,47 +161,52 @@ async function getAzureToken(tenant: string, clientId: string, secret: string) {
 Deno.serve(async (req) => {
   try {
     // 1. Verificar JWT del usuario Supabase
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response('Missing auth', { status: 401 });
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return new Response("Missing auth", { status: 401 });
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response('Invalid JWT', { status: 401 });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return new Response("Invalid JWT", { status: 401 });
 
     // 2. Parsear request
-    const { datasetId, daxQuery } = await req.json() as {
+    const { datasetId, daxQuery } = (await req.json()) as {
       datasetId: string;
       daxQuery: string;
     };
     if (!datasetId || !daxQuery) {
-      return new Response('datasetId + daxQuery required', { status: 400 });
+      return new Response("datasetId + daxQuery required", { status: 400 });
     }
 
     // 3. Leer credenciales del vault
     const { data: vault, error: vErr } = await supabase
-      .from('starcorp_vault')
-      .select('key,value')
-      .in('key', ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET']);
-    if (vErr || !vault || vault.length < 3) throw new Error('Vault misconfigured');
+      .from("starcorp_vault")
+      .select("key,value")
+      .in("key", ["AZURE_TENANT_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET"]);
+    if (vErr || !vault || vault.length < 3)
+      throw new Error("Vault misconfigured");
     const kv = Object.fromEntries(vault.map((r) => [r.key, r.value]));
 
     // 4. Token Azure (cacheado en memoria de la función)
     const azureToken = await getAzureToken(
-      kv.AZURE_TENANT_ID, kv.AZURE_CLIENT_ID, kv.AZURE_CLIENT_SECRET,
+      kv.AZURE_TENANT_ID,
+      kv.AZURE_CLIENT_ID,
+      kv.AZURE_CLIENT_SECRET,
     );
 
     // 5. Ejecutar DAX contra Power BI
     const pbiRes = await fetch(
       `https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/executeQueries`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${azureToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           queries: [{ query: daxQuery }],
@@ -211,11 +221,11 @@ Deno.serve(async (req) => {
 
     const body = await pbiRes.json();
     return Response.json(body, {
-      headers: { 'Cache-Control': 'private, max-age=60' },
+      headers: { "Cache-Control": "private, max-age=60" },
     });
   } catch (err) {
-    console.error(err);   // nunca loguear secretos
-    return new Response('Internal error', { status: 500 });
+    console.error(err); // nunca loguear secretos
+    return new Response("Internal error", { status: 500 });
   }
 });
 ```
@@ -240,40 +250,43 @@ Los tipos `PBIQueryResultRaw`, `PBIQueryResult`, `PBITable` ya están en el arch
 
 ```ts
 // src/hooks/queries/use-powerbi-query.ts
-import { useQuery } from '@tanstack/react-query';
-import Constants from 'expo-constants';
-import type { PBIQueryResultRaw } from '@/types/api.types';
+import { useQuery } from "@tanstack/react-query";
+import Constants from "expo-constants";
+import type { PBIQueryResultRaw } from "@/types/api.types";
 
-const SUPABASE_URL  = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 interface Args {
   datasetId: string;
   daxQuery: string;
-  supabaseJwt: string | null;   // del auth store
+  supabaseJwt: string | null; // del auth store
 }
 
 async function executeQuery({ datasetId, daxQuery, supabaseJwt }: Args) {
-  if (!supabaseJwt) throw new Error('not authenticated');
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/powerbi-execute-query`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${supabaseJwt}`,
-      apikey: SUPABASE_ANON,
-      'Content-Type': 'application/json',
+  if (!supabaseJwt) throw new Error("not authenticated");
+  const res = await fetch(
+    `${SUPABASE_URL}/functions/v1/powerbi-execute-query`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${supabaseJwt}`,
+        apikey: SUPABASE_ANON,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ datasetId, daxQuery }),
     },
-    body: JSON.stringify({ datasetId, daxQuery }),
-  });
+  );
   if (!res.ok) throw new Error(`PBI query failed: ${res.status}`);
   return res.json() as Promise<PBIQueryResultRaw>;
 }
 
 export function usePowerBIQuery(args: Args) {
   return useQuery({
-    queryKey: ['powerbi', args.datasetId, args.daxQuery],
+    queryKey: ["powerbi", args.datasetId, args.daxQuery],
     queryFn: () => executeQuery(args),
     enabled: !!args.supabaseJwt && !!args.datasetId && !!args.daxQuery,
-    staleTime: 5 * 60 * 1000,   // SKILL.md §2: datos financieros 5 min
+    staleTime: 5 * 60 * 1000, // SKILL.md §2: datos financieros 5 min
   });
 }
 ```
@@ -284,10 +297,12 @@ El hook devuelve el shape raw. No lo pases directo a componentes — mapealo a `
 
 ```ts
 // src/services/powerbi/normalize.ts
-import type { PBIQueryResultRaw } from '@/types/api.types';
-import type { NormalizedRevenue } from '@/types/domain.types';
+import type { PBIQueryResultRaw } from "@/types/api.types";
+import type { NormalizedRevenue } from "@/types/domain.types";
 
-export function normalizeRevenueFromPBI(raw: PBIQueryResultRaw): NormalizedRevenue {
+export function normalizeRevenueFromPBI(
+  raw: PBIQueryResultRaw,
+): NormalizedRevenue {
   const rows = raw.results?.[0]?.tables?.[0]?.rows ?? [];
   // rows shape depende del DAX — mapear columnas por índice definido en la query.
   // Ejemplo simplificado:
@@ -297,8 +312,15 @@ export function normalizeRevenueFromPBI(raw: PBIQueryResultRaw): NormalizedReven
   }));
   const total = series.reduce((s, p) => s + p.value, 0);
   // ... calcular delta, currency, period
-  return { total, currency: 'USD', deltaPercent: 0, deltaAbsolute: 0,
-           trend: 'flat', series, period: { start: '', end: '' } };
+  return {
+    total,
+    currency: "USD",
+    deltaPercent: 0,
+    deltaAbsolute: 0,
+    trend: "flat",
+    series,
+    period: { start: "", end: "" },
+  };
 }
 ```
 
@@ -370,13 +392,13 @@ Los secretos Azure **no** van como env vars: se leen del `starcorp_vault` en run
 
 ## 9. Troubleshooting
 
-| Síntoma | Causa probable |
-|---------|----------------|
-| `401 invalid_client` al pedir token Azure | Client secret expirado o tenant id incorrecto |
-| `403 PowerBINotAuthorizedException` | SP no agregado al workspace, o tenant setting deshabilitado |
-| `400 DatasetExecuteQueriesUserError` | DAX inválido, o dataset no soporta XMLA (necesita Premium/PPU para datasets grandes) |
-| `429 Too Many Requests` | Pasaste del límite PBI (120 req/min/user). Implementar backoff o cache server-side |
-| Token se renueva en cada request | `TOKEN_CACHE` es por isolate; en frío se pierde. Aceptable. Para reducir, mover a tabla `starcorp_vault` con expiry |
+| Síntoma                                   | Causa probable                                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `401 invalid_client` al pedir token Azure | Client secret expirado o tenant id incorrecto                                                                       |
+| `403 PowerBINotAuthorizedException`       | SP no agregado al workspace, o tenant setting deshabilitado                                                         |
+| `400 DatasetExecuteQueriesUserError`      | DAX inválido, o dataset no soporta XMLA (necesita Premium/PPU para datasets grandes)                                |
+| `429 Too Many Requests`                   | Pasaste del límite PBI (120 req/min/user). Implementar backoff o cache server-side                                  |
+| Token se renueva en cada request          | `TOKEN_CACHE` es por isolate; en frío se pierde. Aceptable. Para reducir, mover a tabla `starcorp_vault` con expiry |
 
 ---
 
@@ -399,7 +421,7 @@ Si en lugar de extraer data quieres **embeber un reporte Power BI** en la app (v
              accessToken: '${embedToken}', embedUrl: '${embedUrl}',
              id: '${reportId}', settings: { panes: { filters: { visible: false } } }
            });
-         </script></body></html>`
+         </script></body></html>`,
      }}
    />
    ```
