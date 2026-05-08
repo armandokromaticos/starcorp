@@ -7,7 +7,7 @@
 
 import { AtTypography } from "@/src/components/atoms/at-typography";
 import { gradients } from "@/src/theme/gradients";
-import { Pressable, View } from "@/src/tw";
+import { Pressable, ScrollView, View } from "@/src/tw";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { memo } from "react";
 
@@ -34,7 +34,11 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
             boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
           }}
         >
-          <View className="flex-row items-center justify-center gap-4">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="flex-row items-center justify-center gap-4 px-2 grow"
+          >
             {options.map((opt) => {
               const isSelected = selectedKey === opt.key;
               return (
@@ -68,7 +72,7 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       </View>
     );

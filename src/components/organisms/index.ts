@@ -16,6 +16,7 @@ export type { FinancialMetric } from './or-financial-summary';
 export { OrFinancieroSection } from './or-financiero-section';
 export type { CompanySummary } from './or-financiero-section';
 export { OrInformesSection } from './or-informes-section';
+export { OrRecentReportsSection } from './or-recent-reports-section';
 export { OrCategoryList } from './or-category-list';
 export type { CategoryListItem } from './or-category-list';
 export { OrTercerosList } from './or-terceros-list';

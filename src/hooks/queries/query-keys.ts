@@ -33,6 +33,21 @@ export const queryKeys = {
     ['companies', companyId, 'metrics', period] as const,
   companyIngresosClients: (period: string, companyId: string) =>
     ['companies', companyId, 'ingresos-clients', period] as const,
+  qbCompanyInfo: () => ['qb', 'companyInfo'] as const,
+  qbCustomers: () => ['qb', 'customers'] as const,
+  qbProfitAndLoss: (start: string, end: string) =>
+    ['qb', 'profitAndLoss', start, end] as const,
+  dashboardSummary: (
+    period: string,
+    centroCosto: string | null,
+    compare: boolean,
+  ) => ['dashboard', 'summary', period, centroCosto, compare] as const,
+  dashboardTimeseries: (
+    period: string,
+    centroCosto: string | null,
+    compare: boolean,
+  ) => ['dashboard', 'timeseries', period, centroCosto, compare] as const,
+  pbiSyncLatest: () => ['pbi', 'sync', 'latest'] as const,
   // Prefix for bulk invalidation
   all: ['finance'] as const,
 } as const;

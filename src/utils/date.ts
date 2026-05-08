@@ -52,9 +52,9 @@ function addMonths(d: Date, months: number): Date {
 }
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
-  today: "Hoy",
+  today: "Mes",
   "1w": "1 sem",
-  "1m": "1 m",
-  "3m": "3 m",
-  "12m": "12 m",
+  "1m": "1 M",
+  "3m": "3 M",
+  "12m": "12 M",
 };

@@ -20,7 +20,7 @@ import {
 } from "@/src/components/organisms/or-financiero-section";
 import { OrGreetingHeader } from "@/src/components/organisms/or-greeting-header";
 import { OrInformesSection } from "@/src/components/organisms/or-informes-section";
-import { OrPowerBIMetricCard } from "@/src/components/organisms/or-powerbi-metric-card";
+import { OrRecentReportsSection } from "@/src/components/organisms/or-recent-reports-section";
 import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { OrTopClientsSection } from "@/src/components/organisms/or-top-clients-section";
 import { TmDashboard } from "@/src/components/templates/tm-dashboard";
@@ -38,7 +38,7 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   }),
 );
 
-const POWERBI_DATASET_ID = "af521f53-3c89-4a69-8927-1fe92888ff0a";
+const POWERBI_DATASET_ID = "43f822cf-7162-410d-bc5a-61182e5ca2d7";
 const POWERBI_GROUP_ID = "457b264f-6eb8-4b00-8f62-f65ee2700cd4";
 const DAX_BBM_INGRESO = `EVALUATE ROW("BBMIngreso", [BBMIngreso])`;
 
@@ -124,14 +124,6 @@ export default function HomeScreen() {
       {/* Greeting */}
       <OrGreetingHeader name="Alejandro" />
 
-      {/* Power BI — BBM Ingreso (PoC) */}
-      <OrPowerBIMetricCard
-        datasetId={POWERBI_DATASET_ID}
-        groupId={POWERBI_GROUP_ID}
-        daxQuery={DAX_BBM_INGRESO}
-        label="BBM Ingreso"
-      />
-
       {/* Section: Empresas (Consolidado) */}
       <View className="gap-3">
         <View className="flex-row justify-between items-center px-4">
@@ -145,6 +137,7 @@ export default function HomeScreen() {
         <OrRevenueChartCard
           categoryId={activeCategory.id}
           label={activeCategory.label}
+          period={activePeriodKey}
         />
       </View>
 
@@ -176,6 +169,9 @@ export default function HomeScreen() {
         periodLabel={PERIOD_LABELS[activePeriodKey]}
         onViewAll={() => router.push("/informes")}
       />
+
+      {/* Reportes más recientes */}
+      <OrRecentReportsSection />
 
       {/* Drawer */}
       <OrDrawer
