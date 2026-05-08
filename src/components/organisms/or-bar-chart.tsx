@@ -2,13 +2,16 @@
  * Organism: OrBarChart
  *
  * Bar chart for consolidated views (Costos/Gastos by groups).
- * Uses RN views for bars (no SVG dependency).
+ * Uses RN views for bars (no SVG). Supports values that cross zero —
+ * positive bars grow up from the zero line, negative bars grow down.
  */
 
 import React, { memo, useMemo } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { tokens } from '@/src/theme/tokens';
+import { BAR_GRADIENTS } from '@/src/theme/gradients';
 
 interface BarDataPoint {
   label: string;
@@ -22,18 +25,32 @@ interface OrBarChartProps {
   className?: string;
 }
 
+function formatAxis(v: number): string {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(0)}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(0)}k`;
+  return v === 0 ? '0' : `${sign}${Math.round(abs)}`;
+}
+
 export const OrBarChart = memo<OrBarChartProps>(
   ({ data, height = 200, className }) => {
-    const maxValue = useMemo(() => Math.max(...data.map((d) => d.value), 1), [data]);
+    const { yMin, yMax, range, zeroFromTop } = useMemo(() => {
+      const values = data.map((d) => d.value);
+      const peak = Math.max(0, ...values);
+      const trough = Math.min(0, ...values);
+      const yMin = trough;
+      const yMax = peak || 1;
+      const range = yMax - yMin || 1;
+      const zeroFromTop = (yMax / range) * height;
+      return { yMin, yMax, range, zeroFromTop };
+    }, [data, height]);
 
     const yLabels = useMemo(() => {
-      const step = maxValue / 2;
-      return [maxValue, step, 0].map((v) =>
-        v >= 1000000 ? `${(v / 1000000).toFixed(0)}M` :
-        v >= 1000 ? `${(v / 1000).toFixed(0)}k` :
-        String(Math.round(v))
-      );
-    }, [maxValue]);
+      if (yMin >= 0) return [yMax, yMax / 2, 0].map(formatAxis);
+      if (yMax <= 0) return [0, yMin / 2, yMin].map(formatAxis);
+      return [yMax, 0, yMin].map(formatAxis);
+    }, [yMin, yMax]);
 
     return (
       <View className={`gap-2 ${className ?? ''}`}>
@@ -47,25 +64,61 @@ export const OrBarChart = memo<OrBarChartProps>(
             ))}
           </View>
 
-          {/* Bars */}
-          <View className="flex-1 flex-row items-end gap-1">
-            {data.map((item, i) => {
-              const barHeight = (item.value / maxValue) * height * 0.9;
-              const color = item.color ?? tokens.color.chart[i % tokens.color.chart.length];
-              return (
-                <View key={i} className="flex-1 items-center">
+          {/* Bars area with zero reference line */}
+          <View className="flex-1" style={{ position: 'relative', height }}>
+            {/* Zero baseline (only visible when range crosses zero) */}
+            {yMin < 0 && yMax > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: zeroFromTop,
+                  height: 1,
+                  backgroundColor: tokens.color.border.subtle,
+                }}
+              />
+            )}
+
+            <View className="flex-row gap-1" style={{ height }}>
+              {data.map((item, i) => {
+                const barHeight =
+                  (Math.abs(item.value) / range) * height;
+                const top =
+                  item.value >= 0
+                    ? Math.max(0, zeroFromTop - barHeight)
+                    : zeroFromTop;
+                const gradient = BAR_GRADIENTS[i % BAR_GRADIENTS.length];
+                return (
                   <View
-                    style={{
-                      width: '70%',
-                      height: barHeight,
-                      backgroundColor: color,
-                      borderRadius: 4,
-                      borderCurve: 'continuous' as const,
-                    }}
-                  />
-                </View>
-              );
-            })}
+                    key={i}
+                    className="flex-1 items-center"
+                    style={{ position: 'relative', height }}
+                  >
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top,
+                        width: '70%',
+                        height: barHeight,
+                      }}
+                    >
+                      <LinearGradient
+                        colors={gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: 4,
+                          borderCurve: 'continuous' as const,
+                        }}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         </View>
       </View>

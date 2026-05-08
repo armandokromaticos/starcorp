@@ -5,9 +5,9 @@
  * Migrated to NativeWind + AtTypography.
  */
 
-import React, { memo } from 'react';
-import { View } from '@/src/tw';
-import { AtTypography } from '@/src/components/atoms/at-typography';
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { View } from "@/src/tw";
+import React, { memo } from "react";
 
 interface OrGreetingHeaderProps {
   name: string;
@@ -15,12 +15,10 @@ interface OrGreetingHeaderProps {
 
 export const OrGreetingHeader = memo<OrGreetingHeaderProps>(({ name }) => {
   return (
-    <View className="px-4">
-      <AtTypography variant="h1">
-        Bienvenido, {name}
-      </AtTypography>
+    <View className="px-4 pb-5">
+      <AtTypography variant="h1">Bienvenido, {name}</AtTypography>
     </View>
   );
 });
 
-OrGreetingHeader.displayName = 'OrGreetingHeader';
+OrGreetingHeader.displayName = "OrGreetingHeader";

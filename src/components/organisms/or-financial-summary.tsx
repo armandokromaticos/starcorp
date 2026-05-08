@@ -20,6 +20,7 @@ export interface FinancialMetric {
   deltaPercent?: number;
   icon?: MaterialIconName;
   iconColor?: string;
+  ctaLabel?: string;
 }
 
 interface OrFinancialSummaryProps {
@@ -56,6 +57,7 @@ export const OrFinancialSummary = memo<OrFinancialSummaryProps>(
               deltaPercent={m.deltaPercent}
               icon={m.icon}
               iconColor={m.iconColor}
+              ctaLabel={m.ctaLabel}
               onPress={() => onMetricPress?.(m.id)}
               className={columns === 3 ? 'flex-1 min-w-[90px]' : 'flex-1 min-w-[140px]'}
             />

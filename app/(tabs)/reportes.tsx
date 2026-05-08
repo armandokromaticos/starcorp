@@ -1,30 +1,20 @@
-/**
- * Reportes Tab Screen
- *
- * Reports and analytics placeholder.
- */
-
 import React, { useState } from 'react';
-import { View } from '@/src/tw';
-import { AtTypography } from '@/src/components/atoms/at-typography';
-import { AtIcon } from '@/src/components/atoms/at-icon';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
+import { OrPowerBIReport } from '@/src/components/organisms/or-powerbi-report';
 import { TmDashboard } from '@/src/components/templates/tm-dashboard';
+
+const POWERBI_GROUP_ID = '457b264f-6eb8-4b00-8f62-f65ee2700cd4';
+const POWERBI_REPORT_ID = '4d82ab2a-72f5-4093-98c6-fd860b2917de';
 
 export default function ReportesScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   return (
     <TmDashboard>
-      <View className="items-center justify-center py-20 gap-4">
-        <AtIcon name="bar-chart" size="xl" color="#8892A4" />
-        <AtTypography variant="h2" color="#1A1F36">
-          Reportes
-        </AtTypography>
-        <AtTypography variant="body" color="#8892A4">
-          Reportes y analytics — próximamente.
-        </AtTypography>
-      </View>
+      <OrPowerBIReport
+        groupId={POWERBI_GROUP_ID}
+        reportId={POWERBI_REPORT_ID}
+      />
 
       <OrDrawer
         visible={drawerVisible}

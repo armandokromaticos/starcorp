@@ -10,6 +10,7 @@ export { MlStatBox } from './ml-stat-box';
 export { MlBreadcrumb } from './ml-breadcrumb';
 export { MlCompanyCard } from './ml-company-card';
 export { MlReportRow } from './ml-report-row';
+export { MlPeriodDropdown } from './ml-period-dropdown';
 
 // ── Legacy (kept for backward compatibility during migration) ──
 export { TimeFilterBar } from './time-filter-bar';

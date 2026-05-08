@@ -1,26 +1,34 @@
 /**
  * Clientes Tab Screen
  *
- * Client list with search and filter.
+ * Dark client list matching the mockup: header with back arrow + title +
+ * count + period dropdown, and a stack of dark navy client cards.
  */
 
 import React, { useState } from 'react';
-import { View } from '@/src/tw';
+import { Pressable, View } from '@/src/tw';
+import { router } from 'expo-router';
+import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
-import { OrClientList, type ClientListItem } from '@/src/components/organisms/or-client-list';
+import { MlClientCardDark } from '@/src/components/molecules/ml-client-card-dark';
+import { MlPeriodDropdown } from '@/src/components/molecules/ml-period-dropdown';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { TmDashboard } from '@/src/components/templates/tm-dashboard';
-import { tokens } from '@/src/theme/tokens';
 
-const MOCK_CLIENTS: ClientListItem[] = [
-  { id: '1', name: 'Baymont', color: tokens.color.chart[0], revenue: 100000, deltaPercent: 1.87 },
-  { id: '2', name: 'Camelback', color: tokens.color.chart[1], revenue: 100000, deltaPercent: 1.87 },
-  { id: '3', name: 'Hotel California', color: tokens.color.chart[2], revenue: 150000, deltaPercent: 2.5 },
-  { id: '4', name: 'La Quinta', color: tokens.color.chart[3], revenue: 75000, deltaPercent: 1.2 },
-  { id: '5', name: 'Holiday Inn', color: tokens.color.chart[4], revenue: 200000, deltaPercent: 3.0 },
-  { id: '6', name: 'Comfort Inn', color: tokens.color.chart[5], revenue: 120000, deltaPercent: 1.95 },
-  { id: '7', name: 'Super 8', color: tokens.color.chart[6], revenue: 90000, deltaPercent: 1.65 },
-  { id: '8', name: 'Hotel 6', color: tokens.color.chart[7], revenue: 60000, deltaPercent: 1.3 },
+interface ClientItem {
+  id: string;
+  name: string;
+  amount: number;
+  deltaPercent: number;
+}
+
+const CLIENTS: ClientItem[] = [
+  { id: '1', name: 'Baymont', amount: 100000, deltaPercent: 1.87 },
+  { id: '2', name: 'Camelback', amount: 100000, deltaPercent: -1.87 },
+  { id: '3', name: 'Nombre cliente', amount: 100000, deltaPercent: 1.87 },
+  { id: '4', name: 'Nombre cliente', amount: 100000, deltaPercent: 1.87 },
+  { id: '5', name: 'Nombre cliente', amount: 100000, deltaPercent: 1.87 },
+  { id: '6', name: 'Nombre cliente', amount: 100000, deltaPercent: 1.87 },
 ];
 
 export default function ClientesScreen() {
@@ -28,13 +36,34 @@ export default function ClientesScreen() {
 
   return (
     <TmDashboard>
-      <OrClientList
-        clients={MOCK_CLIENTS}
-        title="Clientes"
-        count={325}
-        showSearch
-        onMenuPress={() => setDrawerVisible(true)}
-      />
+      <View className="flex-row items-center justify-between px-4 pt-2">
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          className="flex-row items-center gap-2"
+        >
+          <AtIcon name="chevron-left" size="lg" color="#1A1F36" />
+          <View className="flex-row items-baseline gap-1.5">
+            <AtTypography variant="h2">Clientes</AtTypography>
+            <AtTypography variant="body" color="#4A5568">
+              ({CLIENTS.length > 99 ? 325 : CLIENTS.length})
+            </AtTypography>
+          </View>
+        </Pressable>
+        <MlPeriodDropdown />
+      </View>
+
+      <View className="gap-3 px-4 mt-2">
+        {CLIENTS.map((c) => (
+          <MlClientCardDark
+            key={c.id}
+            name={c.name}
+            amount={c.amount}
+            deltaPercent={c.deltaPercent}
+            onPress={() => router.push(`/ingresos/${c.id}` as Parameters<typeof router.push>[0])}
+          />
+        ))}
+      </View>
 
       <OrDrawer
         visible={drawerVisible}

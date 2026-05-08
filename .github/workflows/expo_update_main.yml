@@ -37,4 +37,4 @@ jobs:
         run: npm ci
 
       - name: Publish update
-        run: eas update --auto
+        run: eas update --branch production --message "${{ github.event.head_commit.message }}"

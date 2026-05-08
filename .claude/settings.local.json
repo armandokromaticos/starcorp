@@ -9,11 +9,12 @@
       "Bash(ls src/components/organisms/or-*)",
       "Bash(ls src/components/templates/tm-*)",
       "Bash(gh pr create --base dev --title 'feat: Atomic Design + NativeWind v5 + Roboto' --body ':*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(git -C \"C:/Users/soydc/Kromaticos/starcorp/.claude/worktrees/distracted-noether\" status)",
+      "Bash(git -C \"C:/Users/soydc/Kromaticos/starcorp/.claude/worktrees/fervent-visvesvaraya\" status)",
+      "Bash(git status *)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "figma"
-  ],
+  "enabledMcpjsonServers": ["figma"],
   "enableAllProjectMcpServers": true
 }

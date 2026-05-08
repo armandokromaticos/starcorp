@@ -2,12 +2,23 @@
  * Chart: AreaChart
  *
  * Lightweight area chart built with react-native-svg.
- * No native dependencies beyond react-native-svg (included in Expo Go).
+ * Supports both smooth (Catmull-Rom) and sharp (polyline) rendering and
+ * optional multi-stop linear gradient fills.
  */
 
 import React, { memo, useMemo } from 'react';
-import { View } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+
+export interface AreaGradientStop {
+  offset: number;
+  color: string;
+  opacity?: number;
+}
+
+export interface AreaGradient {
+  stops: AreaGradientStop[];
+  direction?: 'vertical' | 'horizontal';
+}
 
 interface AreaChartProps {
   data: number[];
@@ -17,30 +28,41 @@ interface AreaChartProps {
   fillOpacity?: number;
   strokeWidth?: number;
   gradientId?: string;
+  smooth?: boolean;
+  fillGradient?: AreaGradient;
+  strokeOpacity?: number;
+  yMin?: number;
+  yMax?: number;
 }
 
 function buildPath(
   data: number[],
   width: number,
   height: number,
-  smooth = true,
+  smooth: boolean,
+  yMin?: number,
+  yMax?: number,
 ): string {
   if (data.length < 2) return '';
 
-  const max = Math.max(...data);
-  const min = Math.min(...data);
+  const hasFixedScale = yMin !== undefined && yMax !== undefined;
+  const min = hasFixedScale ? yMin! : Math.min(...data);
+  const max = hasFixedScale ? yMax! : Math.max(...data);
   const range = max - min || 1;
+  const scaleY = hasFixedScale ? 1 : 0.85;
+  const padY = hasFixedScale ? 0 : height * 0.05;
 
   const points = data.map((value, i) => ({
     x: (i / (data.length - 1)) * width,
-    y: height - ((value - min) / range) * height * 0.85 - height * 0.05,
+    y: height - ((value - min) / range) * height * scaleY - padY,
   }));
 
   if (!smooth) {
-    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    return points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+      .join(' ');
   }
 
-  // Catmull-Rom to cubic bezier for smooth curves
   let path = `M ${points[0].x} ${points[0].y}`;
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[Math.max(0, i - 1)];
@@ -68,22 +90,53 @@ export const AreaChart = memo<AreaChartProps>(
     fillOpacity = 0.15,
     strokeWidth = 2,
     gradientId = 'areaGrad',
+    smooth = true,
+    fillGradient,
+    strokeOpacity = 1,
+    yMin,
+    yMax,
   }) => {
-    const linePath = useMemo(() => buildPath(data, width, height), [data, width, height]);
+    const linePath = useMemo(
+      () => buildPath(data, width, height, smooth, yMin, yMax),
+      [data, width, height, smooth, yMin, yMax],
+    );
 
     const areaPath = useMemo(() => {
       if (!linePath) return '';
       return `${linePath} L ${width} ${height} L 0 ${height} Z`;
     }, [linePath, width, height]);
 
+    const stops = useMemo<AreaGradientStop[]>(
+      () =>
+        fillGradient?.stops ?? [
+          { offset: 0, color, opacity: fillOpacity },
+          { offset: 1, color, opacity: 0.01 },
+        ],
+      [fillGradient, color, fillOpacity],
+    );
+
+    const horizontal = fillGradient?.direction === 'horizontal';
+
     if (data.length < 2) return null;
 
     return (
       <Svg width={width} height={height}>
         <Defs>
-          <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={color} stopOpacity={fillOpacity} />
-            <Stop offset="1" stopColor={color} stopOpacity={0.01} />
+          <LinearGradient
+            id={gradientId}
+            x1="0"
+            y1="0"
+            x2={horizontal ? '1' : '0'}
+            y2={horizontal ? '0' : '1'}
+          >
+            {stops.map((s, i) => (
+              <Stop
+                key={i}
+                offset={s.offset}
+                stopColor={s.color}
+                stopOpacity={s.opacity ?? 1}
+              />
+            ))}
           </LinearGradient>
         </Defs>
         <Path d={areaPath} fill={`url(#${gradientId})`} />
@@ -92,6 +145,7 @@ export const AreaChart = memo<AreaChartProps>(
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
+          strokeOpacity={strokeOpacity}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
