@@ -131,12 +131,13 @@ export const mockTopClients: NormalizedClient[] = [
 export const mockReports: NormalizedReport[] = [
   {
     id: 'cartera',
-    label: 'Cartera',
+    label: 'Carteras',
     icon: 'account-balance-wallet',
     color: '#E89A3E',
     total: 8250,
     currency: 'USD',
     deltaPercent: 1.87,
+    series: [50, 70, 78, 75, 78, 70, 60, 70, 80, 100, 105, 110],
   },
   {
     id: 'asociados',
@@ -146,6 +147,7 @@ export const mockReports: NormalizedReport[] = [
     total: 1240,
     currency: 'USD',
     deltaPercent: 0.62,
+    series: [40, 45, 55, 50, 60, 65, 62, 70, 72, 80, 85, 90],
   },
   {
     id: 'bancos',
@@ -155,24 +157,27 @@ export const mockReports: NormalizedReport[] = [
     total: 42500,
     currency: 'USD',
     deltaPercent: -0.45,
+    series: [80, 75, 78, 70, 65, 68, 60, 55, 58, 50, 48, 45],
   },
   {
     id: 'presupuesto',
-    label: 'Presupuesto',
+    label: 'Presupuestos',
     icon: 'assessment',
     color: '#B4C93A',
     total: 65000,
     currency: 'USD',
     deltaPercent: 2.15,
+    series: [30, 40, 35, 50, 55, 60, 65, 62, 70, 75, 78, 82],
   },
   {
     id: 'seguro',
-    label: 'Seguro',
+    label: 'Seguros',
     icon: 'verified-user',
     color: '#78A63A',
     total: 3200,
     currency: 'USD',
     deltaPercent: 0.12,
+    series: [20, 25, 28, 30, 32, 30, 35, 38, 40, 42, 45, 48],
   },
   {
     id: 'pagos',
@@ -182,6 +187,7 @@ export const mockReports: NormalizedReport[] = [
     total: 12800,
     currency: 'USD',
     deltaPercent: 1.05,
+    series: [60, 55, 50, 58, 62, 70, 75, 80, 78, 85, 90, 95],
   },
 ];
 

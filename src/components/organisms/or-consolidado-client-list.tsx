@@ -1,12 +1,19 @@
-import React, { memo } from 'react';
+/**
+ * Organism: OrConsolidadoClientList
+ *
+ * Just the cards. The "Clientes (N)" subheader + period select live in
+ * `OrConsolidadoClientListHeader` so they can be pinned above the scroll area.
+ * Renders a friendly empty state when the active filter returns no clients.
+ */
+
+import React, { memo, useCallback } from 'react';
 import { View } from '@/src/tw';
-import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
 import { MlConsolidadoClientCard } from '@/src/components/molecules/ml-consolidado-client-card';
+import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
 import { useConsolidadoClients } from '@/src/hooks/queries/use-consolidado-clients';
-import type { ConsolidadoCategoryId } from '@/src/types/domain.types';
-import { PERIOD_LABELS } from '@/src/utils/date';
 import { useFiltersStore } from '@/src/stores/filters.store';
+import type { ConsolidadoCategoryId } from '@/src/types/domain.types';
 
 const AMOUNT_LABEL_BY_CATEGORY: Record<ConsolidadoCategoryId, string> = {
   ingresos: 'Ingresos',
@@ -25,7 +32,13 @@ export const OrConsolidadoClientList = memo<OrConsolidadoClientListProps>(
   ({ categoryId, onClientPress }) => {
     const { data, isLoading } = useConsolidadoClients(categoryId);
     const periodKey = useFiltersStore((s) => s.activePeriodKey);
+    const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
     const amountLabel = AMOUNT_LABEL_BY_CATEGORY[categoryId];
+
+    const goToWidestPeriod = useCallback(
+      () => setActivePeriod('12m'),
+      [setActivePeriod],
+    );
 
     if (isLoading || !data) {
       return (
@@ -37,36 +50,37 @@ export const OrConsolidadoClientList = memo<OrConsolidadoClientListProps>(
       );
     }
 
+    if (data.length === 0) {
+      return (
+        <MlEmptyState
+          icon="search-off"
+          title={`Sin clientes con ${amountLabel.toLowerCase()} en este periodo`}
+          description={
+            periodKey === '12m'
+              ? 'No se encontraron movimientos en los últimos 12 meses.'
+              : 'Probá ampliar el rango desde el selector de arriba.'
+          }
+          action={
+            periodKey !== '12m'
+              ? { label: 'Ver últimos 12 meses', onPress: goToWidestPeriod }
+              : undefined
+          }
+        />
+      );
+    }
+
     return (
       <View className="gap-2">
-        <View className="flex-row justify-between items-center px-4">
-          <View className="flex-row items-baseline gap-1">
-            <AtTypography variant="bodyBold">Clientes</AtTypography>
-            <AtTypography variant="caption" color="#8892A4">
-              ({data.length})
-            </AtTypography>
-          </View>
-          <View
-            className="flex-row items-center gap-1 bg-bg-card px-3 py-1.5 rounded-full"
-            style={{ borderCurve: 'continuous' }}
-          >
-            <AtTypography variant="captionBold">
-              {PERIOD_LABELS[periodKey]} {'\u25BE'}
-            </AtTypography>
-          </View>
-        </View>
-        <View className="gap-2">
-          {data.map((client) => (
-            <MlConsolidadoClientCard
-              key={client.id}
-              name={client.name}
-              amountLabel={amountLabel}
-              amount={client.amount}
-              deltaPercent={client.deltaPercent}
-              onPress={() => onClientPress?.(client.id)}
-            />
-          ))}
-        </View>
+        {data.map((client) => (
+          <MlConsolidadoClientCard
+            key={client.id}
+            name={client.name}
+            amountLabel={amountLabel}
+            amount={client.amount}
+            deltaPercent={client.deltaPercent}
+            onPress={() => onClientPress?.(client.id)}
+          />
+        ))}
       </View>
     );
   },

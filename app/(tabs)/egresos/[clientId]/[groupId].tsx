@@ -23,7 +23,11 @@ export default function EgresosTercerosScreen() {
   }>();
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
-  const { data, isLoading } = useThirdParties('egresos', groupId ?? '');
+  const { data, isLoading } = useThirdParties(
+    'egresos',
+    groupId ?? '',
+    clientId ?? '',
+  );
   const { data: company } = useCompany(clientId);
   const group = mockCostGroupsEgresos.find((g) => g.id === groupId);
 

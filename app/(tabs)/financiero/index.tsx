@@ -18,20 +18,46 @@ import {
 import { TmFinanciero } from "@/src/components/templates/tm-financiero";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
 import { useCompanyMetrics } from "@/src/hooks/queries/use-company-metrics";
-import { ScrollView, View } from "@/src/tw";
+import { queryKeys } from "@/src/hooks/queries/query-keys";
+import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
+import { useQBStore } from "@/src/stores/qb.store";
+import { Pressable, ScrollView, View } from "@/src/tw";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator } from "react-native";
 
 export default function FinancieroScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
-    null,
-  );
+  const [connectingCompany, setConnectingCompany] = useState(false);
+
+  const activeRealmId = useQBStore((s) => s.activeRealmId);
+  const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
+  const queryClient = useQueryClient();
 
   const { data: companies = [] } = useCompanies();
-  const activeCompanyId = selectedCompanyId ?? companies[0]?.id;
+
+  useEffect(() => {
+    if (!activeRealmId && companies[0]) {
+      setActiveRealmId(companies[0].id);
+    }
+  }, [activeRealmId, companies, setActiveRealmId]);
+
+  const activeCompanyId = activeRealmId ?? companies[0]?.id;
   const { data: metrics } = useCompanyMetrics(activeCompanyId);
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
+
+  async function handleConnectAnother() {
+    setConnectingCompany(true);
+    try {
+      await startQuickBooksOAuth();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.companies() });
+    } catch (err) {
+      console.warn("connect another QB company failed", err);
+    } finally {
+      setConnectingCompany(false);
+    }
+  }
 
   const primaryMetrics: FinancialMetric[] = useMemo(() => {
     if (!metrics) return [];
@@ -86,20 +112,9 @@ export default function FinancieroScreen() {
   }, [metrics]);
 
   const handleMetricPress = (id: string) => {
-    if (!activeCompanyId) return;
-    if (id === "ingresos") {
-      router.push(
-        `/ingresos/${activeCompanyId}` as Parameters<typeof router.push>[0],
-      );
-    } else if (id === "costos") {
-      router.push(
-        `/costos/${activeCompanyId}` as Parameters<typeof router.push>[0],
-      );
-    } else if (id === "egresos") {
-      router.push(
-        `/egresos/${activeCompanyId}` as Parameters<typeof router.push>[0],
-      );
-    }
+    if (id === "ingresos") router.push("/financiero/ingresos");
+    else if (id === "costos") router.push("/financiero/costos");
+    else if (id === "egresos") router.push("/financiero/egresos");
   };
 
   return (
@@ -110,7 +125,6 @@ export default function FinancieroScreen() {
         className="px-4"
       />
 
-      {/* Company selector carousel */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -122,12 +136,46 @@ export default function FinancieroScreen() {
             name={c.name}
             variant="tile"
             selected={c.id === activeCompanyId}
-            onPress={() => setSelectedCompanyId(c.id)}
+            onPress={() => setActiveRealmId(c.id)}
           />
         ))}
+        <Pressable
+          onPress={handleConnectAnother}
+          disabled={connectingCompany}
+          className="items-center gap-2"
+          style={{ width: 110, opacity: connectingCompany ? 0.6 : 1 }}
+        >
+          <View
+            style={{
+              width: 110,
+              height: 110,
+              borderRadius: 18,
+              borderCurve: "continuous",
+              borderWidth: 2,
+              borderColor: "#1A2B6D",
+              borderStyle: "dashed",
+              backgroundColor: "#F4F6FB",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {connectingCompany ? (
+              <ActivityIndicator color="#1A2B6D" />
+            ) : (
+              <AtIcon name="add" size="xl" color="#1A2B6D" />
+            )}
+          </View>
+          <AtTypography
+            variant="bodyBold"
+            color="#1A1F36"
+            className="text-center"
+            numberOfLines={2}
+          >
+            Conectar otra
+          </AtTypography>
+        </Pressable>
       </ScrollView>
 
-      {/* Selected company header */}
       <View className="flex-row items-center gap-3 px-4">
         <View
           className="justify-center items-center bg-bg-tertiary rounded-md w-9 h-9"
@@ -141,7 +189,6 @@ export default function FinancieroScreen() {
         <MlPeriodDropdown />
       </View>
 
-      {/* Financial metrics grid */}
       {!metrics ? (
         <View className="gap-3 px-4">
           <AtSkeleton width="100%" height={141} borderRadius={14} />

@@ -65,6 +65,7 @@ export const OrAreaChart = memo<OrAreaChartProps>(
                 color={s.color}
                 fillOpacity={s.fillOpacity ?? 0.15}
                 strokeWidth={1.5}
+                smooth={false}
                 gradientId={`area-grad-${i}`}
               />
             </View>

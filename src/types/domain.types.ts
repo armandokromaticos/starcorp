@@ -61,6 +61,7 @@ export interface NormalizedReport {
   total: number;
   currency: string;
   deltaPercent: number;
+  series: number[];
 }
 
 export type TrendDirection = 'up' | 'down' | 'flat';

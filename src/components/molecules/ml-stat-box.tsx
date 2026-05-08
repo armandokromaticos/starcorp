@@ -18,21 +18,33 @@ interface MlStatBoxProps {
   value: string | number;
   label: string;
   iconColor?: string;
+  variant?: 'light' | 'dark';
   className?: string;
 }
 
 export const MlStatBox = memo<MlStatBoxProps>(
-  ({ icon, value, label, iconColor = '#1A2B6D', className }) => {
+  ({ icon, value, label, iconColor = '#1A2B6D', variant = 'light', className }) => {
+    const isDark = variant === 'dark';
     return (
       <View
-        className={`items-center gap-2 p-3 bg-bg-secondary rounded-lg flex-1 ${className ?? ''}`}
-        style={{ borderCurve: 'continuous' }}
+        className={`items-center gap-2 p-4 rounded-lg flex-1 ${className ?? ''}`}
+        style={{
+          borderCurve: 'continuous',
+          backgroundColor: isDark ? '#0F1B2E' : '#F5F5F7',
+        }}
       >
         <AtIcon name={icon} size="lg" color={iconColor} />
-        <AtTypography variant="h3" selectable>
+        <AtTypography
+          variant="h3"
+          color={isDark ? '#FFFFFF' : '#1A1F36'}
+          selectable
+        >
           {String(value)}
         </AtTypography>
-        <AtTypography variant="caption" color="#8892A4">
+        <AtTypography
+          variant="caption"
+          color={isDark ? 'rgba(255,255,255,0.75)' : '#8892A4'}
+        >
           {label}
         </AtTypography>
       </View>
