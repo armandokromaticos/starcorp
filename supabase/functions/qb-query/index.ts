@@ -36,20 +36,35 @@ interface TokenRow {
   updated_at: string;
 }
 
-async function refreshIfNeeded(
+async function loadTokens(
   admin: SupabaseClient,
   userId: string,
+  realmId: string | undefined,
+): Promise<TokenRow> {
+  let query = admin
+    .from("qb_user_tokens")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (realmId) {
+    query = query.eq("realm_id", realmId);
+  } else {
+    // Fallback: most recently updated row when client didn't pick a company.
+    query = query.order("updated_at", { ascending: false }).limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle<TokenRow>();
+  if (error) throw new Error(`load_failed_${error.code}`);
+  if (!data) throw new Error("not_connected");
+  return data;
+}
+
+async function refreshIfNeeded(
+  admin: SupabaseClient,
+  row: TokenRow,
   clientId: string,
   clientSecret: string,
 ): Promise<TokenRow> {
-  const { data: row, error } = await admin
-    .from("qb_user_tokens")
-    .select("*")
-    .eq("user_id", userId)
-    .single<TokenRow>();
-  if (error || !row) throw new Error("not_connected");
-
-  // Refresh tokens expire after 101 days of inactivity.
   if (new Date(row.refresh_expires_at).getTime() < Date.now()) {
     throw new Error("reauth_required");
   }
@@ -93,7 +108,10 @@ async function refreshIfNeeded(
     ).toISOString(),
     updated_at: new Date(now).toISOString(),
   };
-  await admin.from("qb_user_tokens").update(updated).eq("user_id", userId);
+  await admin.from("qb_user_tokens")
+    .update(updated)
+    .eq("user_id", row.user_id)
+    .eq("realm_id", row.realm_id);
   return updated;
 }
 
@@ -115,6 +133,7 @@ Deno.serve(async (req) => {
     const body = await req.json() as {
       endpoint: string;
       query?: Record<string, string>;
+      realmId?: string;
     };
     if (!body.endpoint) {
       return respond("endpoint required", { status: 400 });
@@ -131,9 +150,10 @@ Deno.serve(async (req) => {
 
     let tokens: TokenRow;
     try {
+      const row = await loadTokens(admin, user.id, body.realmId);
       tokens = await refreshIfNeeded(
         admin,
-        user.id,
+        row,
         kv.QB_CLIENT_ID,
         kv.QB_CLIENT_SECRET,
       );
@@ -165,11 +185,23 @@ Deno.serve(async (req) => {
         Accept: "application/json",
       },
     });
+    const intuitTid = qbRes.headers.get("intuit_tid") ?? undefined;
     if (!qbRes.ok) {
       const txt = await qbRes.text();
-      return respond(`QB ${qbRes.status}: ${txt}`, { status: 502 });
+      console.error({
+        error: "QB_API_ERROR",
+        status: qbRes.status,
+        intuit_tid: intuitTid,
+        realm_id: tokens.realm_id,
+        endpoint: body.endpoint,
+        detail: txt,
+      });
+      return respondJson(
+        { error: `QB ${qbRes.status}`, intuit_tid: intuitTid },
+        { status: 502 },
+      );
     }
-    return respondJson(await qbRes.json());
+    return respondJson({ ...(await qbRes.json()), intuit_tid: intuitTid });
   } catch (err) {
     console.error(err);
     return respond("Internal error", { status: 500 });

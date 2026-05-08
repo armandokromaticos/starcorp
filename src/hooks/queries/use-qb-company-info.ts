@@ -4,6 +4,7 @@ import {
   QBNotConnectedError,
   QBReauthRequiredError,
 } from '@/src/services/quickbooks/client';
+import { useQBStore } from '@/src/stores/qb.store';
 import { queryKeys } from './query-keys';
 
 interface QBCompanyInfoRaw {
@@ -17,11 +18,17 @@ interface QBCompanyInfoRaw {
 }
 
 export function useQBCompanyInfo() {
+  const realmId = useQBStore((s) => s.activeRealmId);
+
   return useQuery({
-    queryKey: queryKeys.qbCompanyInfo(),
+    queryKey: [...queryKeys.qbCompanyInfo(), realmId ?? 'default'],
     queryFn: async () => {
       try {
-        return await qbQuery<QBCompanyInfoRaw>('companyinfo/0');
+        return await qbQuery<QBCompanyInfoRaw>(
+          'companyinfo/0',
+          undefined,
+          realmId ?? undefined,
+        );
       } catch (e) {
         if (
           e instanceof QBNotConnectedError ||

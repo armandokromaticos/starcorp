@@ -17,9 +17,17 @@ export class QBReauthRequiredError extends Error {
   }
 }
 
+export interface QBConnectedCompany {
+  realmId: string;
+  name: string | null;
+  connectedAt: string;
+  reauthRequired: boolean;
+}
+
 export async function qbQuery<T>(
   endpoint: string,
   query?: Record<string, string>,
+  realmId?: string,
 ): Promise<T> {
   const accessToken = await getAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/qb-query`, {
@@ -29,7 +37,7 @@ export async function qbQuery<T>(
       apikey: SUPABASE_ANON_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ endpoint, query }),
+    body: JSON.stringify({ endpoint, query, realmId }),
   });
 
   if (res.status === 409) throw new QBNotConnectedError();
@@ -40,14 +48,32 @@ export async function qbQuery<T>(
   return res.json() as Promise<T>;
 }
 
-export async function disconnectQuickBooks(): Promise<void> {
+export async function qbListCompanies(): Promise<QBConnectedCompany[]> {
+  const accessToken = await getAccessToken();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/qb-companies`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`qb-companies ${res.status}: ${await res.text()}`);
+  }
+  const json = (await res.json()) as { companies?: QBConnectedCompany[] };
+  return json.companies ?? [];
+}
+
+export async function disconnectQuickBooks(realmId?: string): Promise<void> {
   const accessToken = await getAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/qb-disconnect`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
     },
+    body: realmId ? JSON.stringify({ realmId }) : undefined,
   });
   if (!res.ok) {
     throw new Error(`qb-disconnect ${res.status}: ${await res.text()}`);

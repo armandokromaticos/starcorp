@@ -16,6 +16,20 @@ function respondJson(body: unknown, init: { status?: number } = {}) {
   });
 }
 
+async function readRealmId(req: Request): Promise<string | undefined> {
+  if (req.method !== "POST") return undefined;
+  const ct = req.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) return undefined;
+  try {
+    const body = await req.json() as { realmId?: string };
+    return typeof body.realmId === "string" && body.realmId.length > 0
+      ? body.realmId
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -33,13 +47,20 @@ Deno.serve(async (req) => {
     const { data: { user }, error: uErr } = await admin.auth.getUser(userJwt);
     if (uErr || !user) return respondJson({ error: "invalid_jwt" }, { status: 401 });
 
-    const { data: row } = await admin
-      .from("qb_user_tokens")
-      .select("refresh_token")
-      .eq("user_id", user.id)
-      .maybeSingle<{ refresh_token: string }>();
+    const realmId = await readRealmId(req);
 
-    if (!row) return respondJson({ status: "already_disconnected" });
+    let rowsQuery = admin
+      .from("qb_user_tokens")
+      .select("realm_id, refresh_token")
+      .eq("user_id", user.id);
+    if (realmId) rowsQuery = rowsQuery.eq("realm_id", realmId);
+
+    const { data: rows } = await rowsQuery.returns<
+      { realm_id: string; refresh_token: string }[]
+    >();
+    if (!rows || rows.length === 0) {
+      return respondJson({ status: "already_disconnected" });
+    }
 
     const { data: vault, error: vErr } = await admin
       .from("starcorp_vault")
@@ -49,32 +70,38 @@ Deno.serve(async (req) => {
       return respondJson({ error: "vault_misconfigured" }, { status: 500 });
     }
     const kv = Object.fromEntries(vault.map((r) => [r.key, r.value]));
-
     const basic = btoa(`${kv.QB_CLIENT_ID}:${kv.QB_CLIENT_SECRET}`);
-    // Best-effort revoke at Intuit; we delete locally regardless.
-    const revokeRes = await fetch(REVOKE_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${basic}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ token: row.refresh_token }),
-    });
-    if (!revokeRes.ok) {
-      console.warn("QB revoke non-2xx", revokeRes.status);
-    }
 
-    const { error: delErr } = await admin
-      .from("qb_user_tokens")
-      .delete()
-      .eq("user_id", user.id);
+    // Best-effort revoke at Intuit; we delete locally regardless.
+    await Promise.all(rows.map(async (row) => {
+      try {
+        const res = await fetch(REVOKE_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${basic}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ token: row.refresh_token }),
+        });
+        if (!res.ok) console.warn("QB revoke non-2xx", res.status, row.realm_id);
+      } catch (e) {
+        console.warn("QB revoke threw", (e as Error).message, row.realm_id);
+      }
+    }));
+
+    let delQuery = admin.from("qb_user_tokens").delete().eq("user_id", user.id);
+    if (realmId) delQuery = delQuery.eq("realm_id", realmId);
+    const { error: delErr } = await delQuery;
     if (delErr) {
       console.error("delete failed", delErr);
       return respondJson({ error: "delete_failed" }, { status: 500 });
     }
 
-    return respondJson({ status: "disconnected" });
+    return respondJson({
+      status: "disconnected",
+      realmIds: rows.map((r) => r.realm_id),
+    });
   } catch (err) {
     console.error(err);
     return respondJson({ error: "internal" }, { status: 500 });

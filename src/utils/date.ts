@@ -14,7 +14,8 @@ export function computePeriod(key: PeriodKey): PeriodRange {
 
   switch (key) {
     case "today":
-      start = end;
+      // Label shows "Mes" → month-to-date: first day of current month → today.
+      start = toISODate(new Date(now.getFullYear(), now.getMonth(), 1));
       break;
     case "1w":
       start = toISODate(addDays(now, -7));
@@ -52,7 +53,7 @@ function addMonths(d: Date, months: number): Date {
 }
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
-  today: "Mes",
+  today: "Mes corriente",
   "1w": "1 sem",
   "1m": "1 M",
   "3m": "3 M",

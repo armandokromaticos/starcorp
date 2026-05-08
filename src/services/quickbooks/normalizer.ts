@@ -68,6 +68,88 @@ export function normalizeRevenueFromPnL(
   };
 }
 
+/** A single line item under an Income / COGS / Expenses section. */
+export interface PnLLineItem {
+  id: string;
+  label: string;
+  amount: number;
+  color: string;
+}
+
+interface RawWithExtras {
+  type?: string;
+  group?: string;
+  Header?: { ColData?: { value: string; id?: string }[] };
+  ColData?: { value: string; id?: string }[];
+  Summary?: { ColData?: { value: string }[] };
+  Rows?: { Row?: RawWithExtras[] };
+}
+
+const SECTION_PALETTE = [
+  "#1A2B6D",
+  "#E8952E",
+  "#4A7FD4",
+  "#38A169",
+  "#3182CE",
+  "#9F7AEA",
+  "#D53F8C",
+  "#DD6B20",
+] as const;
+
+function toAmount(raw: string | undefined): number {
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function lastColValue(cols: { value: string }[] | undefined): string | undefined {
+  if (!cols || cols.length === 0) return undefined;
+  return cols[cols.length - 1]?.value;
+}
+
+function findSectionRow(
+  rows: RawWithExtras[] | undefined,
+  group: string,
+): RawWithExtras | undefined {
+  if (!rows) return undefined;
+  for (const row of rows) {
+    if (row.group === group) return row;
+    const nested = findSectionRow(row.Rows?.Row, group);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+/**
+ * Flattens immediate descendants of a P&L section (Income, COGS, Expenses)
+ * into a list of leaf line items so we can render them in a detail screen.
+ */
+export function normalizePnLSection(
+  pnl: QBProfitAndLossRaw | null,
+  group: 'Income' | 'COGS' | 'Expenses',
+): PnLLineItem[] {
+  const root = findSectionRow(pnl?.Rows?.Row as RawWithExtras[] | undefined, group);
+  const children = root?.Rows?.Row ?? [];
+
+  return children.map((row, idx) => {
+    const label = row.Header?.ColData?.[0]?.value ??
+      row.ColData?.[0]?.value ??
+      `Cuenta ${idx + 1}`;
+    const amount = row.Summary?.ColData
+      ? toAmount(lastColValue(row.Summary.ColData))
+      : toAmount(lastColValue(row.ColData));
+    const id = row.Header?.ColData?.[0]?.id ??
+      row.ColData?.[0]?.id ??
+      `${group}-${idx}`;
+    return {
+      id: String(id),
+      label,
+      amount,
+      color: SECTION_PALETTE[idx % SECTION_PALETTE.length],
+    };
+  });
+}
+
 export function normalizeMetricsFromPnL(
   pnl: QBProfitAndLossRaw | null,
 ): CompanyMetrics {

@@ -8,6 +8,34 @@ function redirect(params: Record<string, string>) {
   return Response.redirect(`${APP_DEEP_LINK}?${qs}`, 302);
 }
 
+async function fetchCompanyName(
+  accessToken: string,
+  realmId: string,
+  environment: string,
+): Promise<string | null> {
+  const base = environment === "production"
+    ? "https://quickbooks.api.intuit.com"
+    : "https://sandbox-quickbooks.api.intuit.com";
+  try {
+    const res = await fetch(
+      `${base}/v3/company/${realmId}/companyinfo/${realmId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      },
+    );
+    if (!res.ok) return null;
+    const json = await res.json() as {
+      CompanyInfo?: { CompanyName?: string; LegalName?: string };
+    };
+    return json.CompanyInfo?.CompanyName ?? json.CompanyInfo?.LegalName ?? null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -45,7 +73,7 @@ Deno.serve(async (req) => {
   const { data: vault, error: vErr } = await admin
     .from("starcorp_vault")
     .select("key,value")
-    .in("key", ["QB_CLIENT_ID", "QB_CLIENT_SECRET"]);
+    .in("key", ["QB_CLIENT_ID", "QB_CLIENT_SECRET", "QB_ENVIRONMENT"]);
   if (vErr || !vault || vault.length < 2) {
     return redirect({ status: "error", reason: "vault_misconfigured" });
   }
@@ -81,6 +109,12 @@ Deno.serve(async (req) => {
     x_refresh_token_expires_in: number;
   };
 
+  const companyName = await fetchCompanyName(
+    t.access_token,
+    realmId,
+    kv.QB_ENVIRONMENT ?? "sandbox",
+  );
+
   const now = Date.now();
   const { error: upErr } = await admin.from("qb_user_tokens").upsert({
     user_id: userId,
@@ -91,8 +125,9 @@ Deno.serve(async (req) => {
     refresh_expires_at: new Date(
       now + t.x_refresh_token_expires_in * 1000,
     ).toISOString(),
+    company_name: companyName,
     updated_at: new Date(now).toISOString(),
-  });
+  }, { onConflict: "user_id,realm_id" });
 
   if (upErr) {
     console.error("Token upsert failed", upErr);

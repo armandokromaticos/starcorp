@@ -8,9 +8,14 @@ import {
   QBReauthRequiredError,
 } from '@/src/services/quickbooks/client';
 import { normalizeMetricsFromPnL } from '@/src/services/quickbooks/normalizer';
-import { QB_COMPANY_ID } from './use-companies';
 import type { QBProfitAndLossRaw } from '@/src/types/api.types';
 import type { CompanyMetrics } from '@/src/types/domain.types';
+
+const REALM_ID_PATTERN = /^\d{6,}$/;
+
+function isRealmId(id: string): boolean {
+  return REALM_ID_PATTERN.test(id);
+}
 
 export function useCompanyMetrics(companyId: string | undefined) {
   const period = useFiltersStore((s) => s.activePeriod);
@@ -20,12 +25,13 @@ export function useCompanyMetrics(companyId: string | undefined) {
     queryFn: async () => {
       if (!companyId) return undefined;
 
-      if (companyId === QB_COMPANY_ID) {
+      if (isRealmId(companyId)) {
         try {
-          const pnl = await qbQuery<QBProfitAndLossRaw>('reports/ProfitAndLoss', {
-            start_date: period.start,
-            end_date: period.end,
-          });
+          const pnl = await qbQuery<QBProfitAndLossRaw>(
+            'reports/ProfitAndLoss',
+            { start_date: period.start, end_date: period.end },
+            companyId,
+          );
           return normalizeMetricsFromPnL(pnl);
         } catch (e) {
           if (

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from './query-keys';
 import { useFiltersStore } from '@/src/stores/filters.store';
+import { useQBStore } from '@/src/stores/qb.store';
 import { mockRevenue } from '@/src/services/mock/data.mock';
 import {
   qbQuery,
@@ -13,15 +14,17 @@ import type { NormalizedRevenue } from '@/src/types/domain.types';
 
 export function useRevenue() {
   const period = useFiltersStore((s) => s.activePeriod);
+  const realmId = useQBStore((s) => s.activeRealmId);
 
   return useQuery<NormalizedRevenue>({
-    queryKey: queryKeys.revenue(period.key),
+    queryKey: [...queryKeys.revenue(period.key), realmId ?? 'default'],
     queryFn: async () => {
       try {
-        const pnl = await qbQuery<QBProfitAndLossRaw>('reports/ProfitAndLoss', {
-          start_date: period.start,
-          end_date: period.end,
-        });
+        const pnl = await qbQuery<QBProfitAndLossRaw>(
+          'reports/ProfitAndLoss',
+          { start_date: period.start, end_date: period.end },
+          realmId ?? undefined,
+        );
         return normalizeRevenueFromPnL(pnl, {
           start: period.start,
           end: period.end,

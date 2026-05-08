@@ -14,17 +14,16 @@ import {
   type CategoryItem,
 } from "@/src/components/organisms/or-category-carousel";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
-import {
-  OrFinancieroSection,
-  type CompanySummary,
-} from "@/src/components/organisms/or-financiero-section";
+import { OrFinancieroSection } from "@/src/components/organisms/or-financiero-section";
 import { OrGreetingHeader } from "@/src/components/organisms/or-greeting-header";
 import { OrInformesSection } from "@/src/components/organisms/or-informes-section";
 import { OrRecentReportsSection } from "@/src/components/organisms/or-recent-reports-section";
 import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { OrTopClientsSection } from "@/src/components/organisms/or-top-clients-section";
 import { TmDashboard } from "@/src/components/templates/tm-dashboard";
+import { useCompanySummaries } from "@/src/hooks/queries/use-company-summaries";
 import { useFiltersStore } from "@/src/stores/filters.store";
+import { useQBStore } from "@/src/stores/qb.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS } from "@/src/utils/date";
@@ -41,30 +40,6 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
 const POWERBI_DATASET_ID = "43f822cf-7162-410d-bc5a-61182e5ca2d7";
 const POWERBI_GROUP_ID = "457b264f-6eb8-4b00-8f62-f65ee2700cd4";
 const DAX_BBM_INGRESO = `EVALUATE ROW("BBMIngreso", [BBMIngreso])`;
-
-const COMPANIES: CompanySummary[] = [
-  {
-    id: "5-stars",
-    name: "5 Stars",
-    totalLabel: "Ingresos totales",
-    totalValue: 100000,
-    deltaPercent: 1.87,
-  },
-  {
-    id: "one-a",
-    name: "One A",
-    totalLabel: "Ingresos totales",
-    totalValue: 100000,
-    deltaPercent: -1.87,
-  },
-  {
-    id: "north",
-    name: "North Co.",
-    totalLabel: "Ingresos totales",
-    totalValue: 86500,
-    deltaPercent: 0.92,
-  },
-];
 
 const CATEGORIES: CategoryItem[] = [
   {
@@ -98,10 +73,21 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>("ingresos");
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
+  const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
+
+  const { summaries: companies } = useCompanySummaries();
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
     [setActivePeriod],
+  );
+
+  const handleCompanyPress = useCallback(
+    (id: string) => {
+      setActiveRealmId(id);
+      router.push("/financiero");
+    },
+    [setActiveRealmId],
   );
 
   const activeCategory =
@@ -160,7 +146,8 @@ export default function HomeScreen() {
       {/* Financiero (empresas carousel) */}
       <OrFinancieroSection
         periodLabel={PERIOD_LABELS[activePeriodKey]}
-        companies={COMPANIES}
+        companies={companies}
+        onCompanyPress={handleCompanyPress}
         onViewAll={() => router.push("/financiero")}
       />
 
