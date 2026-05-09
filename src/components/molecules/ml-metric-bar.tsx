@@ -29,6 +29,12 @@ interface MlMetricBarProps {
   widthPercent: number;
   selected?: boolean;
   onPress?: () => void;
+  /** Currency by default; 'percent' renders e.g. "42.3%". */
+  valueFormat?: 'currency' | 'percent';
+}
+
+function formatPercent(v: number): string {
+  return `${v.toFixed(1)}%`;
 }
 
 const MIN_WIDTH = 0.18;
@@ -47,6 +53,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
     widthPercent,
     selected = false,
     onPress,
+    valueFormat = 'currency',
   }) => {
     const isPlaceholder = value === null;
     const arrow = deltaPositive ? '↗' : '↘';
@@ -140,7 +147,11 @@ export const MlMetricBar = memo<MlMetricBarProps>(
                 style={{ fontVariant: ['tabular-nums'] }}
                 numberOfLines={1}
               >
-                {isPlaceholder ? '—' : formatCurrency(value)}
+                {isPlaceholder
+                  ? '—'
+                  : valueFormat === 'percent'
+                  ? formatPercent(value)
+                  : formatCurrency(value)}
               </AtTypography>
             </View>
           </View>

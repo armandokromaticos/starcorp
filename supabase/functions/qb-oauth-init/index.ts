@@ -33,6 +33,32 @@ Deno.serve(async (req) => {
     const { data: { user }, error: uErr } = await admin.auth.getUser(userJwt);
     if (uErr || !user) return respondJson({ error: "invalid_jwt" }, { status: 401 });
 
+    // Single-admin gate: only the user stored as ADMIN_USER_ID can connect QB.
+    // Empty slot → first caller claims it (race-safe via PK on `key`).
+    const { data: adminRow } = await admin
+      .from("starcorp_vault")
+      .select("value")
+      .eq("key", "ADMIN_USER_ID")
+      .maybeSingle<{ value: string }>();
+
+    if (!adminRow) {
+      const { error: claimErr } = await admin
+        .from("starcorp_vault")
+        .insert({ key: "ADMIN_USER_ID", value: user.id });
+      if (claimErr) {
+        const { data: refetched } = await admin
+          .from("starcorp_vault")
+          .select("value")
+          .eq("key", "ADMIN_USER_ID")
+          .single<{ value: string }>();
+        if (!refetched || refetched.value !== user.id) {
+          return respondJson({ error: "not_admin" }, { status: 403 });
+        }
+      }
+    } else if (adminRow.value !== user.id) {
+      return respondJson({ error: "not_admin" }, { status: 403 });
+    }
+
     const { data: vault, error: vErr } = await admin
       .from("starcorp_vault")
       .select("key,value")

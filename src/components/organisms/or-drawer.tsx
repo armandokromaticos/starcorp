@@ -53,6 +53,7 @@ const DEFAULT_MENU_ITEMS: DrawerMenuItem[] = [
   { id: "informes", label: "Informes", icon: "megaphone" },
   { id: "reportes", label: "Reportes", icon: "stats-chart" },
   { id: "empresas", label: "Otras compañías", icon: "briefcase" },
+  { id: "qb", label: "Conexión QuickBooks", icon: "link" },
 ];
 
 const ROUTE_MAP: Record<string, string> = {
@@ -61,6 +62,7 @@ const ROUTE_MAP: Record<string, string> = {
   clientes: "/(tabs)/clientes",
   informes: "/(tabs)/informes",
   reportes: "/(tabs)/reportes",
+  qb: "/connect",
 };
 
 export const OrDrawer = memo<OrDrawerProps>(

@@ -58,6 +58,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="connect" options={{ headerShown: false }} />
             <Stack.Screen
               name="modal"
               options={{ presentation: 'modal', title: 'Modal', headerShown: true }}
