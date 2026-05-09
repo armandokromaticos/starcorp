@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,11 +13,16 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQbStatus } from "@/src/hooks/queries/use-companies";
 import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
+import {
+  disconnectQuickBooks,
+  type QBConnectedCompany,
+} from "@/src/services/quickbooks/client";
 
 export default function ConnectScreen() {
   const router = useRouter();
   const status = useQbStatus();
   const [busy, setBusy] = useState(false);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleConnect() {
@@ -46,6 +53,34 @@ export default function ConnectScreen() {
     }
   }
 
+  function confirmDisconnect(company: QBConnectedCompany) {
+    Alert.alert(
+      "Desconectar empresa",
+      `¿Seguro que querés desconectar "${company.name ?? company.realmId}"? Tu equipo dejará de ver sus datos.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Desconectar",
+          style: "destructive",
+          onPress: () => handleDisconnect(company.realmId),
+        },
+      ],
+    );
+  }
+
+  async function handleDisconnect(realmId?: string) {
+    setDisconnecting(realmId ?? "all");
+    setError(null);
+    try {
+      await disconnectQuickBooks(realmId);
+      await status.refetch();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setDisconnecting(null);
+    }
+  }
+
   if (status.isPending) {
     return (
       <View style={styles.centerFill}>
@@ -56,6 +91,7 @@ export default function ConnectScreen() {
 
   const hasAdmin = status.data?.hasAdmin ?? false;
   const isAdmin = status.data?.isAdmin ?? false;
+  const companies = status.data?.companies ?? [];
 
   let title: string;
   let subtitle: string;
@@ -69,9 +105,9 @@ export default function ConnectScreen() {
     canConnect = true;
     ctaLabel = "Conectar QuickBooks";
   } else if (isAdmin) {
-    title = "Conecta otra empresa";
+    title = "Conexiones activas";
     subtitle =
-      "Eres el administrador. Vincula otra compañía de QuickBooks para que el equipo la vea.";
+      "Eres el administrador. Podés vincular más compañías o desconectar las que ya no necesitás.";
     canConnect = true;
     ctaLabel = "Conectar otra empresa";
   } else {
@@ -84,7 +120,7 @@ export default function ConnectScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.heroBlock}>
           <Image
             source={require("@/assets/images/icon.png")}
@@ -94,6 +130,36 @@ export default function ConnectScreen() {
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
+
+        {isAdmin && companies.length > 0 ? (
+          <View style={styles.companiesBlock}>
+            <Text style={styles.sectionLabel}>Empresas vinculadas</Text>
+            {companies.map((c) => (
+              <View key={c.realmId} style={styles.companyRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.companyName}>
+                    {c.name ?? `Empresa ${c.realmId.slice(-4)}`}
+                  </Text>
+                  <Text style={styles.companyMeta}>
+                    realm {c.realmId}
+                    {c.reauthRequired ? " · requiere reconexión" : ""}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.disconnectBtn}
+                  disabled={disconnecting !== null}
+                  onPress={() => confirmDisconnect(c)}
+                >
+                  {disconnecting === c.realmId ? (
+                    <ActivityIndicator color="#B91C1C" />
+                  ) : (
+                    <Text style={styles.disconnectTxt}>Desconectar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.actionBlock}>
           <TouchableOpacity
@@ -110,26 +176,21 @@ export default function ConnectScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#F6F8FA" },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 32 },
   centerFill: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F6F8FA",
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    justifyContent: "space-between",
-  },
-  heroBlock: { alignItems: "center", marginTop: 64 },
+  heroBlock: { alignItems: "center", marginTop: 32 },
   logo: { width: 96, height: 96, marginBottom: 24 },
   title: {
     fontFamily: "Roboto_700Bold",
@@ -146,7 +207,53 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 8,
   },
-  actionBlock: { marginBottom: 16 },
+  companiesBlock: { marginTop: 32 },
+  sectionLabel: {
+    fontFamily: "Roboto_500Medium",
+    fontSize: 13,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 12,
+  },
+  companyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  companyName: {
+    fontFamily: "Roboto_500Medium",
+    fontSize: 15,
+    color: "#1F2937",
+  },
+  companyMeta: {
+    fontFamily: "Roboto_400Regular",
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 2,
+  },
+  disconnectBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    minWidth: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disconnectTxt: {
+    color: "#B91C1C",
+    fontFamily: "Roboto_500Medium",
+    fontSize: 13,
+  },
+  actionBlock: { marginTop: 32 },
   cta: {
     backgroundColor: "#E8952E",
     paddingVertical: 16,
