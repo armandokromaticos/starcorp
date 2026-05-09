@@ -16,7 +16,7 @@ import {
   type FinancialMetric,
 } from "@/src/components/organisms/or-financial-summary";
 import { TmFinanciero } from "@/src/components/templates/tm-financiero";
-import { useCompanies } from "@/src/hooks/queries/use-companies";
+import { useCompanies, useQbStatus } from "@/src/hooks/queries/use-companies";
 import { useCompanyMetrics } from "@/src/hooks/queries/use-company-metrics";
 import { queryKeys } from "@/src/hooks/queries/query-keys";
 import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
@@ -36,6 +36,8 @@ export default function FinancieroScreen() {
   const queryClient = useQueryClient();
 
   const { data: companies = [] } = useCompanies();
+  const { data: qbStatus } = useQbStatus();
+  const isAdmin = qbStatus?.isAdmin ?? false;
 
   useEffect(() => {
     if (!activeRealmId && companies[0]) {
@@ -139,41 +141,43 @@ export default function FinancieroScreen() {
             onPress={() => setActiveRealmId(c.id)}
           />
         ))}
-        <Pressable
-          onPress={handleConnectAnother}
-          disabled={connectingCompany}
-          className="items-center gap-2"
-          style={{ width: 110, opacity: connectingCompany ? 0.6 : 1 }}
-        >
-          <View
-            style={{
-              width: 110,
-              height: 110,
-              borderRadius: 18,
-              borderCurve: "continuous",
-              borderWidth: 2,
-              borderColor: "#1A2B6D",
-              borderStyle: "dashed",
-              backgroundColor: "#F4F6FB",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+        {isAdmin ? (
+          <Pressable
+            onPress={handleConnectAnother}
+            disabled={connectingCompany}
+            className="items-center gap-2"
+            style={{ width: 110, opacity: connectingCompany ? 0.6 : 1 }}
           >
-            {connectingCompany ? (
-              <ActivityIndicator color="#1A2B6D" />
-            ) : (
-              <AtIcon name="add" size="xl" color="#1A2B6D" />
-            )}
-          </View>
-          <AtTypography
-            variant="bodyBold"
-            color="#1A1F36"
-            className="text-center"
-            numberOfLines={2}
-          >
-            Conectar otra
-          </AtTypography>
-        </Pressable>
+            <View
+              style={{
+                width: 110,
+                height: 110,
+                borderRadius: 18,
+                borderCurve: "continuous",
+                borderWidth: 2,
+                borderColor: "#1A2B6D",
+                borderStyle: "dashed",
+                backgroundColor: "#F4F6FB",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {connectingCompany ? (
+                <ActivityIndicator color="#1A2B6D" />
+              ) : (
+                <AtIcon name="add" size="xl" color="#1A2B6D" />
+              )}
+            </View>
+            <AtTypography
+              variant="bodyBold"
+              color="#1A1F36"
+              className="text-center"
+              numberOfLines={2}
+            >
+              Conectar otra
+            </AtTypography>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View className="flex-row items-center gap-3 px-4">
