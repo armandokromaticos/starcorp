@@ -24,6 +24,12 @@ export interface QBConnectedCompany {
   reauthRequired: boolean;
 }
 
+export interface QBStatus {
+  companies: QBConnectedCompany[];
+  hasAdmin: boolean;
+  isAdmin: boolean;
+}
+
 export async function qbQuery<T>(
   endpoint: string,
   query?: Record<string, string>,
@@ -48,7 +54,7 @@ export async function qbQuery<T>(
   return res.json() as Promise<T>;
 }
 
-export async function qbListCompanies(): Promise<QBConnectedCompany[]> {
+export async function qbStatus(): Promise<QBStatus> {
   const accessToken = await getAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/qb-companies`, {
     method: 'POST',
@@ -60,8 +66,17 @@ export async function qbListCompanies(): Promise<QBConnectedCompany[]> {
   if (!res.ok) {
     throw new Error(`qb-companies ${res.status}: ${await res.text()}`);
   }
-  const json = (await res.json()) as { companies?: QBConnectedCompany[] };
-  return json.companies ?? [];
+  const json = (await res.json()) as Partial<QBStatus>;
+  return {
+    companies: json.companies ?? [],
+    hasAdmin: json.hasAdmin ?? false,
+    isAdmin: json.isAdmin ?? false,
+  };
+}
+
+/** @deprecated use qbStatus(). Kept for compatibility. */
+export async function qbListCompanies(): Promise<QBConnectedCompany[]> {
+  return (await qbStatus()).companies;
 }
 
 export async function disconnectQuickBooks(realmId?: string): Promise<void> {

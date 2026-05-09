@@ -47,6 +47,16 @@ Deno.serve(async (req) => {
     const { data: { user }, error: uErr } = await admin.auth.getUser(userJwt);
     if (uErr || !user) return respondJson({ error: "invalid_jwt" }, { status: 401 });
 
+    const { data: adminRow } = await admin
+      .from("starcorp_vault")
+      .select("value")
+      .eq("key", "ADMIN_USER_ID")
+      .maybeSingle<{ value: string }>();
+
+    if (!adminRow || adminRow.value !== user.id) {
+      return respondJson({ error: "not_admin" }, { status: 403 });
+    }
+
     const realmId = await readRealmId(req);
 
     let rowsQuery = admin
@@ -96,6 +106,16 @@ Deno.serve(async (req) => {
     if (delErr) {
       console.error("delete failed", delErr);
       return respondJson({ error: "delete_failed" }, { status: 500 });
+    }
+
+    // If admin has no more connected realms, release the admin slot so another
+    // user can claim it on next OAuth init.
+    const { count: remaining } = await admin
+      .from("qb_user_tokens")
+      .select("realm_id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (!remaining) {
+      await admin.from("starcorp_vault").delete().eq("key", "ADMIN_USER_ID");
     }
 
     return respondJson({

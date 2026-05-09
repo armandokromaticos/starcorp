@@ -27,6 +27,7 @@ export const queryKeys = {
     ['consolidado', categoryId, 'terceros', groupId, period] as const,
   expenseCentral: (period: string) =>
     ['consolidado', 'gastos', 'central', period] as const,
+  qbStatus: () => ['qb', 'status'] as const,
   companies: () => ['companies'] as const,
   company: (companyId: string) => ['companies', companyId] as const,
   companyMetrics: (period: string, companyId: string) =>

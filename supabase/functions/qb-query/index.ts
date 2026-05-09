@@ -142,15 +142,22 @@ Deno.serve(async (req) => {
     const { data: vault, error: vErr } = await admin
       .from("starcorp_vault")
       .select("key,value")
-      .in("key", ["QB_CLIENT_ID", "QB_CLIENT_SECRET", "QB_ENVIRONMENT"]);
+      .in(
+        "key",
+        ["QB_CLIENT_ID", "QB_CLIENT_SECRET", "QB_ENVIRONMENT", "ADMIN_USER_ID"],
+      );
     if (vErr || !vault || vault.length < 3) {
       return respond("Vault misconfigured", { status: 500 });
     }
     const kv = Object.fromEntries(vault.map((r) => [r.key, r.value]));
 
+    if (!kv.ADMIN_USER_ID) {
+      return respondJson({ error: "not_connected" }, { status: 409 });
+    }
+
     let tokens: TokenRow;
     try {
-      const row = await loadTokens(admin, user.id, body.realmId);
+      const row = await loadTokens(admin, kv.ADMIN_USER_ID, body.realmId);
       tokens = await refreshIfNeeded(
         admin,
         row,

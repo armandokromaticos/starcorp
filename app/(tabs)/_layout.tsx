@@ -6,12 +6,28 @@
  */
 
 import { AtGradientIcon } from "@/src/components/atoms/at-gradient-icon";
-import { Tabs } from "expo-router";
+import { useCompanies } from "@/src/hooks/queries/use-companies";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const companies = useCompanies();
+
+  if (companies.isPending) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F6F8FA" }}>
+        <ActivityIndicator color="#20307E" />
+      </View>
+    );
+  }
+
+  if (companies.isError || !companies.data || companies.data.length === 0) {
+    return <Redirect href="/connect" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
