@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQbStatus } from "@/src/hooks/queries/use-companies";
 import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
@@ -24,6 +24,18 @@ export default function ConnectScreen() {
   const [busy, setBusy] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Members waiting for the admin to connect: poll every 10s so the screen
+  // self-advances once the admin completes OAuth on their device.
+  const isWaiting =
+    !!status.data && status.data.hasAdmin && !status.data.isAdmin;
+  useEffect(() => {
+    if (!isWaiting) return;
+    const id = setInterval(() => {
+      status.refetch();
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [isWaiting, status]);
 
   async function handleConnect() {
     setBusy(true);
@@ -92,6 +104,12 @@ export default function ConnectScreen() {
   const hasAdmin = status.data?.hasAdmin ?? false;
   const isAdmin = status.data?.isAdmin ?? false;
   const companies = status.data?.companies ?? [];
+
+  // Member with data available → bounce into the dashboard.
+  // Admin stays on /connect to manage connections.
+  if (!isAdmin && companies.length > 0) {
+    return <Redirect href="/" />;
+  }
 
   let title: string;
   let subtitle: string;
