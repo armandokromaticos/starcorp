@@ -127,6 +127,13 @@ export function OrClientDetail({ clientId, entryCategory }: OrClientDetailProps)
     const utilidadNeta = summary.utilidad;
     const utilidadBruta = ingreso - costo;
 
+    const margenPct =
+      ingreso !== 0 ? (utilidadNeta / ingreso) * 100 : null;
+    const margenPrevPct =
+      summary.ingresosPrev !== 0
+        ? (summary.utilidadPrev / summary.ingresosPrev) * 100
+        : null;
+
     const maxAbs = Math.max(
       Math.abs(ingreso),
       Math.abs(costo),
@@ -197,10 +204,17 @@ export function OrClientDetail({ clientId, entryCategory }: OrClientDetailProps)
         key: 'margen' as MetricKey,
         label: 'Margen',
         icon: 'show-chart' as MaterialIconName,
-        value: null,
-        deltaPositive: true,
+        value: margenPct,
+        deltaPositive:
+          margenPct !== null && margenPrevPct !== null
+            ? margenPct >= margenPrevPct
+            : (margenPct ?? 0) >= 0,
         gradient: ['#F59E0B', '#FBBF24'] as const,
-        widthPercent: 0.4,
+        widthPercent:
+          margenPct !== null
+            ? Math.max(0, Math.min(1, margenPct / 100))
+            : 0.4,
+        valueFormat: 'percent' as const,
       },
     ];
   }, [summary]);
@@ -323,6 +337,7 @@ export function OrClientDetail({ clientId, entryCategory }: OrClientDetailProps)
                 deltaPositive={m.deltaPositive}
                 gradient={m.gradient}
                 widthPercent={m.widthPercent}
+                valueFormat={'valueFormat' in m ? m.valueFormat : undefined}
                 selected={selectedMetric === m.key}
                 onPress={() => setSelectedMetric(m.key)}
               />

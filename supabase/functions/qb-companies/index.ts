@@ -38,10 +38,24 @@ Deno.serve(async (req) => {
     const { data: { user }, error: uErr } = await admin.auth.getUser(userJwt);
     if (uErr || !user) return respondJson({ error: "invalid_jwt" }, { status: 401 });
 
+    const { data: adminRow } = await admin
+      .from("starcorp_vault")
+      .select("value")
+      .eq("key", "ADMIN_USER_ID")
+      .maybeSingle<{ value: string }>();
+
+    const hasAdmin = !!adminRow;
+    const isAdmin = hasAdmin && adminRow!.value === user.id;
+    const ownerId = adminRow?.value;
+
+    if (!ownerId) {
+      return respondJson({ companies: [], hasAdmin: false, isAdmin: false });
+    }
+
     const { data, error } = await admin
       .from("qb_user_tokens")
       .select("realm_id, company_name, updated_at, refresh_expires_at")
-      .eq("user_id", user.id)
+      .eq("user_id", ownerId)
       .order("updated_at", { ascending: false });
     if (error) {
       console.error("list failed", error);
@@ -55,7 +69,7 @@ Deno.serve(async (req) => {
       connectedAt: r.updated_at,
       reauthRequired: new Date(r.refresh_expires_at).getTime() < now,
     }));
-    return respondJson({ companies });
+    return respondJson({ companies, hasAdmin, isAdmin });
   } catch (err) {
     console.error(err);
     return respondJson({ error: "internal" }, { status: 500 });
