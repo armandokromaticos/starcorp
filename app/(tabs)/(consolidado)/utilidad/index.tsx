@@ -6,40 +6,38 @@
  * that client's utilidad timeseries.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollView, View } from '@/src/tw';
-import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
-import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
-import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
-import { AtTypography } from '@/src/components/atoms/at-typography';
-import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
-import { MlClientRow } from '@/src/components/molecules/ml-client-row';
-import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
-import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
-import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
-import { OrAreaChart } from '@/src/components/organisms/or-area-chart';
-import { OrDrawer } from '@/src/components/organisms/or-drawer';
-import { useConsolidadoClients } from '@/src/hooks/queries/use-consolidado-clients';
-import {
-  useDashboardTimeseries,
-} from '@/src/hooks/queries/use-dashboard-timeseries';
-import type { DashboardSummaryPeriod } from '@/src/hooks/queries/use-dashboard-summary';
-import { useFiltersStore } from '@/src/stores/filters.store';
-import { PERIOD_LABELS } from '@/src/utils/date';
-import type { PeriodKey } from '@/src/types/domain.types';
+import { AtDeltaIndicator } from "@/src/components/atoms/at-delta-indicator";
+import { AtMetricValue } from "@/src/components/atoms/at-metric-value";
+import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { MlBreadcrumb } from "@/src/components/molecules/ml-breadcrumb";
+import { MlClientRow } from "@/src/components/molecules/ml-client-row";
+import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
+import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
+import { MlTimeFilterBar } from "@/src/components/molecules/ml-time-filter-bar";
+import { OrAreaChart } from "@/src/components/organisms/or-area-chart";
+import { OrDrawer } from "@/src/components/organisms/or-drawer";
+import { useConsolidadoClients } from "@/src/hooks/queries/use-consolidado-clients";
+import type { DashboardSummaryPeriod } from "@/src/hooks/queries/use-dashboard-summary";
+import { useDashboardTimeseries } from "@/src/hooks/queries/use-dashboard-timeseries";
+import { useFiltersStore } from "@/src/stores/filters.store";
+import { ScrollView, View } from "@/src/tw";
+import type { PeriodKey } from "@/src/types/domain.types";
+import { PERIOD_LABELS } from "@/src/utils/date";
+import { router } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const PERIOD_OPTIONS = (['today', '1w', '1m', '3m', '12m'] as PeriodKey[]).map(
+const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_LABELS[key] }),
 );
 
 const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
-  today: 'mtd',
-  '1w': '1w',
-  '1m': '1m',
-  '3m': '3m',
-  '12m': '12m',
+  today: "mtd",
+  "1w": "1w",
+  "1m": "1m",
+  "3m": "3m",
+  "12m": "12m",
 };
 
 export default function UtilidadConsolidadaScreen() {
@@ -48,7 +46,7 @@ export default function UtilidadConsolidadaScreen() {
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
   const rpcPeriod = RPC_PERIOD[activePeriodKey];
 
-  const { data, isLoading } = useConsolidadoClients('utilidad');
+  const { data, isLoading } = useConsolidadoClients("utilidad");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
@@ -63,7 +61,7 @@ export default function UtilidadConsolidadaScreen() {
     [setActivePeriod],
   );
   const goToWidestPeriod = useCallback(
-    () => setActivePeriod('12m'),
+    () => setActivePeriod("12m"),
     [setActivePeriod],
   );
 
@@ -73,7 +71,7 @@ export default function UtilidadConsolidadaScreen() {
     return [
       {
         data: buckets.map((b) => b.utilidad),
-        color: selected?.color ?? '#2D4BA0',
+        color: selected?.color ?? "#2D4BA0",
         fillOpacity: 0.35,
       },
     ];
@@ -83,17 +81,14 @@ export default function UtilidadConsolidadaScreen() {
   const isEmpty = !!data && data.length === 0;
 
   return (
-    <View
-      className="flex-1 bg-bg-primary"
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
       {/* Pinned top: search + breadcrumb + filter + chart card */}
-      <View className="gap-4 pt-2 pb-3 bg-bg-primary">
+      <View className="gap-4 bg-bg-primary pt-2 pb-3">
         <View className="px-4">
           <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
         </View>
         <MlBreadcrumb
-          segments={['Utilidad consolidada']}
+          segments={["Utilidad consolidada"]}
           onBack={() => router.back()}
           className="px-4"
         />
@@ -104,15 +99,15 @@ export default function UtilidadConsolidadaScreen() {
         />
 
         {isPending ? (
-          <View className="px-4 gap-3">
+          <View className="gap-3 px-4">
             <AtSkeleton width="100%" height={220} borderRadius={14} />
           </View>
         ) : isEmpty ? null : selected ? (
           <View
-            className="bg-bg-card mx-4 rounded-lg p-4 gap-3"
+            className="gap-3 bg-bg-card mx-4 p-4 rounded-lg"
             style={{
-              borderCurve: 'continuous',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+              borderCurve: "continuous",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
             }}
           >
             <View className="gap-1">
@@ -132,8 +127,8 @@ export default function UtilidadConsolidadaScreen() {
               <View
                 style={{
                   height: 160,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <AtTypography variant="caption" color="#8892A4">
@@ -149,7 +144,7 @@ export default function UtilidadConsolidadaScreen() {
 
       {/* Scrollable client list */}
       {isPending ? (
-        <View className="px-4 gap-2">
+        <View className="gap-2 px-4">
           {[0, 1, 2, 3].map((i) => (
             <AtSkeleton key={i} width="100%" height={48} borderRadius={8} />
           ))}
@@ -159,13 +154,13 @@ export default function UtilidadConsolidadaScreen() {
           icon="search-off"
           title="Sin clientes con utilidad en este periodo"
           description={
-            activePeriodKey === '12m'
-              ? 'No hay movimiento en los últimos 12 meses.'
-              : 'Probá ampliar el rango desde el filtro de arriba.'
+            activePeriodKey === "12m"
+              ? "No hay movimiento en los últimos 12 meses."
+              : "Prueba ampliar el rango desde el filtro de arriba."
           }
           action={
-            activePeriodKey !== '12m'
-              ? { label: 'Ver últimos 12 meses', onPress: goToWidestPeriod }
+            activePeriodKey !== "12m"
+              ? { label: "Ver últimos 12 meses", onPress: goToWidestPeriod }
               : undefined
           }
         />

@@ -49,7 +49,8 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
       () => Math.max(...bars.map((b) => b.value), 1),
       [bars],
     );
-    const resolvedHighlighted = highlightedId ?? bars[0]?.id;
+    // Pill only renders when highlightedId is explicitly provided.
+    const resolvedHighlighted = highlightedId;
 
     return (
       <View

@@ -103,7 +103,7 @@ export const MlCompanyCard = memo<MlCompanyCardProps>(
     return (
       <Pressable
         onPress={onPress}
-        className={`bg-navy rounded-lg p-4 gap-3 ${className ?? ""}`}
+        className={`bg-[#0A1432] rounded-lg p-4 gap-3 ${className ?? ""}`}
         style={{
           width: summaryWidth,
           borderCurve: "continuous",

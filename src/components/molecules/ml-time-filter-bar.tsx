@@ -41,6 +41,11 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
           >
             {options.map((opt) => {
               const isSelected = selectedKey === opt.key;
+              const pillStyle = {
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 999,
+              } as const;
               return (
                 <Pressable
                   key={opt.key}
@@ -52,19 +57,15 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
                       colors={gradients.brandOrange.colors}
                       start={gradients.brandOrange.start}
                       end={gradients.brandOrange.end}
-                      style={{
-                        paddingHorizontal: 20,
-                        paddingVertical: 10,
-                        borderRadius: 999,
-                      }}
+                      style={pillStyle}
                     >
                       <AtTypography variant="captionBold" color="#FFFFFF">
                         {opt.label}
                       </AtTypography>
                     </LinearGradient>
                   ) : (
-                    <View className="px-2 py-2.5">
-                      <AtTypography variant="caption" color="#1A1F36">
+                    <View style={pillStyle}>
+                      <AtTypography variant="captionBold" color="#1A1F36">
                         {opt.label}
                       </AtTypography>
                     </View>

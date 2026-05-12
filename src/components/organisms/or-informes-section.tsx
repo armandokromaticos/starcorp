@@ -17,6 +17,8 @@ import { AreaChart } from '@/src/components/charts/area-chart';
 import { MlReportCategoryRow } from '@/src/components/molecules/ml-report-category-row';
 import { useReports } from '@/src/hooks/queries/use-reports';
 import { tokens } from '@/src/theme/tokens';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '@/src/theme/gradients';
 
 interface OrInformesSectionProps {
   title?: string;
@@ -26,18 +28,18 @@ interface OrInformesSectionProps {
 }
 
 const MONTHS_ES_SHORT = [
-  'Ene',
-  'Feb',
-  'Mar',
-  'Abr',
-  'May',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dic',
+  'E',
+  'F',
+  'M',
+  'A',
+  'M',
+  'J',
+  'J',
+  'A',
+  'S',
+  'O',
+  'N',
+  'D',
 ];
 
 function niceCeil(value: number): number {
@@ -97,7 +99,7 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
           }}
         >
           <View className="flex-row gap-3">
-            <View className="gap-1" style={{ minWidth: 150 }}>
+            <View className="gap-1" style={{ minWidth: 84 }}>
               {data.reports.map((r) => (
                 <MlReportCategoryRow
                   key={r.id}
@@ -135,15 +137,28 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
               <View className="items-end mt-2">
                 <Pressable
                   onPress={onViewAll}
-                  className="bg-navy px-4 py-2.5 rounded-md"
                   style={{
+                    borderRadius: 8,
                     borderCurve: 'continuous',
-                    boxShadow: '0 2px 6px rgba(15, 27, 74, 0.25)',
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 6px rgba(4, 17, 63, 0.35)',
                   }}
                 >
-                  <AtTypography variant="captionBold" color="#FFFFFF">
-                    Ver {selected.label.toLowerCase()}
-                  </AtTypography>
+                  <LinearGradient
+                    colors={gradients.buttonBlue.colors}
+                    start={gradients.buttonBlue.start}
+                    end={gradients.buttonBlue.end}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <AtTypography variant="captionBold" color="#FFFFFF">
+                      Ver {selected.label.toLowerCase()}
+                    </AtTypography>
+                  </LinearGradient>
                 </Pressable>
               </View>
             </View>

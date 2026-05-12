@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQbStatus } from "@/src/hooks/queries/use-companies";
@@ -185,11 +186,18 @@ export default function ConnectScreen() {
             disabled={busy}
             onPress={canConnect ? handleConnect : () => status.refetch()}
           >
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.ctaText}>{ctaLabel}</Text>
-            )}
+            <LinearGradient
+              colors={["#1938A5", "#04113F"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.ctaGradient}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.ctaText}>{ctaLabel}</Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -273,12 +281,15 @@ const styles = StyleSheet.create({
   },
   actionBlock: { marginTop: 32 },
   cta: {
-    backgroundColor: "#E8952E",
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  ctaGradient: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   ctaDisabled: { opacity: 0.7 },
   ctaText: {

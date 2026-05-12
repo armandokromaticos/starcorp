@@ -131,7 +131,9 @@ export interface ThirdParty {
   id: string;
   name: string;
   color: string;
+  gradientColors: [string, string];
   amount: number;
+  deltaPercent: number;
 }
 
 export interface ExpenseCentral {

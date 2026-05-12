@@ -56,7 +56,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
     valueFormat = 'currency',
   }) => {
     const isPlaceholder = value === null;
-    const arrow = deltaPositive ? '↗' : '↘';
+    const arrowIcon: MaterialIconName = deltaPositive ? 'north-east' : 'south-east';
     const arrowColor = deltaPositive ? '#22C55E' : '#EF4444';
     const pillFlex = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, widthPercent));
     const rightFlex = 1 - pillFlex;
@@ -69,7 +69,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
           padding: 4,
           borderWidth: 1.5,
           borderColor: selected ? '#6366F1' : 'transparent',
-          borderRadius: 22,
+          borderRadius: selected ? 20 : 22,
           borderCurve: 'continuous',
         }}
       >
@@ -137,9 +137,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
               style={{ marginLeft: 'auto' }}
             >
               {!isPlaceholder && (
-                <AtTypography variant="bodyBold" color={arrowColor}>
-                  {arrow}
-                </AtTypography>
+                <AtIcon name={arrowIcon} size={22} color={arrowColor} />
               )}
               <AtTypography
                 variant="bodyBold"

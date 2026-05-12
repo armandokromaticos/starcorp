@@ -6,6 +6,7 @@
  */
 
 import React, { memo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlTimeFilterBar, type TimeFilterOption } from '@/src/components/molecules/ml-time-filter-bar';
@@ -40,7 +41,9 @@ export const TmUtilidad = memo<TmUtilidadProps>(
     onMenuPress,
     children,
   }) => {
+    const insets = useSafeAreaInsets();
     return (
+      <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
@@ -81,6 +84,7 @@ export const TmUtilidad = memo<TmUtilidadProps>(
         {/* Content: area chart + client list */}
         {children}
       </ScrollView>
+      </View>
     );
   },
 );

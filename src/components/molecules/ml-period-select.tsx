@@ -56,7 +56,7 @@ export const MlPeriodSelect = memo<MlPeriodSelectProps>(
             }}
           >
             <View
-              className="bg-bg-card rounded-2xl py-1"
+              className="bg-bg-card rounded-2xl py-1 overflow-hidden"
               style={{
                 minWidth: 200,
                 borderCurve: 'continuous',

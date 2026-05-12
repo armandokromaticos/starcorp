@@ -39,7 +39,7 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
         onPress={onSelect}
         accessibilityRole="radio"
         accessibilityState={{ selected }}
-        className="bg-navy rounded-lg p-4 w-[130px] gap-3 justify-between"
+        className="bg-[#0A1432] rounded-lg p-4 w-[130px] gap-3 justify-between"
         style={{ borderCurve: 'continuous' }}
       >
         <View className="flex-row justify-between items-center">
@@ -81,9 +81,12 @@ export const MlCategoryTab = memo<MlCategoryTabProps>(
         />
 
         <Pressable onPress={onActionPress} hitSlop={8}>
-          <AtTypography variant="caption" color="rgba(255,255,255,0.7)">
-            {actionLabel} {'\u2192'}
-          </AtTypography>
+          <View className="flex-row items-center gap-1">
+            <AtTypography variant="captionBold" color="rgba(255,255,255,0.7)">
+              {actionLabel}
+            </AtTypography>
+            <AtIcon name="arrow-forward" size={14} color="rgba(255,255,255,0.7)" />
+          </View>
         </Pressable>
       </Pressable>
     );

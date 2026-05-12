@@ -14,26 +14,28 @@ export default function GastosConsolidadoScreen() {
     <TmConsolidatedList
       breadcrumbs={['Gastos consolidado']}
       onBack={() => router.back()}
-      pinnedHeader={<OrConsolidadoClientListHeader categoryId="gastos" />}
+      pinnedHeader={
+        <View className="gap-3">
+          {data && (
+            <OrExpenseCentralCard
+              total={data.total}
+              deltaPercent={data.deltaPercent}
+            />
+          )}
+          <OrConsolidadoClientListHeader categoryId="gastos" />
+        </View>
+      }
     >
-      <View className="gap-3">
-        {data && (
-          <OrExpenseCentralCard
-            total={data.total}
-            deltaPercent={data.deltaPercent}
-          />
-        )}
-        <OrConsolidadoClientList
-          categoryId="gastos"
-          onClientPress={(clientId) =>
-            router.push(
-              `/gastos/${encodeURIComponent(clientId)}` as Parameters<
-                typeof router.push
-              >[0],
-            )
-          }
-        />
-      </View>
+      <OrConsolidadoClientList
+        categoryId="gastos"
+        onClientPress={(clientId) =>
+          router.push(
+            `/gastos/${encodeURIComponent(clientId)}` as Parameters<
+              typeof router.push
+            >[0],
+          )
+        }
+      />
     </TmConsolidatedList>
   );
 }

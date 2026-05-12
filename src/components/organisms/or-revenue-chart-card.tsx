@@ -133,7 +133,7 @@ const ConsolidadoChartCard = memo<{
   return (
     <>
       <View className="gap-1">
-        <AtTypography variant="overline" color="#4A5568">
+        <AtTypography variant="captionBold" color="#4A5568">
           {label}
         </AtTypography>
         <View className="flex-row items-center gap-3">
@@ -142,7 +142,7 @@ const ConsolidadoChartCard = memo<{
           ) : (
             <>
               <AtMetricValue value={headerValue} size="lg" />
-              <AtDeltaIndicator value={headerDelta} appearance="dark" />
+              <AtDeltaIndicator value={headerDelta} appearance="dark" size="lg" />
             </>
           )}
         </View>

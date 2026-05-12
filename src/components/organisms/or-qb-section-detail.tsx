@@ -4,34 +4,39 @@
  * Shared detail screen for /financiero/{ingresos,costos,egresos}.
  * Reads the active QB realm + period, fetches a single P&L report,
  * extracts the requested section group (Income / COGS / Expenses),
- * and renders the same chart-card + row list pattern as /costos.
+ * and renders a donut chart card + tappable row list.
+ *
+ * Level-2 drill-down (terceros) is currently only wired for COGS:
+ *   /financiero/costos/[groupId]
+ * Ingresos/Egresos rows are non-tappable until those routes exist.
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { router } from 'expo-router';
-import { View } from '@/src/tw';
-import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
-import { MlCostGroupRow } from '@/src/components/molecules/ml-cost-group-row';
-import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
-import { OrCostGroupsChartCard } from '@/src/components/organisms/or-cost-groups-chart-card';
-import { TmConsolidatedDetail } from '@/src/components/templates/tm-consolidated-detail';
-import { useCompanies } from '@/src/hooks/queries/use-companies';
-import { useQBProfitAndLoss } from '@/src/hooks/queries/use-qb-profit-and-loss';
-import { useFiltersStore } from '@/src/stores/filters.store';
-import { useQBStore } from '@/src/stores/qb.store';
-import { normalizePnLSection } from '@/src/services/quickbooks/normalizer';
-import { PERIOD_LABELS } from '@/src/utils/date';
-import type { PeriodKey } from '@/src/types/domain.types';
-import type { MaterialIcons } from '@expo/vector-icons';
+import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
+import { MlClientRow } from "@/src/components/molecules/ml-client-row";
+import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
+import { OrThirdPartiesDonutCard } from "@/src/components/organisms/or-third-parties-donut-card";
+import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
+import { useCompanies } from "@/src/hooks/queries/use-companies";
+import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
+import { normalizePnLSection } from "@/src/services/quickbooks/normalizer";
+import { useFiltersStore } from "@/src/stores/filters.store";
+import { useQBStore } from "@/src/stores/qb.store";
+import { CLIENT_LEGEND_GRADIENTS } from "@/src/theme/gradients";
+import { View } from "@/src/tw";
+import type { PeriodKey, ThirdParty } from "@/src/types/domain.types";
+import { PERIOD_LABELS } from "@/src/utils/date";
+import type { MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { useCallback, useMemo } from "react";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
-const PERIOD_OPTIONS = (['today', '1w', '1m', '3m', '12m'] as PeriodKey[]).map(
+const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_LABELS[key] }),
 );
 
 interface OrQBSectionDetailProps {
-  group: 'Income' | 'COGS' | 'Expenses';
+  group: "Income" | "COGS" | "Expenses";
   breadcrumbLabel: string;
   defaultIcon: MaterialIconName;
 }
@@ -68,12 +73,31 @@ export function OrQBSectionDetail({
     deltaPercent: 0,
   }));
 
+  // ThirdParty shape required by OrThirdPartiesDonutCard
+  const donutData: ThirdParty[] = useMemo(
+    () =>
+      items.map((it, i) => {
+        const grad = CLIENT_LEGEND_GRADIENTS[
+          i % CLIENT_LEGEND_GRADIENTS.length
+        ] as [string, string];
+        return {
+          id: it.id,
+          name: it.label,
+          color: grad[0],
+          gradientColors: grad,
+          amount: it.amount,
+          deltaPercent: 0,
+        };
+      }),
+    [items],
+  );
+
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
     [setActivePeriod],
   );
   const goToWidestPeriod = useCallback(
-    () => setActivePeriod('12m'),
+    () => setActivePeriod("12m"),
     [setActivePeriod],
   );
 
@@ -81,14 +105,25 @@ export function OrQBSectionDetail({
 
   return (
     <TmConsolidatedDetail
-      breadcrumbs={[breadcrumbLabel, company?.name ?? 'Empresa']}
+      breadcrumbs={[breadcrumbLabel, company?.name ?? "Empresa"]}
       filterOptions={PERIOD_OPTIONS}
       selectedFilter={activePeriodKey}
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
+      pinnedContent={
+        !isLoading && items.length > 0 ? (
+          <OrThirdPartiesDonutCard
+            sectionTitle={breadcrumbLabel}
+            groupLabel={company?.name ?? breadcrumbLabel}
+            groupAmount={total}
+            deltaPercent={0}
+            data={donutData}
+          />
+        ) : null
+      }
     >
       {isLoading ? (
-        <View className="px-4 gap-3">
+        <View className="gap-3 px-4">
           <AtSkeleton width="100%" height={260} borderRadius={14} />
         </View>
       ) : items.length === 0 ? (
@@ -96,36 +131,48 @@ export function OrQBSectionDetail({
           icon="search-off"
           title={`Sin ${breadcrumbLabel.toLowerCase()} en este periodo`}
           description={
-            activePeriodKey === '12m'
-              ? 'QuickBooks no devolvió cuentas para este rango.'
-              : 'Probá ampliar el rango desde el filtro de arriba.'
+            activePeriodKey === "12m"
+              ? "QuickBooks no devolvió cuentas para este rango."
+              : "Prueba ampliar el rango desde el filtro de arriba."
           }
           action={
-            activePeriodKey !== '12m'
-              ? { label: 'Ver últimos 12 meses', onPress: goToWidestPeriod }
+            activePeriodKey !== "12m"
+              ? { label: "Ver últimos 12 meses", onPress: goToWidestPeriod }
               : undefined
           }
         />
       ) : (
-        <View className="gap-2">
-          <OrCostGroupsChartCard
-            title={company?.name ?? breadcrumbLabel}
-            total={total}
-            deltaPercent={0}
-            groups={groups}
-          />
-          <View>
-            {groups.map((g) => (
-              <MlCostGroupRow
+        <View className="gap-1">
+          {groups.map((g, i) => {
+            const gradientColors = CLIENT_LEGEND_GRADIENTS[
+              i % CLIENT_LEGEND_GRADIENTS.length
+            ] as [string, string];
+            const handlePress =
+              group === "COGS"
+                ? () =>
+                    router.push(
+                      `/financiero/costos/${encodeURIComponent(g.id)}` as never,
+                    )
+                : group === "Expenses"
+                ? () =>
+                    router.push(
+                      `/financiero/egresos/${encodeURIComponent(g.id)}` as never,
+                    )
+                : undefined;
+            return (
+              <MlClientRow
                 key={g.id}
-                label={g.label}
-                amount={g.amount}
+                name={g.label}
+                color={gradientColors[0]}
+                gradientColors={gradientColors}
+                revenue={g.amount}
                 deltaPercent={g.deltaPercent}
-                icon={g.icon as MaterialIconName}
-                color={g.color}
+                swatchSize="lg"
+                onPress={handlePress}
+                showArrow={handlePress != null}
               />
-            ))}
-          </View>
+            );
+          })}
         </View>
       )}
     </TmConsolidatedDetail>
