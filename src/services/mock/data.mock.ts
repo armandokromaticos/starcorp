@@ -3,6 +3,7 @@
  */
 
 import { tokens } from '@/src/theme/tokens';
+import { CLIENT_LEGEND_GRADIENTS } from '@/src/theme/gradients';
 import type {
   NormalizedRevenue,
   NormalizedCashFlow,
@@ -334,12 +335,17 @@ const THIRD_PARTY_NAMES = [
 ];
 
 function buildThirdParties(): ThirdParty[] {
-  return THIRD_PARTY_NAMES.map((name, i) => ({
-    id: `tp-${i + 1}`,
-    name,
-    color: CHART_COLORS[i % CHART_COLORS.length],
-    amount: 5654,
-  }));
+  return THIRD_PARTY_NAMES.map((name, i) => {
+    const grad = CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+    return {
+      id: `tp-${i + 1}`,
+      name,
+      color: grad[0],
+      gradientColors: grad as [string, string],
+      amount: 5654,
+      deltaPercent: i % 3 === 0 ? -(1 + (i % 5)) : 1 + (i % 7),
+    };
+  });
 }
 
 export const mockThirdParties: Record<string, ThirdParty[]> = Object.fromEntries(
@@ -406,12 +412,17 @@ export const mockCostGroupsEgresos: CostGroup[] = [
 ];
 
 function buildEgresosThirdParties(): ThirdParty[] {
-  return THIRD_PARTY_NAMES.slice(0, 12).map((name, i) => ({
-    id: `tp-eg-${i + 1}`,
-    name,
-    color: CHART_COLORS[i % CHART_COLORS.length],
-    amount: 3200 + (i * 131) % 4800,
-  }));
+  return THIRD_PARTY_NAMES.slice(0, 12).map((name, i) => {
+    const grad = CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+    return {
+      id: `tp-eg-${i + 1}`,
+      name,
+      color: grad[0],
+      gradientColors: grad as [string, string],
+      amount: 3200 + (i * 131) % 4800,
+      deltaPercent: i % 2 === 0 ? -(0.5 + (i % 4)) : 2 + (i % 6),
+    };
+  });
 }
 
 export const mockThirdPartiesEgresos: Record<string, ThirdParty[]> =

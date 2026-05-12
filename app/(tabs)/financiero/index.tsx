@@ -1,7 +1,10 @@
 /**
  * Financiero Tab Screen
  *
- * Client carousel + financial metric cards.
+ * Client carousel + per-company detail layout matching the prototype:
+ *  1. Company logo + name (left) / period pill (right)
+ *  2. Three dark cards stacked: Ingresos, Costos, Egresos (tappable → drill-down)
+ *  3. Two light cards side-by-side: Utilidad bruta, Utilidad neta
  */
 
 import { AtIcon } from "@/src/components/atoms/at-icon";
@@ -12,7 +15,8 @@ import { MlCompanyCard } from "@/src/components/molecules/ml-company-card";
 import { MlPeriodDropdown } from "@/src/components/molecules/ml-period-dropdown";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
 import {
-  OrFinancialSummary,
+  OrPrimaryMetrics,
+  OrSecondaryMetrics,
   type FinancialMetric,
 } from "@/src/components/organisms/or-financial-summary";
 import { TmFinanciero } from "@/src/components/templates/tm-financiero";
@@ -70,7 +74,6 @@ export default function FinancieroScreen() {
         value: metrics.ingresos.value,
         deltaPercent: metrics.ingresos.deltaPercent,
         icon: "attach-money",
-        iconColor: "#1A2B6D",
       },
       {
         id: "costos",
@@ -78,15 +81,13 @@ export default function FinancieroScreen() {
         value: metrics.costos.value,
         deltaPercent: metrics.costos.deltaPercent,
         icon: "shopping-bag",
-        iconColor: "#E8952E",
       },
       {
         id: "egresos",
         label: "Egresos",
         value: metrics.egresos.value,
         deltaPercent: metrics.egresos.deltaPercent,
-        icon: "credit-card",
-        iconColor: "#4A7FD4",
+        icon: "payments",
       },
     ];
   }, [metrics]);
@@ -99,16 +100,16 @@ export default function FinancieroScreen() {
         label: "Utilidad bruta",
         value: metrics.utilidadBruta.value,
         deltaPercent: metrics.utilidadBruta.deltaPercent,
-        icon: "trending-up",
-        iconColor: "#38A169",
+        icon: "insights",
+        iconColor: "#3A5BC4",
       },
       {
         id: "utilidad-neta",
         label: "Utilidad neta",
         value: metrics.utilidadNeta.value,
         deltaPercent: metrics.utilidadNeta.deltaPercent,
-        icon: "show-chart",
-        iconColor: "#3182CE",
+        icon: "account-balance-wallet",
+        iconColor: "#3A5BC4",
       },
     ];
   }, [metrics]);
@@ -127,6 +128,7 @@ export default function FinancieroScreen() {
         className="px-4"
       />
 
+      {/* Company carousel */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -180,40 +182,59 @@ export default function FinancieroScreen() {
         ) : null}
       </ScrollView>
 
-      <View className="flex-row items-center gap-3 px-4">
+      {/* Company header row: logo + name (left) | period pill (right) */}
+      <View
+        className="flex-row items-center gap-3 px-4"
+        style={{ minHeight: 44 }}
+      >
+        {/* White logo square ~38px */}
         <View
-          className="justify-center items-center bg-bg-tertiary rounded-md w-9 h-9"
-          style={{ borderCurve: "continuous" }}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 8,
+            borderCurve: "continuous",
+            backgroundColor: "#FFFFFF",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: "rgba(0,0,0,0.08)",
+          }}
         >
           <AtIcon name="business" size="md" color="#1A2B6D" />
         </View>
-        <AtTypography variant="h1" className="flex-1" numberOfLines={1}>
+
+        {/* Company name — bold, smaller so long names fit without ellipsis */}
+        <AtTypography variant="bodyBold" className="flex-1" numberOfLines={2} color="#1A1F36">
           {activeCompany?.name ?? ""}
         </AtTypography>
+
+        {/* Period pill */}
         <MlPeriodDropdown />
       </View>
 
+      {/* Metric cards */}
       {!metrics ? (
         <View className="gap-3 px-4">
-          <AtSkeleton width="100%" height={141} borderRadius={14} />
-          <AtSkeleton width="100%" height={120} borderRadius={14} />
+          <AtSkeleton width="100%" height={76} borderRadius={8} />
+          <AtSkeleton width="100%" height={76} borderRadius={8} />
+          <AtSkeleton width="100%" height={76} borderRadius={8} />
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <AtSkeleton width="100%" height={148} borderRadius={8} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AtSkeleton width="100%" height={148} borderRadius={8} />
+            </View>
+          </View>
         </View>
       ) : (
         <>
-          <OrFinancialSummary
-            metrics={primaryMetrics.map((m) => ({
-              ...m,
-              ctaLabel:
-                m.id === "ingresos"
-                  ? "Ver ingresos"
-                  : m.id === "costos"
-                    ? "Ver costos"
-                    : "Ver egresos",
-            }))}
-            columns={3}
+          <OrPrimaryMetrics
+            metrics={primaryMetrics}
             onMetricPress={handleMetricPress}
           />
-          <OrFinancialSummary metrics={secondaryMetrics} columns={2} />
+          <OrSecondaryMetrics metrics={secondaryMetrics} />
         </>
       )}
 

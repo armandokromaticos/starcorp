@@ -80,18 +80,21 @@ export const OrClientDetailHeader = memo<OrClientDetailHeaderProps>(
             value={employees}
             label="Empleados"
             iconColor="#F59E0B"
+            variant="dark"
           />
           <MlStatBox
             icon="workspace-premium"
             value={leader}
             label="Líder"
             iconColor="#4A7FD4"
+            variant="dark"
           />
           <MlStatBox
             icon="event"
             value={vigencia}
             label="Vigencia"
             iconColor="#7E4FE8"
+            variant="dark"
           />
         </View>
       </View>

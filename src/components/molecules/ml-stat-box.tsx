@@ -27,23 +27,26 @@ export const MlStatBox = memo<MlStatBoxProps>(
     const isDark = variant === 'dark';
     return (
       <View
-        className={`items-center gap-2 p-4 rounded-lg flex-1 ${className ?? ''}`}
+        className={`items-center justify-between p-4 rounded-lg flex-1 ${className ?? ''}`}
         style={{
           borderCurve: 'continuous',
-          backgroundColor: isDark ? '#0F1B2E' : '#F5F5F7',
+          backgroundColor: isDark ? '#0E173C' : '#F5F5F7',
         }}
       >
-        <AtIcon name={icon} size="lg" color={iconColor} />
-        <AtTypography
-          variant="h3"
-          color={isDark ? '#FFFFFF' : '#1A1F36'}
-          selectable
-        >
-          {String(value)}
-        </AtTypography>
+        <View className="items-center gap-2">
+          <AtIcon name={icon} size="lg" color={iconColor} />
+          <AtTypography
+            variant="h3"
+            color={isDark ? '#FFFFFF' : '#1A1F36'}
+            selectable
+          >
+            {String(value)}
+          </AtTypography>
+        </View>
         <AtTypography
           variant="caption"
           color={isDark ? 'rgba(255,255,255,0.75)' : '#8892A4'}
+          style={{ textAlign: 'center', marginTop: 4 }}
         >
           {label}
         </AtTypography>

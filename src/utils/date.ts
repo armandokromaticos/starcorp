@@ -36,6 +36,27 @@ export function computePeriod(key: PeriodKey): PeriodRange {
   return { key, start, end };
 }
 
+/**
+ * Compute the same-length window immediately preceding the given range.
+ * Used to derive a previous-period baseline for delta % calculations.
+ */
+export function computePreviousPeriod(current: PeriodRange): PeriodRange {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const startD = new Date(`${current.start}T00:00:00Z`);
+  const endD = new Date(`${current.end}T00:00:00Z`);
+  const lenDays = Math.max(
+    0,
+    Math.round((endD.getTime() - startD.getTime()) / dayMs),
+  );
+  const prevEnd = new Date(startD.getTime() - dayMs);
+  const prevStart = new Date(prevEnd.getTime() - lenDays * dayMs);
+  return {
+    key: current.key,
+    start: toISODate(prevStart),
+    end: toISODate(prevEnd),
+  };
+}
+
 function toISODate(d: Date): string {
   return d.toISOString().split("T")[0];
 }
@@ -54,8 +75,8 @@ function addMonths(d: Date, months: number): Date {
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
   today: "Mes corriente",
-  "1w": "1 sem",
-  "1m": "1 M",
-  "3m": "3 M",
-  "12m": "12 M",
+  "1w": "1 semana",
+  "1m": "1 mes",
+  "3m": "3 meses",
+  "12m": "12 meses",
 };

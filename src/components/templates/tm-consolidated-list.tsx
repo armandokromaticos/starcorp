@@ -8,6 +8,7 @@
  */
 
 import React, { memo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import {
@@ -47,8 +48,9 @@ export const TmConsolidatedList = memo<TmConsolidatedListProps>(
     pinnedHeader,
     children,
   }) => {
+    const insets = useSafeAreaInsets();
     return (
-      <View className="flex-1 bg-bg-primary">
+      <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
         {/* Pinned top */}
         <View className="gap-4 pt-2 pb-3 bg-bg-primary">
           <View className="px-4">
