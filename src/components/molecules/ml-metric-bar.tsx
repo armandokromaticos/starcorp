@@ -39,9 +39,12 @@ function formatPercent(v: number): string {
 
 const MIN_WIDTH = 0.18;
 const MAX_WIDTH = 0.7;
-// Below this pill width, the label is rendered outside the gradient (in
-// dark text on the white area) so it never gets clipped.
-const LABEL_OUTSIDE_THRESHOLD = 0.3;
+// Heuristic: label fits inside the pill when pillFlex covers icon + padding
+// + label width. Looser than strict-fit so short labels (e.g. "U. neta")
+// render inside in white whenever the pill has reasonable space; ellipsis
+// truncation handles the edge cases.
+const LABEL_BASE_FLEX = 0.16;
+const LABEL_FLEX_PER_CHAR = 0.022;
 
 export const MlMetricBar = memo<MlMetricBarProps>(
   ({
@@ -60,7 +63,11 @@ export const MlMetricBar = memo<MlMetricBarProps>(
     const arrowColor = deltaPositive ? '#22C55E' : '#EF4444';
     const pillFlex = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, widthPercent));
     const rightFlex = 1 - pillFlex;
-    const labelOutside = pillFlex < LABEL_OUTSIDE_THRESHOLD;
+    const labelMinFlex = Math.min(
+      MAX_WIDTH,
+      LABEL_BASE_FLEX + label.length * LABEL_FLEX_PER_CHAR,
+    );
+    const labelOutside = pillFlex < labelMinFlex;
 
     return (
       <Pressable
@@ -91,14 +98,6 @@ export const MlMetricBar = memo<MlMetricBarProps>(
                 borderCurve: 'continuous',
               }}
             >
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: '#FFFFFF',
-                }}
-              />
               <AtIcon name={icon} size={22} color="#FFFFFF" />
               {!labelOutside && (
                 <AtTypography

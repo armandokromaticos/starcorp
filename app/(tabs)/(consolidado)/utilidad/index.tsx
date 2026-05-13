@@ -15,13 +15,14 @@ import { MlClientRow } from "@/src/components/molecules/ml-client-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
 import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
 import { MlTimeFilterBar } from "@/src/components/molecules/ml-time-filter-bar";
+import { AtIcon } from "@/src/components/atoms/at-icon";
 import { OrAreaChart } from "@/src/components/organisms/or-area-chart";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
 import { useConsolidadoClients } from "@/src/hooks/queries/use-consolidado-clients";
 import type { DashboardSummaryPeriod } from "@/src/hooks/queries/use-dashboard-summary";
 import { useDashboardTimeseries } from "@/src/hooks/queries/use-dashboard-timeseries";
 import { useFiltersStore } from "@/src/stores/filters.store";
-import { ScrollView, View } from "@/src/tw";
+import { ScrollView, TextInput, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
@@ -49,6 +50,14 @@ export default function UtilidadConsolidadaScreen() {
   const { data, isLoading } = useConsolidadoClients("utilidad");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!data) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return data;
+    return data.filter((c) => c.name.toLowerCase().includes(q));
+  }, [data, query]);
 
   const selected = data?.[selectedIndex];
   const timeseries = useDashboardTimeseries(rpcPeriod, {
@@ -140,6 +149,36 @@ export default function UtilidadConsolidadaScreen() {
             )}
           </View>
         ) : null}
+
+        {!isPending && !isEmpty ? (
+          <View className="px-4">
+            <View
+              className="flex-row items-center bg-bg-card px-4 gap-3"
+              style={{
+                borderRadius: 24,
+                borderCurve: "continuous",
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: "rgba(0, 0, 0, 0.08)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              <AtIcon name="search" size="sm" color="#8892A4" />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Buscar cliente"
+                placeholderTextColor="#8892A4"
+                className="flex-1 p-0"
+                style={{
+                  fontFamily: "Roboto_400Regular",
+                  fontSize: 14,
+                  color: "#1A1F36",
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
       </View>
 
       {/* Scrollable client list */}
@@ -164,22 +203,31 @@ export default function UtilidadConsolidadaScreen() {
               : undefined
           }
         />
+      ) : filtered && filtered.length === 0 ? (
+        <MlEmptyState
+          icon="search-off"
+          title="Sin coincidencias"
+          description={`No hay clientes que coincidan con "${query.trim()}".`}
+        />
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerClassName="pb-12"
         >
-          {data?.map((c, i) => (
-            <MlClientRow
-              key={c.id}
-              name={c.name}
-              color={c.color}
-              revenue={c.amount}
-              deltaPercent={c.deltaPercent}
-              selected={selectedIndex === i}
-              onPress={() => setSelectedIndex(i)}
-            />
-          ))}
+          {filtered?.map((c) => {
+            const originalIndex = data?.findIndex((d) => d.id === c.id) ?? -1;
+            return (
+              <MlClientRow
+                key={c.id}
+                name={c.name}
+                color={c.color}
+                revenue={c.amount}
+                deltaPercent={c.deltaPercent}
+                selected={selectedIndex === originalIndex}
+                onPress={() => setSelectedIndex(originalIndex)}
+              />
+            );
+          })}
         </ScrollView>
       )}
 
