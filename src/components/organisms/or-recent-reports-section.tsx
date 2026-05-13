@@ -140,7 +140,7 @@ export const OrRecentReportsSection = memo(() => {
   return (
     <View className="gap-3">
       <View className="px-4">
-        <AtTypography variant="h2">Reportes más recientes</AtTypography>
+        <AtTypography variant="h2">Reportes recientes</AtTypography>
       </View>
 
       <View className="gap-4 px-4">

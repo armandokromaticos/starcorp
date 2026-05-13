@@ -39,6 +39,7 @@ export const MlStatBox = memo<MlStatBoxProps>(
             variant="h3"
             color={isDark ? '#FFFFFF' : '#1A1F36'}
             selectable
+            style={{ textAlign: 'center' }}
           >
             {String(value)}
           </AtTypography>

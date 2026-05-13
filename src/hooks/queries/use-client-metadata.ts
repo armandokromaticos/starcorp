@@ -12,6 +12,9 @@ export interface ClientMetadata {
   nEntries: number;
   firstFecha: string | null;
   lastFecha: string | null;
+  idCentroCosto: string | null;
+  /** Raw row from clientes_master.data (PBI ListadoClientes5Stars). */
+  clienteData: Record<string, unknown> | null;
 }
 
 interface MetadataRow {
@@ -20,6 +23,8 @@ interface MetadataRow {
   n_entries: number | string;
   first_fecha: string | null;
   last_fecha: string | null;
+  id_centro_costo: string | null;
+  cliente_data: Record<string, unknown> | null;
 }
 
 export function useClientMetadata(centroCosto: string | null) {
@@ -41,6 +46,8 @@ export function useClientMetadata(centroCosto: string | null) {
         nEntries: Number(row.n_entries),
         firstFecha: row.first_fecha,
         lastFecha: row.last_fecha,
+        idCentroCosto: row.id_centro_costo ?? null,
+        clienteData: row.cliente_data ?? null,
       };
     },
     enabled: !!centroCosto,

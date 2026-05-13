@@ -74,6 +74,34 @@ const CATEGORY_LABEL: Record<ChartCategory, string> = {
   utilidad: "Utilidad",
 };
 
+const METRIC_CHART_LABEL: Partial<Record<MetricKey, string>> = {
+  "utilidad-neta": "Utilidad neta",
+  "utilidad-bruta": "Utilidad bruta",
+  margen: "Margen",
+  cartera: "Cartera",
+};
+
+// Resolve a value from clientes_master.data tolerating column-name variants
+// (case, accents, common synonyms). Returns the first non-empty match.
+function pickField(
+  data: Record<string, unknown> | null | undefined,
+  candidates: string[],
+): string | null {
+  if (!data) return null;
+  const norm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const targets = new Set(candidates.map(norm));
+  for (const [k, v] of Object.entries(data)) {
+    if (v == null || v === "") continue;
+    if (targets.has(norm(k))) return String(v);
+  }
+  return null;
+}
+
 const ENTRY_BREADCRUMB: Record<ClientDetailEntry, string> = {
   ingresos: "Ingresos",
   costos: "Costos",
@@ -175,7 +203,7 @@ export function OrClientDetail({
       },
       {
         key: "utilidad-neta" as MetricKey,
-        label: "Utilidad neta",
+        label: "U. neta",
         icon: "trending-up" as MaterialIconName,
         value: utilidadNeta as number | null,
         deltaPositive: summary.utilidadDeltaPercent >= 0,
@@ -184,7 +212,7 @@ export function OrClientDetail({
       },
       {
         key: "utilidad-bruta" as MetricKey,
-        label: "Utilidad bruta",
+        label: "U. bruta",
         icon: "insights" as MaterialIconName,
         value: utilidadBruta as number | null,
         deltaPositive: utilidadBruta >= 0,
@@ -250,7 +278,9 @@ export function OrClientDetail({
         />
         <OrRevenueChartCard
           categoryId={chartCategory}
-          label={CATEGORY_LABEL[chartCategory]}
+          label={
+            METRIC_CHART_LABEL[selectedMetric] ?? CATEGORY_LABEL[chartCategory]
+          }
           period={activePeriodKey}
           centroCosto={centroCosto}
         />
@@ -261,7 +291,17 @@ export function OrClientDetail({
         showsVerticalScrollIndicator={false}
         contentContainerClassName="gap-6 pb-12"
       >
-        <MlLocationCard value="—" />
+        <MlLocationCard
+          value={
+            pickField(meta?.clienteData, [
+              "Direccion",
+              "Dirección",
+              "DireccionCliente",
+              "Address",
+              "DireccionFiscal",
+            ]) ?? "—"
+          }
+        />
 
         {metaQuery.isPending && !meta ? (
           <View className="flex-row gap-3 px-4">
@@ -275,23 +315,51 @@ export function OrClientDetail({
           <View className="flex-row gap-3 px-4">
             <MlStatBox
               icon="engineering"
-              value="XX"
+              value={
+                pickField(meta.clienteData, [
+                  "Empleados",
+                  "NumeroEmpleados",
+                  "NroEmpleados",
+                  "CantidadEmpleados",
+                ]) ?? "XX"
+              }
               label="Empleados"
               iconColor="#F59E0B"
               variant="dark"
             />
             <MlStatBox
               icon="workspace-premium"
-              value="XX"
+              value={
+                pickField(meta.clienteData, [
+                  "Lider",
+                  "Líder",
+                  "LiderCuenta",
+                  "AccountManager",
+                  "Responsable",
+                ]) ?? "XX"
+              }
               label="Líder"
               iconColor="#22D3EE"
               variant="dark"
             />
             <MlStatBox
               icon="event"
-              value={
-                meta.firstFecha ? `Desde ${meta.firstFecha.slice(0, 4)}` : "XX"
-              }
+              value={(() => {
+                const raw = pickField(meta.clienteData, [
+                  "Vigencia",
+                  "FechaVigencia",
+                  "FechaInicio",
+                  "FechaContrato",
+                  "VigenciaDesde",
+                ]);
+                if (raw) {
+                  const year = raw.match(/\d{4}/)?.[0];
+                  return year ? `Desde ${year}` : raw;
+                }
+                return meta.firstFecha
+                  ? `Desde ${meta.firstFecha.slice(0, 4)}`
+                  : "XX";
+              })()}
               label="Vigencia"
               iconColor="#A78BFA"
               variant="dark"

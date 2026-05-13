@@ -113,7 +113,7 @@ export default function HomeScreen() {
       {/* Section: Empresas (Consolidado) */}
       <View className="gap-3">
         <View className="flex-row justify-between items-center px-4">
-          <AtTypography variant="h2">Empresas (Consolidado)</AtTypography>
+          <AtTypography variant="h2">Empresas</AtTypography>
           <AtStatusBadge
             label={PERIOD_LABELS[activePeriodKey]}
             variant="gradient"

@@ -9,7 +9,10 @@
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
-import { OrThirdPartiesDonutCard } from "@/src/components/organisms/or-third-parties-donut-card";
+import {
+  OrThirdPartiesDonutCard,
+  OTROS_TERCERO_ID,
+} from "@/src/components/organisms/or-third-parties-donut-card";
 import { OrTercerosList } from "@/src/components/organisms/or-terceros-list";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCostGroups } from "@/src/hooks/queries/use-cost-groups";
@@ -19,7 +22,7 @@ import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS } from "@/src/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_LABELS[key] }),
@@ -54,6 +57,7 @@ export default function GastosTercerosScreen() {
 
   const isReady = !isLoading && data != null;
   const isEmpty = isReady && data.length === 0;
+  const [selectedTerceroId, setSelectedTerceroId] = useState<string | null>(null);
 
   return (
     <TmConsolidatedDetail
@@ -78,6 +82,8 @@ export default function GastosTercerosScreen() {
             groupAmount={group?.amount ?? 0}
             deltaPercent={group?.deltaPercent ?? 0}
             data={data}
+            selectedId={selectedTerceroId}
+            onSelectChange={setSelectedTerceroId}
           />
         ) : null
       }
@@ -98,7 +104,12 @@ export default function GastosTercerosScreen() {
           }
         />
       ) : isReady ? (
-        <OrTercerosList terceros={data} />
+        <OrTercerosList
+          terceros={data}
+          selectedId={selectedTerceroId}
+          onSelectChange={setSelectedTerceroId}
+          otrosId={OTROS_TERCERO_ID}
+        />
       ) : null}
     </TmConsolidatedDetail>
   );

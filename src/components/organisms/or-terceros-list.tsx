@@ -22,10 +22,27 @@ import type { ThirdParty } from '@/src/types/domain.types';
 interface OrTercerosListProps {
   terceros: ThirdParty[];
   onTerceroPress?: (id: string) => void;
+  selectedId?: string | null;
+  onSelectChange?: (id: string | null) => void;
+  /** Id used by the donut for its aggregated "Otros" slice. When this id is
+   *  selected, the first `otrosTopCount` rows are dimmed (they're already
+   *  represented as individual slices) and the rest are highlighted. */
+  otrosId?: string;
+  otrosTopCount?: number;
 }
 
 export const OrTercerosList = memo<OrTercerosListProps>(
-  ({ terceros, onTerceroPress }) => {
+  ({
+    terceros,
+    onTerceroPress,
+    selectedId = null,
+    onSelectChange,
+    otrosId,
+    otrosTopCount = 8,
+  }) => {
+    const topIds = new Set(
+      otrosId ? terceros.slice(0, otrosTopCount).map((t) => t.id) : [],
+    );
     const [searchText, setSearchText] = useState('');
 
     const filtered = useMemo(() => {
@@ -63,34 +80,64 @@ export const OrTercerosList = memo<OrTercerosListProps>(
 
         {/* Tercero rows */}
         <View className="px-4 gap-4">
-          {filtered.map((tercero) => (
-            <Pressable
-              key={tercero.id}
-              onPress={() => onTerceroPress?.(tercero.id)}
-              className="flex-row items-center gap-3"
-            >
-              {/* Gradient color swatch */}
-              <AtColorDot
-                color={tercero.color}
-                gradientColors={tercero.gradientColors}
-                size="lg"
-                shape="square"
-              />
+          {filtered.map((tercero) => {
+            const isSelected = selectedId === tercero.id;
+            const isOtrosSelected = !!otrosId && selectedId === otrosId;
+            const isInTopBucket = topIds.has(tercero.id);
+            // When the "Otros" slice is selected, the top-N rows (which
+            // already have their own slice in the donut) are dimmed.
+            const inOtrosGroup = isOtrosSelected && !isInTopBucket;
+            const dimmed =
+              (selectedId != null && !isSelected && !isOtrosSelected) ||
+              (isOtrosSelected && isInTopBucket);
+            const highlight = isSelected || inOtrosGroup;
+            return (
+              <Pressable
+                key={tercero.id}
+                onPress={() => {
+                  onSelectChange?.(isSelected ? null : tercero.id);
+                  onTerceroPress?.(tercero.id);
+                }}
+                className="flex-row items-center gap-3"
+                style={{
+                  paddingVertical: 6,
+                  paddingHorizontal: highlight ? 8 : 0,
+                  marginHorizontal: highlight ? -8 : 0,
+                  borderRadius: 10,
+                  borderCurve: 'continuous',
+                  backgroundColor: highlight
+                    ? 'rgba(99, 102, 241, 0.08)'
+                    : 'transparent',
+                  borderWidth: highlight ? 1 : 0,
+                  borderColor: highlight
+                    ? 'rgba(99, 102, 241, 0.4)'
+                    : 'transparent',
+                  opacity: dimmed ? 0.45 : 1,
+                }}
+              >
+                {/* Gradient color swatch */}
+                <AtColorDot
+                  color={tercero.color}
+                  gradientColors={tercero.gradientColors}
+                  size="lg"
+                  shape="square"
+                />
 
-              {/* Name + amount stacked */}
-              <View className="flex-1 gap-0.5">
-                <AtTypography variant="bodyBold" numberOfLines={1}>
-                  {tercero.name}
-                </AtTypography>
-                <AtTypography variant="caption" color="#8892A4" selectable style={{ fontVariant: ['tabular-nums'] }}>
-                  {formatCurrency(tercero.amount, { currency: 'USD', compact: false })}
-                </AtTypography>
-              </View>
+                {/* Name + amount stacked */}
+                <View className="flex-1 gap-0.5">
+                  <AtTypography variant="bodyBold" numberOfLines={1}>
+                    {tercero.name}
+                  </AtTypography>
+                  <AtTypography variant="caption" color="#8892A4" selectable style={{ fontVariant: ['tabular-nums'] }}>
+                    {formatCurrency(tercero.amount, { currency: 'USD', compact: false })}
+                  </AtTypography>
+                </View>
 
-              {/* Soft delta chip */}
-              <AtDeltaIndicator value={tercero.deltaPercent} size="sm" appearance="soft" />
-            </Pressable>
-          ))}
+                {/* Soft delta chip */}
+                <AtDeltaIndicator value={tercero.deltaPercent} size="sm" appearance="soft" />
+              </Pressable>
+            );
+          })}
 
           {filtered.length === 0 && (
             <View className="items-center py-8">

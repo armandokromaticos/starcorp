@@ -43,6 +43,10 @@ interface DonutChartProps {
   ringSplit?: number;
   centerBackground?: DonutCenterBackground;
   children?: React.ReactNode;
+  /** Called with the slice index when a slice is tapped. */
+  onSlicePress?: (index: number) => void;
+  /** Index of the currently selected slice (for visual emphasis). */
+  selectedIndex?: number | null;
 }
 
 function polarToCartesian(
@@ -91,6 +95,8 @@ export const DonutChart = memo<DonutChartProps>(
     ringSplit = 0.22,
     centerBackground,
     children,
+    onSlicePress,
+    selectedIndex = null,
   }) => {
     const cx = size / 2;
     const cy = size / 2;
@@ -182,6 +188,10 @@ export const DonutChart = memo<DonutChartProps>(
                   s.endAngle,
                 )}
                 fill={`url(#${s.innerGradId})`}
+                opacity={
+                  selectedIndex == null || selectedIndex === i ? 1 : 0.4
+                }
+                onPress={onSlicePress ? () => onSlicePress(i) : undefined}
               />
             ))}
           </G>
@@ -200,6 +210,10 @@ export const DonutChart = memo<DonutChartProps>(
                   s.endAngle,
                 )}
                 fill={`url(#${s.outerGradId})`}
+                opacity={
+                  selectedIndex == null || selectedIndex === i ? 1 : 0.4
+                }
+                onPress={onSlicePress ? () => onSlicePress(i) : undefined}
               />
             ))}
           </G>

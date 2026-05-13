@@ -46,9 +46,7 @@ export const OrTopClientsSection = memo<OrTopClientsSectionProps>(
       <View className="gap-4">
         {/* Section header */}
         <View className="flex-row justify-between items-center px-4">
-          <AtTypography variant="h3">
-            Top 8 clientes (Mayor ingreso)
-          </AtTypography>
+          <AtTypography variant="h3">Top 8 clientes</AtTypography>
           <AtStatusBadge label={periodLabel} variant="gradient" size="md" />
         </View>
 

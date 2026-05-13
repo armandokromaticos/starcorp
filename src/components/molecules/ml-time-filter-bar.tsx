@@ -37,12 +37,12 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerClassName="flex-row items-center justify-center gap-4 px-2 grow"
+            contentContainerClassName="flex-row items-center justify-center gap-1 px-1 grow"
           >
             {options.map((opt) => {
               const isSelected = selectedKey === opt.key;
               const pillStyle = {
-                paddingHorizontal: 20,
+                paddingHorizontal: 12,
                 paddingVertical: 10,
                 borderRadius: 999,
               } as const;
