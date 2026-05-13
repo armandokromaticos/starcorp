@@ -1,9 +1,12 @@
 /**
  * /costos/[clientId]/[groupId] — terceros within one cost group for one client.
  *
- * Layout:
- *   - Pinned: OrThirdPartiesDonutCard (section title + card with donut + labeled tags)
- *   - Scrollable: OrTercerosList (search bar + tercero rows with gradient swatches)
+ * Layout (all inside the scrollable area):
+ *   - OrThirdPartiesDonutCard
+ *   - OrTercerosList (search bar + tercero rows)
+ *
+ * Tapping a slice or a row selects it; the list collapses to just that
+ * selection and the page auto-scrolls to top so the donut stays visible.
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
@@ -21,7 +24,8 @@ import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS } from "@/src/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { ScrollView as RNScrollView } from "react-native";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_LABELS[key] }),
@@ -56,7 +60,16 @@ export default function CostosTercerosScreen() {
 
   const isReady = !isLoading && data != null;
   const isEmpty = isReady && data.length === 0;
-  const [selectedTerceroId, setSelectedTerceroId] = useState<string | null>(null);
+  const [selectedTerceroId, setSelectedTerceroId] = useState<string | null>(
+    null,
+  );
+
+  const scrollRef = useRef<RNScrollView | null>(null);
+  useEffect(() => {
+    if (selectedTerceroId) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [selectedTerceroId]);
 
   return (
     <TmConsolidatedDetail
@@ -69,25 +82,13 @@ export default function CostosTercerosScreen() {
       selectedFilter={activePeriodKey}
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
-      pinnedContent={
-        isLoading || !data ? (
-          <View className="gap-3 px-4">
-            <AtSkeleton width="100%" height={300} borderRadius={14} />
-          </View>
-        ) : !isEmpty ? (
-          <OrThirdPartiesDonutCard
-            sectionTitle="Costos administrativos"
-            groupLabel={group?.label ?? decodedGroupId}
-            groupAmount={group?.amount ?? 0}
-            deltaPercent={group?.deltaPercent ?? 0}
-            data={data}
-            selectedId={selectedTerceroId}
-            onSelectChange={setSelectedTerceroId}
-          />
-        ) : null
-      }
+      scrollRef={scrollRef}
     >
-      {isEmpty ? (
+      {isLoading || !data ? (
+        <View className="gap-3 px-4">
+          <AtSkeleton width="100%" height={260} borderRadius={14} />
+        </View>
+      ) : isEmpty ? (
         <MlEmptyState
           icon="search-off"
           title="Sin terceros en este grupo"
@@ -102,14 +103,25 @@ export default function CostosTercerosScreen() {
               : undefined
           }
         />
-      ) : isReady ? (
-        <OrTercerosList
-          terceros={data}
-          selectedId={selectedTerceroId}
-          onSelectChange={setSelectedTerceroId}
-          otrosId={OTROS_TERCERO_ID}
-        />
-      ) : null}
+      ) : (
+        <>
+          <OrThirdPartiesDonutCard
+            sectionTitle="Costos administrativos"
+            groupLabel={group?.label ?? decodedGroupId}
+            groupAmount={group?.amount ?? 0}
+            deltaPercent={group?.deltaPercent ?? 0}
+            data={data}
+            selectedId={selectedTerceroId}
+            onSelectChange={setSelectedTerceroId}
+          />
+          <OrTercerosList
+            terceros={data}
+            selectedId={selectedTerceroId}
+            onSelectChange={setSelectedTerceroId}
+            otrosId={OTROS_TERCERO_ID}
+          />
+        </>
+      )}
     </TmConsolidatedDetail>
   );
 }

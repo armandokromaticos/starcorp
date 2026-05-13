@@ -35,7 +35,7 @@ interface OrThirdPartiesDonutCardProps {
   onSelectChange?: (id: string | null) => void;
 }
 
-const DONUT_SIZE = 200;
+const DONUT_SIZE = 160;
 const TOP_N = 8;
 export const OTROS_TERCERO_ID = '__otros__';
 const OTROS_COLOR = '#C94E80';
