@@ -6,8 +6,9 @@
  */
 
 import React, { memo } from 'react';
+import { ScrollView as RNScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScrollView, View } from '@/src/tw';
+import { View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlTimeFilterBar, type TimeFilterOption } from '@/src/components/molecules/ml-time-filter-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
@@ -27,6 +28,8 @@ interface TmConsolidatedDetailProps {
   onMenuPress?: () => void;
   /** Rendered between the top filter bar and the scrollable area — stays pinned. */
   pinnedContent?: React.ReactNode;
+  /** Optional ref to the inner ScrollView (for scrollTo etc.). */
+  scrollRef?: React.RefObject<RNScrollView | null>;
   children: React.ReactNode;
 }
 
@@ -42,6 +45,7 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
     onBack,
     onMenuPress,
     pinnedContent,
+    scrollRef,
     children,
   }) => {
     const insets = useSafeAreaInsets();
@@ -81,14 +85,15 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
         </View>
 
         {/* Scrollable area */}
-        <ScrollView
+        <RNScrollView
+          ref={scrollRef}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
-          className="flex-1 bg-bg-primary"
-          contentContainerClassName="gap-4 pb-12 pt-4"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 48, gap: 16 }}
         >
           {children}
-        </ScrollView>
+        </RNScrollView>
       </View>
     );
   },

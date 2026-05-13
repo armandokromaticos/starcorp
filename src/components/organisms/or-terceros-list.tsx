@@ -46,10 +46,19 @@ export const OrTercerosList = memo<OrTercerosListProps>(
     const [searchText, setSearchText] = useState('');
 
     const filtered = useMemo(() => {
+      // Selection takes precedence over text search: when an item is selected
+      // (or the donut's "Otros" bucket), the list collapses to just that
+      // selection so the user sees only the relevant rows.
+      if (selectedId) {
+        if (otrosId && selectedId === otrosId) {
+          return terceros.filter((_, i) => i >= otrosTopCount);
+        }
+        return terceros.filter((t) => t.id === selectedId);
+      }
       if (!searchText.trim()) return terceros;
       const lower = searchText.toLowerCase();
       return terceros.filter((t) => t.name.toLowerCase().includes(lower));
-    }, [terceros, searchText]);
+    }, [terceros, searchText, selectedId, otrosId, otrosTopCount]);
 
     return (
       <View className="gap-4">
