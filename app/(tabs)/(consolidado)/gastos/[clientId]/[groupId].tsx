@@ -23,13 +23,13 @@ import { useThirdParties } from "@/src/hooks/queries/use-third-parties";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
-import { PERIOD_LABELS } from "@/src/utils/date";
+import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ScrollView as RNScrollView } from "react-native";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
-  (key) => ({ key, label: PERIOD_LABELS[key] }),
+  (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
 export default function GastosTercerosScreen() {

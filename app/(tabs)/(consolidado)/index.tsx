@@ -26,14 +26,14 @@ import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
-import { PERIOD_LABELS } from "@/src/utils/date";
+import { PERIOD_LABELS, PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({
     key,
-    label: PERIOD_LABELS[key],
+    label: PERIOD_SHORT_LABELS[key],
   }),
 );
 
