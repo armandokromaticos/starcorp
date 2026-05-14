@@ -40,6 +40,10 @@ const TOP_N = 8;
 export const OTROS_TERCERO_ID = '__otros__';
 const OTROS_COLOR = '#C94E80';
 const OTROS_INNER = '#531D40';
+// La rodaja contigua a "Otros" (último tercero del top-N) va en naranja
+// oscuro para no confundirse con el vino de "Otros", que tiene un tono similar.
+const ADJACENT_COLOR = '#DF6434';
+const ADJACENT_INNER = '#5E2912';
 
 export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
   ({
@@ -70,9 +74,16 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
       return hasOtros ? TOP_N : null;
     })();
 
+    // Color del tercero #i del top-N: el último (contiguo a "Otros") va en
+    // naranja oscuro; el resto cicla la paleta de clientes.
+    const topNGradient = (i: number): readonly [string, string] =>
+      hasOtros && i === topN.length - 1
+        ? [ADJACENT_COLOR, ADJACENT_INNER]
+        : CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+
     const slices = [
       ...topN.map((tp, i) => {
-        const grad = CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+        const grad = topNGradient(i);
         return {
           value: tp.amount,
           color: grad[0],
@@ -179,9 +190,7 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
             const dotColor = isOtros
               ? OTROS_COLOR
               : effectiveIndex != null && effectiveIndex < TOP_N
-                ? CLIENT_LEGEND_GRADIENTS[
-                    effectiveIndex % CLIENT_LEGEND_GRADIENTS.length
-                  ][0]
+                ? topNGradient(effectiveIndex)[0]
                 : OTROS_COLOR;
             const name = isOtros ? `Otros (${rest.length})` : tercero!.name;
             const amount = isOtros ? restSum : tercero!.amount;

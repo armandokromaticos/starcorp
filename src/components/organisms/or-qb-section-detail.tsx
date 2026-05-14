@@ -1,14 +1,14 @@
 /**
  * Organism: OrQBSectionDetail
  *
- * Shared detail screen for /financiero/{ingresos,costos,egresos}.
- * Reads the active QB realm + period, fetches a single P&L report,
- * extracts the requested section group (Income / COGS / Expenses),
- * and renders a donut chart card + tappable row list.
+ * Shared detail screen for the QB P&L sections /financiero/{costos,egresos}.
+ * (Ingresos has its own screen at app/(tabs)/financiero/ingresos.tsx.)
+ * Reads the active QB realm + period, fetches a single P&L report, extracts
+ * the requested section group, and renders a donut chart card + tappable
+ * row list.
  *
- * Level-2 drill-down (terceros) is currently only wired for COGS:
- *   /financiero/costos/[groupId]
- * Ingresos/Egresos rows are non-tappable until those routes exist.
+ * Level-2 drill-down (terceros) is wired for COGS and Expenses:
+ *   /financiero/{costos,egresos}/[groupId]
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";

@@ -1,12 +1,12 @@
 /**
  * /costos/[clientId]/[groupId] — terceros within one cost group for one client.
  *
- * Layout (all inside the scrollable area):
- *   - OrThirdPartiesDonutCard
- *   - OrTercerosList (search bar + tercero rows)
+ * Layout:
+ *   - OrThirdPartiesDonutCard — pinned (stays fixed below the filter bar)
+ *   - OrTercerosList (search bar + tercero rows) — scrollable area below
  *
  * Tapping a slice or a row selects it; the list collapses to just that
- * selection and the page auto-scrolls to top so the donut stays visible.
+ * selection and the scrollable area resets to the top.
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
@@ -83,6 +83,19 @@ export default function CostosTercerosScreen() {
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
       scrollRef={scrollRef}
+      pinnedContent={
+        isReady && !isEmpty && data ? (
+          <OrThirdPartiesDonutCard
+            sectionTitle="Costos administrativos"
+            groupLabel={group?.label ?? decodedGroupId}
+            groupAmount={group?.amount ?? 0}
+            deltaPercent={group?.deltaPercent ?? 0}
+            data={data}
+            selectedId={selectedTerceroId}
+            onSelectChange={setSelectedTerceroId}
+          />
+        ) : undefined
+      }
     >
       {isLoading || !data ? (
         <View className="gap-3 px-4">
@@ -104,23 +117,12 @@ export default function CostosTercerosScreen() {
           }
         />
       ) : (
-        <>
-          <OrThirdPartiesDonutCard
-            sectionTitle="Costos administrativos"
-            groupLabel={group?.label ?? decodedGroupId}
-            groupAmount={group?.amount ?? 0}
-            deltaPercent={group?.deltaPercent ?? 0}
-            data={data}
-            selectedId={selectedTerceroId}
-            onSelectChange={setSelectedTerceroId}
-          />
-          <OrTercerosList
-            terceros={data}
-            selectedId={selectedTerceroId}
-            onSelectChange={setSelectedTerceroId}
-            otrosId={OTROS_TERCERO_ID}
-          />
-        </>
+        <OrTercerosList
+          terceros={data}
+          selectedId={selectedTerceroId}
+          onSelectChange={setSelectedTerceroId}
+          otrosId={OTROS_TERCERO_ID}
+        />
       )}
     </TmConsolidatedDetail>
   );

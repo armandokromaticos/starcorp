@@ -27,6 +27,11 @@ interface MlClientRowProps {
   /** When true and `selected`, render a blue outline instead of the default
    *  background highlight. Used by the financiero per-section row list. */
   outlined?: boolean;
+  /** Use the costos/gastos terceros-list spacing model: no internal horizontal
+   *  padding, and—when `selected`—a soft-indigo fill + border highlight that
+   *  bleeds 8px past the row. Takes precedence over `outlined`. Expects the
+   *  parent list to provide the `px-4` gutter. */
+  highlighted?: boolean;
   /** Override the swatch size. Defaults to xl (28) when gradientColors is
    *  provided, lg (16) otherwise. */
   swatchSize?: 'md' | 'lg' | 'xl';
@@ -39,19 +44,32 @@ interface MlClientRowProps {
 }
 
 export const MlClientRow = memo<MlClientRowProps>(
-  ({ name, color, gradientColors, revenue, deltaPercent, onPress, selected = false, outlined = false, swatchSize, showArrow = false, className, centerTitle = false }) => {
-    const useOutline = selected && outlined;
+  ({ name, color, gradientColors, revenue, deltaPercent, onPress, selected = false, outlined = false, highlighted = false, swatchSize, showArrow = false, className, centerTitle = false }) => {
+    const useHighlight = selected && highlighted;
+    const useOutline = selected && outlined && !highlighted;
     const resolvedSwatchSize = swatchSize ?? (gradientColors ? 'xl' : 'lg');
     return (
       <Pressable
         onPress={onPress}
-        className={`flex-row items-center gap-3 py-2 px-4 rounded-md ${
-          selected && !outlined ? 'bg-bg-secondary' : ''
+        className={`flex-row items-center gap-3 py-2 rounded-md ${
+          highlighted ? '' : 'px-4'
+        } ${
+          selected && !outlined && !highlighted ? 'bg-bg-secondary' : ''
         } ${className ?? ''}`}
         style={
-          useOutline
-            ? { borderWidth: 1.5, borderColor: '#3A5BC4', borderCurve: 'continuous' }
-            : undefined
+          useHighlight
+            ? {
+                backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(99, 102, 241, 0.4)',
+                borderRadius: 10,
+                borderCurve: 'continuous',
+                paddingHorizontal: 8,
+                marginHorizontal: -8,
+              }
+            : useOutline
+              ? { borderWidth: 1.5, borderColor: '#3A5BC4', borderCurve: 'continuous' }
+              : undefined
         }
       >
         <AtColorDot
