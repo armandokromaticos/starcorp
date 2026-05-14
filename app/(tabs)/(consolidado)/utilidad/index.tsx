@@ -212,7 +212,7 @@ export default function UtilidadConsolidadaScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerClassName="pb-12"
+          contentContainerClassName="px-4 pb-12"
         >
           {filtered?.map((c) => {
             const originalIndex = data?.findIndex((d) => d.id === c.id) ?? -1;
@@ -224,6 +224,7 @@ export default function UtilidadConsolidadaScreen() {
                 revenue={c.amount}
                 deltaPercent={c.deltaPercent}
                 selected={selectedIndex === originalIndex}
+                highlighted
                 onPress={() => setSelectedIndex(originalIndex)}
               />
             );
