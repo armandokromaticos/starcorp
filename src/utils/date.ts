@@ -80,3 +80,15 @@ export const PERIOD_LABELS: Record<PeriodKey, string> = {
   "3m": "3 meses",
   "12m": "12 meses",
 };
+
+/**
+ * Compact labels for the time-filter bar, where 5 pills share a tight row.
+ * Full labels (PERIOD_LABELS) stay for standalone period chips/badges.
+ */
+export const PERIOD_SHORT_LABELS: Record<PeriodKey, string> = {
+  today: "Mes cte.",
+  "1w": "1 sem",
+  "1m": "1 mes",
+  "3m": "3 meses",
+  "12m": "12 meses",
+};

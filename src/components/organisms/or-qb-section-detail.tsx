@@ -24,15 +24,15 @@ import { useQBStore } from "@/src/stores/qb.store";
 import { CLIENT_LEGEND_GRADIENTS } from "@/src/theme/gradients";
 import { View } from "@/src/tw";
 import type { PeriodKey, ThirdParty } from "@/src/types/domain.types";
-import { PERIOD_LABELS } from "@/src/utils/date";
+import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import type { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
-  (key) => ({ key, label: PERIOD_LABELS[key] }),
+  (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
 interface OrQBSectionDetailProps {
@@ -101,6 +101,12 @@ export function OrQBSectionDetail({
     [setActivePeriod],
   );
 
+  // Selected donut slice — tapping a segment shows its % in the donut center,
+  // mirroring the consolidado costos/gastos terceros screens.
+  const [selectedTerceroId, setSelectedTerceroId] = useState<string | null>(
+    null,
+  );
+
   const isLoading = pnl.isLoading;
 
   return (
@@ -118,6 +124,8 @@ export function OrQBSectionDetail({
             groupAmount={total}
             deltaPercent={0}
             data={donutData}
+            selectedId={selectedTerceroId}
+            onSelectChange={setSelectedTerceroId}
           />
         ) : null
       }

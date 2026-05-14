@@ -28,7 +28,7 @@ import { useQBStore } from "@/src/stores/qb.store";
 import { CLIENT_LEGEND_GRADIENTS } from "@/src/theme/gradients";
 import { View } from "@/src/tw";
 import type { PeriodKey, ThirdParty } from "@/src/types/domain.types";
-import { PERIOD_LABELS } from "@/src/utils/date";
+import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
 import React, {
   useCallback,
@@ -40,7 +40,7 @@ import React, {
 import type { ScrollView as RNScrollView } from "react-native";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
-  (key) => ({ key, label: PERIOD_LABELS[key] }),
+  (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
 export default function FinancieroIngresosScreen() {

@@ -27,7 +27,7 @@ import {
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { ScrollView, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
-import { PERIOD_LABELS } from "@/src/utils/date";
+import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import type { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -46,7 +46,7 @@ type ChartCategory = "ingresos" | "costos" | "gastos" | "utilidad";
 export type ClientDetailEntry = "ingresos" | "costos" | "gastos";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
-  (key) => ({ key, label: PERIOD_LABELS[key] }),
+  (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
 const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
