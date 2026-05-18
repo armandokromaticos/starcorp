@@ -14,6 +14,7 @@ import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
 interface TmUtilidadProps {
   breadcrumbs?: string[];
@@ -42,6 +43,7 @@ export const TmUtilidad = memo<TmUtilidadProps>(
     children,
   }) => {
     const insets = useSafeAreaInsets();
+    const openGlobalSearch = useGlobalSearchStore((s) => s.open);
     return (
       <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
       <ScrollView
@@ -51,7 +53,7 @@ export const TmUtilidad = memo<TmUtilidadProps>(
         contentContainerClassName="gap-4 pb-12"
       >
         <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={onMenuPress} />
+          <MlSearchBar onMenuPress={onMenuPress} onPress={openGlobalSearch} />
         </View>
 
         {breadcrumbs && (

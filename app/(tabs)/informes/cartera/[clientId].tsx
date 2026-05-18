@@ -15,6 +15,7 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useCartera } from '@/src/hooks/queries/use-cartera';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
 function formatMoney(value: number): string {
   return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -28,6 +29,7 @@ export default function CarteraClientDetailScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const client = useMemo(
     () => data?.clients.find((c) => c.id === clientId),
@@ -71,7 +73,10 @@ export default function CarteraClientDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
+          <MlSearchBar
+            onMenuPress={() => setDrawerVisible(true)}
+            onPress={openGlobalSearch}
+          />
         </View>
 
         <View className="px-4">

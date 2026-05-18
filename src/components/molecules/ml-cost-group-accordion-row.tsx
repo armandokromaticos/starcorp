@@ -10,10 +10,6 @@
  * When expanded, renders a light-grey sub-item block. Each sub-item shows
  * name + amount on the left and an arrow-forward icon on the right.
  * Sub-items are tappable via `onSubItemPress(subItemId)`.
- *
- * NOTE: sub-items use placeholder "Segmentación N" labels because the RPC
- * `get_client_cost_groups` does not yet return nested segment data.
- * Wire real data when the backend exposes it.
  */
 
 import React, { memo, useState } from 'react';
@@ -37,6 +33,10 @@ export interface MlCostGroupAccordionRowProps {
   gradientColors: [string, string];
   subItems?: CostGroupSubItem[];
   onSubItemPress?: (subItemId: string) => void;
+  // Direct-entry mode: when there are no sub-items, tapping the row calls
+  // this handler instead of toggling the accordion. The chevron switches
+  // to arrow-forward so the affordance is unambiguous.
+  onPress?: () => void;
   initiallyExpanded?: boolean;
 }
 
@@ -48,10 +48,21 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
     gradientColors,
     subItems,
     onSubItemPress,
+    onPress,
     initiallyExpanded = false,
   }) => {
     const hasSubItems = Array.isArray(subItems) && subItems.length > 0;
     const [expanded, setExpanded] = useState(initiallyExpanded);
+    const handlePress = hasSubItems
+      ? () => setExpanded((prev) => !prev)
+      : onPress;
+    const trailingIconName = hasSubItems
+      ? expanded
+        ? 'expand-less'
+        : 'expand-more'
+      : onPress
+        ? 'arrow-forward'
+        : null;
 
     return (
       <View
@@ -65,7 +76,7 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
       >
         {/* ── Parent row ── */}
         <Pressable
-          onPress={hasSubItems ? () => setExpanded((prev) => !prev) : undefined}
+          onPress={handlePress}
           className="flex-row items-center gap-3 px-4 py-4"
         >
           {/* Gradient swatch */}
@@ -98,13 +109,10 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
             </AtTypography>
           </View>
 
-          {/* Chevron — only when there are sub-items */}
-          {hasSubItems && (
-            <AtIcon
-              name={expanded ? 'expand-less' : 'expand-more'}
-              size="md"
-              color="#8892A4"
-            />
+          {/* Trailing icon: expand chevron when there are sub-items,
+              arrow-forward when in direct-entry mode. */}
+          {trailingIconName && (
+            <AtIcon name={trailingIconName} size="md" color="#8892A4" />
           )}
         </Pressable>
 

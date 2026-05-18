@@ -15,6 +15,11 @@ export interface ClientMetadata {
   idCentroCosto: string | null;
   /** Raw row from clientes_master.data (PBI ListadoClientes5Stars). */
   clienteData: Record<string, unknown> | null;
+  /** Active employees per centro_costo from PBI empleadosHotel
+   *  (Retirement Date IS NULL). null when the centro_costo isn't in the
+   *  empleadosHotel table. */
+  empleadosActivos: number | null;
+  empleadosTotal: number | null;
 }
 
 interface MetadataRow {
@@ -25,6 +30,8 @@ interface MetadataRow {
   last_fecha: string | null;
   id_centro_costo: string | null;
   cliente_data: Record<string, unknown> | null;
+  empleados_activos: number | string | null;
+  empleados_total: number | string | null;
 }
 
 export function useClientMetadata(centroCosto: string | null) {
@@ -40,6 +47,8 @@ export function useClientMetadata(centroCosto: string | null) {
         | MetadataRow
         | undefined;
       if (!row) return null;
+      const activos = row.empleados_activos;
+      const total = row.empleados_total;
       return {
         nTerceros: Number(row.n_terceros),
         nCuentas: Number(row.n_cuentas),
@@ -48,6 +57,8 @@ export function useClientMetadata(centroCosto: string | null) {
         lastFecha: row.last_fecha,
         idCentroCosto: row.id_centro_costo ?? null,
         clienteData: row.cliente_data ?? null,
+        empleadosActivos: activos == null ? null : Number(activos),
+        empleadosTotal: total == null ? null : Number(total),
       };
     },
     enabled: !!centroCosto,

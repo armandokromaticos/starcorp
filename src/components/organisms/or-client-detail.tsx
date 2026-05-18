@@ -24,7 +24,9 @@ import {
   useDashboardSummary,
   type DashboardSummaryPeriod,
 } from "@/src/hooks/queries/use-dashboard-summary";
+import { useQBCustomerBalance } from "@/src/hooks/queries/use-qb-customer-balance";
 import { useFiltersStore } from "@/src/stores/filters.store";
+import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
@@ -136,10 +138,23 @@ export function OrClientDetail({
   });
   const metaQuery = useClientMetadata(centroCosto);
 
+  /** QB customer DisplayName comes from the PBI master row's `Quickbook`
+   *  field (synced into clientes_master.data via pbi-sync-clientes). */
+  const qbCustomerName = pickField(metaQuery.data?.clienteData, [
+    "Quickbook",
+    "QuickBook",
+    "QuickBooks",
+    "Quickbooks",
+    "QBName",
+    "QuickbookName",
+  ]);
+  const carteraQuery = useQBCustomerBalance(qbCustomerName);
+
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(
     ENTRY_INITIAL_METRIC[entryCategory],
   );
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
@@ -148,6 +163,8 @@ export function OrClientDetail({
 
   const summary = summaryQuery.data;
   const meta = metaQuery.data;
+
+  const cartera = carteraQuery.data ?? null;
 
   const metrics = useMemo(() => {
     if (!summary) return [];
@@ -169,6 +186,7 @@ export function OrClientDetail({
       Math.abs(gastos),
       Math.abs(utilidadNeta),
       Math.abs(utilidadBruta),
+      Math.abs(cartera ?? 0),
       1,
     );
     const w = (v: number) => Math.abs(v) / maxAbs;
@@ -219,15 +237,18 @@ export function OrClientDetail({
         gradient: ["#1A2B6D", "#3A5BBB"] as const,
         widthPercent: w(utilidadBruta),
       },
-      // Placeholders — data source pending. Render as "—" with no arrow.
+      // Cartera: outstanding balance for this client's QB Customer (resolved
+      // via clientes_master.Quickbook → useQBCustomerBalance). Null when the
+      // master row has no Quickbook, the customer isn't in QB, or QB isn't
+      // connected — in which case the card stays as "—".
       {
         key: "cartera" as MetricKey,
         label: "Cartera",
         icon: "account-balance-wallet" as MaterialIconName,
-        value: null,
+        value: cartera,
         deltaPositive: true,
         gradient: ["#0E5048", "#84CC16"] as const,
-        widthPercent: 0.6,
+        widthPercent: cartera != null ? w(cartera) : 0,
       },
       {
         key: "margen" as MetricKey,
@@ -244,7 +265,7 @@ export function OrClientDetail({
         valueFormat: "percent" as const,
       },
     ];
-  }, [summary]);
+  }, [summary, cartera]);
 
   const chartCategory = METRIC_TO_CATEGORY[selectedMetric];
 
@@ -264,7 +285,10 @@ export function OrClientDetail({
       {/* Pinned top: search + breadcrumb + period filter + chart */}
       <View className="gap-4 bg-bg-secondary pt-2 pb-3">
         <View className="px-4">
-          <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
+          <MlSearchBar
+            onMenuPress={() => setDrawerVisible(true)}
+            onPress={openGlobalSearch}
+          />
         </View>
         <MlBreadcrumb
           segments={[ENTRY_BREADCRUMB[entryCategory], centroCosto || "..."]}
@@ -283,6 +307,9 @@ export function OrClientDetail({
           }
           period={activePeriodKey}
           centroCosto={centroCosto}
+          headerValueOverride={
+            selectedMetric === "cartera" ? cartera : undefined
+          }
         />
       </View>
 
@@ -294,6 +321,8 @@ export function OrClientDetail({
         <MlLocationCard
           value={
             pickField(meta?.clienteData, [
+              "Ubicacion",
+              "Ubicación",
               "Direccion",
               "Dirección",
               "DireccionCliente",
@@ -316,12 +345,9 @@ export function OrClientDetail({
             <MlStatBox
               icon="engineering"
               value={
-                pickField(meta.clienteData, [
-                  "Empleados",
-                  "NumeroEmpleados",
-                  "NroEmpleados",
-                  "CantidadEmpleados",
-                ]) ?? "XX"
+                meta.empleadosActivos != null
+                  ? String(meta.empleadosActivos)
+                  : "XX"
               }
               label="Empleados"
               iconColor="#F59E0B"

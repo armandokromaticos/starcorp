@@ -6,6 +6,7 @@
  */
 
 import { AtGradientIcon } from "@/src/components/atoms/at-gradient-icon";
+import { OrGlobalSearchModal } from "@/src/components/organisms/or-global-search-modal";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
@@ -29,7 +30,8 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
+    <View style={{ flex: 1 }}>
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: "#E8952E",
         tabBarInactiveTintColor: "#20307E",
@@ -123,6 +125,9 @@ export default function TabLayout() {
       <Tabs.Screen name="costos" options={{ href: null }} />
       <Tabs.Screen name="gastos" options={{ href: null }} />
       <Tabs.Screen name="utilidad" options={{ href: null }} />
-    </Tabs>
+      </Tabs>
+
+      <OrGlobalSearchModal />
+    </View>
   );
 }
