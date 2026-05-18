@@ -23,6 +23,7 @@ import { OrTopClientsSection } from "@/src/components/organisms/or-top-clients-s
 import { TmDashboard } from "@/src/components/templates/tm-dashboard";
 import { useCompanySummaries } from "@/src/hooks/queries/use-company-summaries";
 import { useFiltersStore } from "@/src/stores/filters.store";
+import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { useQBStore } from "@/src/stores/qb.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
@@ -74,6 +75,7 @@ export default function HomeScreen() {
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
   const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const { summaries: companies } = useCompanySummaries();
 
@@ -98,7 +100,10 @@ export default function HomeScreen() {
       {/* Sticky header: search + time filter */}
       <View className="gap-4 bg-bg-secondary pt-2 pb-3">
         <View className="px-4">
-          <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
+          <MlSearchBar
+            onMenuPress={() => setDrawerVisible(true)}
+            onPress={openGlobalSearch}
+          />
         </View>
         <MlTimeFilterBar
           options={PERIOD_OPTIONS}

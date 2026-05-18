@@ -25,6 +25,7 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useCartera } from '@/src/hooks/queries/use-cartera';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
   AGING_BUCKETS,
   AGING_BUCKET_LABEL,
@@ -45,6 +46,7 @@ export default function CarteraScreen() {
     useState<AgingBucket>('corriente');
   const [search, setSearch] = useState('');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const visibleClients = useMemo(() => {
     const all = data?.clients ?? [];
@@ -121,7 +123,10 @@ export default function CarteraScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
+          <MlSearchBar
+            onMenuPress={() => setDrawerVisible(true)}
+            onPress={openGlobalSearch}
+          />
         </View>
 
         <View className="px-4">

@@ -22,6 +22,7 @@ import { useConsolidadoClients } from "@/src/hooks/queries/use-consolidado-clien
 import type { DashboardSummaryPeriod } from "@/src/hooks/queries/use-dashboard-summary";
 import { useDashboardTimeseries } from "@/src/hooks/queries/use-dashboard-timeseries";
 import { useFiltersStore } from "@/src/stores/filters.store";
+import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, TextInput, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
@@ -51,6 +52,7 @@ export default function UtilidadConsolidadaScreen() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [query, setQuery] = useState("");
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const filtered = useMemo(() => {
     if (!data) return null;
@@ -94,7 +96,10 @@ export default function UtilidadConsolidadaScreen() {
       {/* Pinned top: search + breadcrumb + filter + chart card */}
       <View className="gap-4 bg-bg-primary pt-2 pb-3">
         <View className="px-4">
-          <MlSearchBar onMenuPress={() => setDrawerVisible(true)} />
+          <MlSearchBar
+            onMenuPress={() => setDrawerVisible(true)}
+            onPress={openGlobalSearch}
+          />
         </View>
         <MlBreadcrumb
           segments={["Utilidad consolidada"]}

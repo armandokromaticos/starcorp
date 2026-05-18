@@ -36,8 +36,11 @@ export const queryKeys = {
     ['companies', companyId, 'ingresos-clients', period] as const,
   qbCompanyInfo: () => ['qb', 'companyInfo'] as const,
   qbCustomers: () => ['qb', 'customers'] as const,
+  qbCustomerBalance: (name: string) => ['qb', 'customerBalance', name] as const,
   qbProfitAndLoss: (start: string, end: string) =>
     ['qb', 'profitAndLoss', start, end] as const,
+  qbTransactionList: (accountId: string, start: string, end: string) =>
+    ['qb', 'transactionList', accountId, start, end] as const,
   dashboardSummary: (
     period: string,
     centroCosto: string | null,

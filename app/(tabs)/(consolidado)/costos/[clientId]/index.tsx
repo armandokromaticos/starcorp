@@ -85,12 +85,6 @@ export default function CostosGruposScreen() {
             const gradientColors = CLIENT_LEGEND_GRADIENTS[
               index % CLIENT_LEGEND_GRADIENTS.length
             ] as [string, string];
-            // Placeholder sub-items until the RPC exposes nested segment data.
-            // Replace with real children when get_client_cost_groups returns them.
-            const placeholderSubItems = [
-              { id: `${g.id}__seg1`, name: 'Segmentación 1', amount: g.amount * 0.6 },
-              { id: `${g.id}__seg2`, name: 'Segmentación 2', amount: g.amount * 0.4 },
-            ];
             return (
               <MlCostGroupAccordionRow
                 key={g.id}
@@ -98,8 +92,7 @@ export default function CostosGruposScreen() {
                 amount={g.amount}
                 deltaPercent={g.deltaPercent}
                 gradientColors={gradientColors}
-                subItems={placeholderSubItems}
-                onSubItemPress={(subItemId) =>
+                onPress={() =>
                   router.push(
                     `/costos/${encodeURIComponent(clientId ?? "")}/${encodeURIComponent(g.id)}` as Parameters<
                       typeof router.push

@@ -13,12 +13,16 @@
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlClientRow } from "@/src/components/molecules/ml-client-row";
+import { MlCostGroupAccordionRow } from "@/src/components/molecules/ml-cost-group-accordion-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
 import { OrThirdPartiesDonutCard } from "@/src/components/organisms/or-third-parties-donut-card";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
 import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
-import { normalizePnLSection } from "@/src/services/quickbooks/normalizer";
+import {
+  normalizePnLSection,
+  normalizePnLSectionHierarchical,
+} from "@/src/services/quickbooks/normalizer";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
 import { CLIENT_LEGEND_GRADIENTS } from "@/src/theme/gradients";
@@ -63,6 +67,11 @@ export function OrQBSectionDetail({
     [pnl.data, group],
   );
 
+  const categories = useMemo(
+    () => normalizePnLSectionHierarchical(pnl.data ?? null, group),
+    [pnl.data, group],
+  );
+
   const total = items.reduce((s, it) => s + it.amount, 0);
   const groups = items.map((it) => ({
     id: it.id,
@@ -72,6 +81,13 @@ export function OrQBSectionDetail({
     amount: it.amount,
     deltaPercent: 0,
   }));
+
+  const accountRoutePrefix =
+    group === "COGS"
+      ? "/financiero/costos"
+      : group === "Expenses"
+        ? "/financiero/egresos"
+        : null;
 
   // ThirdParty shape required by OrThirdPartiesDonutCard
   const donutData: ThirdParty[] = useMemo(
@@ -149,24 +165,39 @@ export function OrQBSectionDetail({
               : undefined
           }
         />
+      ) : accountRoutePrefix ? (
+        <View className="gap-2">
+          {categories.map((cat, i) => {
+            const gradientColors = CLIENT_LEGEND_GRADIENTS[
+              i % CLIENT_LEGEND_GRADIENTS.length
+            ] as [string, string];
+            return (
+              <MlCostGroupAccordionRow
+                key={cat.id}
+                name={cat.label}
+                amount={cat.amount}
+                deltaPercent={0}
+                gradientColors={gradientColors}
+                subItems={cat.accounts.map((a) => ({
+                  id: a.id,
+                  name: a.label,
+                  amount: a.amount,
+                }))}
+                onSubItemPress={(accountId) =>
+                  router.push(
+                    `${accountRoutePrefix}/${encodeURIComponent(accountId)}` as never,
+                  )
+                }
+              />
+            );
+          })}
+        </View>
       ) : (
         <View className="gap-1">
           {groups.map((g, i) => {
             const gradientColors = CLIENT_LEGEND_GRADIENTS[
               i % CLIENT_LEGEND_GRADIENTS.length
             ] as [string, string];
-            const handlePress =
-              group === "COGS"
-                ? () =>
-                    router.push(
-                      `/financiero/costos/${encodeURIComponent(g.id)}` as never,
-                    )
-                : group === "Expenses"
-                ? () =>
-                    router.push(
-                      `/financiero/egresos/${encodeURIComponent(g.id)}` as never,
-                    )
-                : undefined;
             return (
               <MlClientRow
                 key={g.id}
@@ -176,8 +207,6 @@ export function OrQBSectionDetail({
                 revenue={g.amount}
                 deltaPercent={g.deltaPercent}
                 swatchSize="lg"
-                onPress={handlePress}
-                showArrow={handlePress != null}
               />
             );
           })}

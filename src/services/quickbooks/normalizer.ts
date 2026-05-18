@@ -6,6 +6,8 @@
 import type {
   QBProfitAndLossRaw,
   QBReportRow,
+  QBTransactionListRaw,
+  QBTransactionListRow,
 } from '@/src/types/api.types';
 import type {
   Company,
@@ -147,6 +149,204 @@ export function normalizePnLSection(
       amount,
       color: SECTION_PALETTE[idx % SECTION_PALETTE.length],
     };
+  });
+}
+
+/** A single leaf account inside a P&L category. */
+export interface PnLAccount {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+/** A first-level category under a P&L section. May contain >=1 accounts. */
+export interface PnLCategory extends PnLLineItem {
+  /** Leaf accounts under this category. Categories with no sub-accounts
+   *  surface themselves as a single account (id/label/amount mirror the
+   *  category) so the UI can render a 1-item accordion uniformly. */
+  accounts: PnLAccount[];
+}
+
+function rowLabel(row: RawWithExtras, fallback: string): string {
+  return (
+    row.Header?.ColData?.[0]?.value ??
+    row.ColData?.[0]?.value ??
+    fallback
+  );
+}
+
+function rowAmount(row: RawWithExtras): number {
+  return row.Summary?.ColData
+    ? toAmount(lastColValue(row.Summary.ColData))
+    : toAmount(lastColValue(row.ColData));
+}
+
+function rowId(row: RawWithExtras, fallback: string): string {
+  return String(
+    row.Header?.ColData?.[0]?.id ?? row.ColData?.[0]?.id ?? fallback,
+  );
+}
+
+function collectLeaves(
+  rows: RawWithExtras[] | undefined,
+  out: PnLAccount[],
+  pathFallback: string,
+): void {
+  if (!rows) return;
+  rows.forEach((row, idx) => {
+    const hasChildren = (row.Rows?.Row?.length ?? 0) > 0;
+    if (hasChildren) {
+      collectLeaves(row.Rows!.Row, out, `${pathFallback}-${idx}`);
+    } else {
+      out.push({
+        id: rowId(row, `${pathFallback}-${idx}`),
+        label: rowLabel(row, `Cuenta ${idx + 1}`),
+        amount: rowAmount(row),
+      });
+    }
+  });
+}
+
+/**
+ * Hierarchical view of a P&L section: top-level categories with their leaf
+ * accounts. Categories with no sub-accounts include themselves as the only
+ * account so the accordion stays uniform.
+ */
+export function normalizePnLSectionHierarchical(
+  pnl: QBProfitAndLossRaw | null,
+  group: 'Income' | 'COGS' | 'Expenses',
+): PnLCategory[] {
+  const root = findSectionRow(
+    pnl?.Rows?.Row as RawWithExtras[] | undefined,
+    group,
+  );
+  const children = root?.Rows?.Row ?? [];
+
+  return children.map((row, idx) => {
+    const label = rowLabel(row, `Cuenta ${idx + 1}`);
+    const amount = rowAmount(row);
+    const id = rowId(row, `${group}-${idx}`);
+    const accounts: PnLAccount[] = [];
+    const hasChildren = (row.Rows?.Row?.length ?? 0) > 0;
+    if (hasChildren) {
+      collectLeaves(row.Rows!.Row, accounts, `${group}-${idx}`);
+    }
+    if (accounts.length === 0) {
+      accounts.push({ id, label, amount });
+    }
+    return {
+      id,
+      label,
+      amount,
+      color: SECTION_PALETTE[idx % SECTION_PALETTE.length],
+      accounts,
+    };
+  });
+}
+
+/**
+ * Finds a leaf account anywhere under a P&L section by its QB id. Used by the
+ * level-2 detail screens to resolve an account selected from the accordion.
+ */
+export function findPnLLeafById(
+  pnl: QBProfitAndLossRaw | null,
+  group: 'Income' | 'COGS' | 'Expenses',
+  leafId: string,
+): PnLAccount | null {
+  const categories = normalizePnLSectionHierarchical(pnl, group);
+  for (const cat of categories) {
+    const hit = cat.accounts.find((a) => a.id === leafId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** One row of a QB TransactionList report (a posting against an account). */
+export interface QBTransaction {
+  id: string;
+  date: string;
+  type: string;
+  num: string;
+  name: string;
+  memo: string;
+  amount: number;
+}
+
+/** Map QB ColType (or ColTitle fallback) to our normalized fields. */
+const TX_COLUMN_MAP: Record<string, keyof QBTransaction> = {
+  tx_date: 'date',
+  txn_type: 'type',
+  doc_num: 'num',
+  vend_name: 'name',
+  cust_name: 'name',
+  name: 'name',
+  memo: 'memo',
+  subt_nat_amount: 'amount',
+  subt_nat_home_amount: 'amount',
+  amount: 'amount',
+};
+
+function resolveTxField(
+  col: { ColTitle?: string; ColType?: string } | undefined,
+): keyof QBTransaction | null {
+  if (!col) return null;
+  const byType = col.ColType ? TX_COLUMN_MAP[col.ColType] : undefined;
+  if (byType) return byType;
+  const titleKey = col.ColTitle?.toLowerCase();
+  if (!titleKey) return null;
+  if (titleKey.includes('date') || titleKey.includes('fecha')) return 'date';
+  if (titleKey.includes('type') || titleKey.includes('tipo')) return 'type';
+  if (titleKey.includes('num')) return 'num';
+  if (titleKey.includes('name') || titleKey.includes('nombre')) return 'name';
+  if (titleKey.includes('memo') || titleKey.includes('descripci')) return 'memo';
+  if (titleKey.includes('amount') || titleKey.includes('monto')) return 'amount';
+  return null;
+}
+
+function walkTxRows(
+  rows: QBTransactionListRow[] | undefined,
+  out: QBTransactionListRow[],
+): void {
+  if (!rows) return;
+  for (const row of rows) {
+    if (row.ColData?.length) out.push(row);
+    if (row.Rows?.Row?.length) walkTxRows(row.Rows.Row, out);
+  }
+}
+
+export function normalizeTransactionList(
+  raw: QBTransactionListRaw | null,
+): QBTransaction[] {
+  if (!raw) return [];
+  const columns = raw.Columns?.Column ?? [];
+  const flatRows: QBTransactionListRow[] = [];
+  walkTxRows(raw.Rows?.Row, flatRows);
+
+  return flatRows.map((row, rowIdx) => {
+    const cols = row.ColData ?? [];
+    const tx: QBTransaction = {
+      id: '',
+      date: '',
+      type: '',
+      num: '',
+      name: '',
+      memo: '',
+      amount: 0,
+    };
+    cols.forEach((cell, i) => {
+      const field = resolveTxField(columns[i]);
+      if (!field) return;
+      const value = cell.value ?? '';
+      if (field === 'amount') {
+        const n = Number(value);
+        tx.amount = Number.isFinite(n) ? n : 0;
+      } else {
+        tx[field] = value;
+      }
+      if (!tx.id && cell.id) tx.id = String(cell.id);
+    });
+    if (!tx.id) tx.id = `tx-${rowIdx}-${tx.date}-${tx.num}`;
+    return tx;
   });
 }
 

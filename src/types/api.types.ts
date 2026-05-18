@@ -69,6 +69,29 @@ export interface QBInvoiceItem {
   CustomerRef: { value: string; name: string };
 }
 
+// QB Transaction List report — flat row list of postings hitting an account.
+export interface QBTransactionListRaw {
+  Header?: {
+    StartPeriod?: string;
+    EndPeriod?: string;
+    Currency?: string;
+  };
+  Columns?: {
+    Column?: { ColTitle?: string; ColType?: string }[];
+  };
+  Rows?: {
+    Row?: QBTransactionListRow[];
+  };
+}
+
+export interface QBTransactionListRow {
+  ColData?: { value?: string; id?: string }[];
+  Rows?: { Row?: QBTransactionListRow[] };
+  Summary?: { ColData?: { value?: string }[] };
+  type?: string;
+  group?: string;
+}
+
 // ─── Power BI Raw Types ───────────────────────────────────────
 
 export interface PBIQueryResultRaw {

@@ -31,6 +31,11 @@ interface OrRevenueChartCardProps {
   label?: string;
   period: PeriodKey;
   centroCosto?: string | null;
+  /** When provided, the big header value (and delta) is replaced with this
+   *  number — used to surface metrics that don't belong to the consolidated
+   *  P&L summary, e.g. QB outstanding balance ("Cartera"). The area chart
+   *  itself keeps showing `categoryId` since cartera has no timeseries. */
+  headerValueOverride?: number | null;
 }
 
 type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
@@ -46,7 +51,7 @@ const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
 };
 
 export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
-  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto }) => {
+  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -62,6 +67,7 @@ export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
           label={label}
           period={period}
           centroCosto={centroCosto}
+          headerValueOverride={headerValueOverride}
         />
       </Pressable>
     );
@@ -91,7 +97,8 @@ const ConsolidadoChartCard = memo<{
   label: string;
   period: PeriodKey;
   centroCosto?: string | null;
-}>(({ categoryId, label, period, centroCosto }) => {
+  headerValueOverride?: number | null;
+}>(({ categoryId, label, period, centroCosto, headerValueOverride }) => {
   const [view, setView] = useState<ConsolidadoView>('totalizado');
   const rpcPeriod = RPC_PERIOD[period];
   const summary = useDashboardSummary(rpcPeriod, {
@@ -120,13 +127,21 @@ const ConsolidadoChartCard = memo<{
     ? summary.data[`${categoryId}DeltaPercent` as const]
     : 0;
 
-  const headerValue =
-    view === 'corriente'
+  const isOverride = headerValueOverride != null;
+  const headerValue = isOverride
+    ? headerValueOverride
+    : view === 'corriente'
       ? totalCorriente
       : view === 'historico'
         ? totalHistorico
         : totalAll;
-  const headerDelta = view === 'historico' ? -deltaPct : deltaPct;
+  // Override values (e.g. Cartera) have no comparable previous period; hide
+  // the delta chip rather than show a misleading delta from `categoryId`.
+  const headerDelta = isOverride
+    ? null
+    : view === 'historico'
+      ? -deltaPct
+      : deltaPct;
 
   const isLoading = summary.isPending || timeseries.isPending;
 
@@ -142,7 +157,9 @@ const ConsolidadoChartCard = memo<{
           ) : (
             <>
               <AtMetricValue value={headerValue} size="lg" />
-              <AtDeltaIndicator value={headerDelta} appearance="dark" size="lg" />
+              {headerDelta != null && (
+                <AtDeltaIndicator value={headerDelta} appearance="dark" size="lg" />
+              )}
             </>
           )}
         </View>
