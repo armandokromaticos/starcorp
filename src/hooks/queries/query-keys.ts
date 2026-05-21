@@ -52,6 +52,8 @@ export const queryKeys = {
     compare: boolean,
   ) => ['dashboard', 'timeseries', period, centroCosto, compare] as const,
   pbiSyncLatest: () => ['pbi', 'sync', 'latest'] as const,
+  nexiataskResponsibilities: () => ['nexiatask', 'responsibilities'] as const,
+  nexiataskTarea: (tareaId: string) => ['nexiatask', 'tarea', tareaId] as const,
   // Prefix for bulk invalidation
   all: ['finance'] as const,
 } as const;

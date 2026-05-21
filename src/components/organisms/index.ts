@@ -30,6 +30,10 @@ export { OrThirdPartiesDonutCard } from './or-third-parties-donut-card';
 export { OrExpenseCentralCard } from './or-expense-central-card';
 export { OrHighlightedBarChartCard } from './or-highlighted-bar-chart-card';
 export type { HighlightedBarChartPoint } from './or-highlighted-bar-chart-card';
+export { OrDepartmentsCarousel } from './or-departments-carousel';
+export { OrResponsibilitiesList } from './or-responsibilities-list';
+export { OrTaskDetailCard } from './or-task-detail-card';
+export { OrTaskAvancesList } from './or-task-avances-list';
 
 // ── Legacy (kept for backward compatibility during migration) ──
 export { GreetingHeader } from './greeting-header';

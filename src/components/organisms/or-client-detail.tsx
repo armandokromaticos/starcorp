@@ -116,6 +116,17 @@ const ENTRY_INITIAL_METRIC: Record<ClientDetailEntry, MetricKey> = {
   gastos: "gastos",
 };
 
+/**
+ * Métricas que tienen un single propio en `(consolidado)/<categoria>/[clientId]`.
+ * Sólo estas pueden actuar como drill-down (tap-de-nuevo navega). El resto
+ * sólo cambia el chart al seleccionarse.
+ */
+const METRIC_REDIRECT_TARGET: Partial<Record<MetricKey, ClientDetailEntry>> = {
+  ingreso: "ingresos",
+  costo: "costos",
+  gastos: "gastos",
+};
+
 interface OrClientDetailProps {
   clientId: string;
   entryCategory: ClientDetailEntry;
@@ -280,6 +291,25 @@ export function OrClientDetail({
     [setActivePeriod],
   );
 
+  const handleMetricPress = useCallback(
+    (key: MetricKey) => {
+      const target = METRIC_REDIRECT_TARGET[key];
+      const alreadySelected = key === selectedMetric;
+      // Tap inicial → selecciona (cambia chart + activa chevron de redirect).
+      // Tap subsecuente en una barra que apunta a OTRA categoría → navega.
+      if (alreadySelected && target && target !== entryCategory) {
+        router.push(
+          `/${target}/${encodeURIComponent(clientId)}` as Parameters<
+            typeof router.push
+          >[0],
+        );
+        return;
+      }
+      setSelectedMetric(key);
+    },
+    [selectedMetric, entryCategory, clientId],
+  );
+
   return (
     <View className="flex-1 bg-bg-secondary" style={{ paddingTop: insets.top }}>
       {/* Pinned top: search + breadcrumb + period filter + chart */}
@@ -419,20 +449,25 @@ export function OrClientDetail({
               }
             />
           ) : (
-            metrics.map((m) => (
-              <MlMetricBar
-                key={m.key}
-                label={m.label}
-                icon={m.icon}
-                value={m.value}
-                deltaPositive={m.deltaPositive}
-                gradient={m.gradient}
-                widthPercent={m.widthPercent}
-                valueFormat={"valueFormat" in m ? m.valueFormat : undefined}
-                selected={selectedMetric === m.key}
-                onPress={() => setSelectedMetric(m.key)}
-              />
-            ))
+            metrics.map((m) => {
+              const target = METRIC_REDIRECT_TARGET[m.key];
+              const redirectable = !!target && target !== entryCategory;
+              return (
+                <MlMetricBar
+                  key={m.key}
+                  label={m.label}
+                  icon={m.icon}
+                  value={m.value}
+                  deltaPositive={m.deltaPositive}
+                  gradient={m.gradient}
+                  widthPercent={m.widthPercent}
+                  valueFormat={"valueFormat" in m ? m.valueFormat : undefined}
+                  selected={selectedMetric === m.key}
+                  redirectable={redirectable}
+                  onPress={() => handleMetricPress(m.key)}
+                />
+              );
+            })
           )}
         </View>
       </ScrollView>
