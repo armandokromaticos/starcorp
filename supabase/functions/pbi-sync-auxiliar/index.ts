@@ -103,9 +103,33 @@ interface MappedRow {
   fecha_auditoria: string | null;
   usuario: string | null;
   source_hash: string;
+  synced_at: string;
 }
 
-function mapRow(row: Cell): MappedRow | null {
+// Fast synchronous ~106-bit row hash (two cyrb53 passes). crypto.subtle.digest
+// is async and, called once per row, its per-call overhead dominated runtime
+// and got the function killed (546) mid-backfill. cyrb53 is pure integer math.
+function cyrb53(str: string, seed: number): number {
+  let h1 = 0xdeadbeef ^ seed;
+  let h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+function hashRow(canonical: string): string {
+  return cyrb53(canonical, 0).toString(16).padStart(14, "0") +
+    cyrb53(canonical, 0x9e3779b9).toString(16).padStart(14, "0");
+}
+
+function mapRow(row: Cell, syncedAt: string): MappedRow | null {
   const fecha = toIsoDate(g(row, "fecha"));
   const cuentaRaw = g(row, "cuenta");
   if (!fecha || !cuentaRaw) return null;
@@ -123,30 +147,47 @@ function mapRow(row: Cell): MappedRow | null {
   const centro_codigo = (g(row, "centro_codigo") as string | null) ?? null;
   const centro_nombre = (g(row, "centro_nombre") as string | null) ?? null;
   const nit = (g(row, "nit") as string | null) ?? null;
+  const nombre_cuenta = (g(row, "nombre_cuenta") as string | null) ?? null;
+  const razon_social = (g(row, "razon_social") as string | null) ?? null;
+  const detalle = (g(row, "detalle") as string | null) ?? null;
+  const tipo_ingreso = (g(row, "tipo_ingreso") as string | null) ?? null;
+  const clasificacion = (g(row, "clasificacion") as string | null) ?? null;
+  const fecha_auditoria = toIsoTimestamp(g(row, "fecha_auditoria"));
+  const usuario = (g(row, "usuario") as string | null) ?? null;
 
-  const source_hash =
-    `${fecha}|${cuenta}|${referencia ?? ""}|${debitos}|${creditos}|${centro_codigo ?? ""}|${nit ?? ""}`;
+  // Hash EVERY value column. The old hash omitted the saldos, so distinct
+  // zero-movement rows (debitos=creditos=0, different saldo_final) produced
+  // the same hash and the in-fetch dedup silently dropped ~70% of income
+  // rows. Cross-sync staleness (an adjusted row keeping an old hash) is
+  // handled by the synced_at prune, so a fully-discriminating hash is safe.
+  const source_hash = hashRow(JSON.stringify([
+    fecha, cuenta, nombre_cuenta, centro_codigo, centro_nombre, nit,
+    razon_social, detalle, referencia, debitos, creditos, saldo_inicial,
+    saldo_final, saldo_final_ajustado, tipo_ingreso, clasificacion,
+    fecha_auditoria, usuario,
+  ]));
 
   return {
     fecha,
     cuenta,
-    nombre_cuenta: (g(row, "nombre_cuenta") as string | null) ?? null,
+    nombre_cuenta,
     centro_costo_codigo: centro_codigo,
     centro_costo_nombre: centro_nombre,
     nit,
-    razon_social: (g(row, "razon_social") as string | null) ?? null,
-    detalle: (g(row, "detalle") as string | null) ?? null,
+    razon_social,
+    detalle,
     referencia,
     debitos,
     creditos,
     saldo_inicial,
     saldo_final,
     saldo_final_ajustado,
-    tipo_ingreso: (g(row, "tipo_ingreso") as string | null) ?? null,
-    clasificacion: (g(row, "clasificacion") as string | null) ?? null,
-    fecha_auditoria: toIsoTimestamp(g(row, "fecha_auditoria")),
-    usuario: (g(row, "usuario") as string | null) ?? null,
+    tipo_ingreso,
+    clasificacion,
+    fecha_auditoria,
+    usuario,
     source_hash,
+    synced_at: syncedAt,
   };
 }
 
@@ -189,6 +230,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return respond("ok");
 
   const startedAt = Date.now();
+  // Timestamp stamped on every row written this run. Rows in the synced range
+  // that keep an older synced_at afterwards no longer exist in the Auxiliar
+  // (adjusted or deleted) and get pruned below.
+  const runIso = new Date(startedAt).toISOString();
   let logId: number | null = null;
   let source: "cron" | "manual" = "manual";
 
@@ -306,13 +351,18 @@ Deno.serve(async (req) => {
     const rows = pbiJson.results?.[0]?.tables?.[0]?.rows ?? [];
     const rowsFetched = rows.length;
 
-    const seen = new Set<string>();
+    // The Auxiliar legitimately contains byte-identical duplicate rows, and the
+    // Power BI measures sum every one of them. To mirror PBI exactly we keep
+    // them all: each repeated hash gets an occurrence suffix (-0, -1, ...) so
+    // every row lands a distinct source_hash instead of being dropped.
+    const seen = new Map<string, number>();
     const unique: MappedRow[] = [];
     for (const r of rows) {
-      const m = mapRow(r);
+      const m = mapRow(r, runIso);
       if (!m) continue;
-      if (seen.has(m.source_hash)) continue;
-      seen.add(m.source_hash);
+      const n = seen.get(m.source_hash) ?? 0;
+      seen.set(m.source_hash, n + 1);
+      m.source_hash = `${m.source_hash}-${n}`;
       unique.push(m);
     }
 
@@ -328,6 +378,22 @@ Deno.serve(async (req) => {
       upserted += slice.length;
     }
 
+    // Prune stale rows: anything in the synced range still carrying an older
+    // synced_at was not returned by this run's Auxiliar query, so it's an
+    // adjusted-away version or a deleted line. Guard on a non-empty fetch so a
+    // transient empty PBI response can never wipe the whole range.
+    let deleted = 0;
+    if (unique.length > 0) {
+      const { error: delErr, count } = await admin
+        .from("accounting_entries")
+        .delete({ count: "exact" })
+        .gte("fecha", from.toISOString().slice(0, 10))
+        .lt("fecha", to.toISOString().slice(0, 10))
+        .lt("synced_at", runIso);
+      if (delErr) throw new Error(`prune stale: ${delErr.message}`);
+      deleted = count ?? 0;
+    }
+
     const { error: refErr } = await admin.rpc("refresh_mv_monthly_summary");
     if (refErr) console.warn("refresh MV:", refErr.message);
 
@@ -340,7 +406,7 @@ Deno.serve(async (req) => {
         rows_fetched: rowsFetched,
         rows_upserted: upserted,
         duration_ms: duration,
-        error_message: `range=${rangeLabel}`,
+        error_message: `range=${rangeLabel}; pruned=${deleted}`,
       })
       .eq("id", logId);
 
@@ -351,6 +417,7 @@ Deno.serve(async (req) => {
       rows_fetched: rowsFetched,
       rows_unique: unique.length,
       rows_upserted: upserted,
+      rows_pruned: deleted,
       duration_ms: duration,
     });
   } catch (err) {

@@ -9,15 +9,15 @@
  * the pill curvature.
  */
 
-import React, { memo } from 'react';
-import { Pressable, View } from '@/src/tw';
-import { LinearGradient } from 'expo-linear-gradient';
-import { AtIcon } from '@/src/components/atoms/at-icon';
-import { AtTypography } from '@/src/components/atoms/at-typography';
-import { formatCurrency } from '@/src/utils/currency';
-import type { MaterialIcons } from '@expo/vector-icons';
+import { AtIcon } from "@/src/components/atoms/at-icon";
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { Pressable, View } from "@/src/tw";
+import { formatCurrency } from "@/src/utils/currency";
+import type { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { memo } from "react";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 interface MlMetricBarProps {
   label: string;
@@ -30,7 +30,12 @@ interface MlMetricBarProps {
   selected?: boolean;
   onPress?: () => void;
   /** Currency by default; 'percent' renders e.g. "42.3%". */
-  valueFormat?: 'currency' | 'percent';
+  valueFormat?: "currency" | "percent";
+  /**
+   * When true and the row is `selected`, a chevron appears at the right
+   * edge to hint that tapping again will navigate (drill-down pattern).
+   */
+  redirectable?: boolean;
 }
 
 function formatPercent(v: number): string {
@@ -56,11 +61,14 @@ export const MlMetricBar = memo<MlMetricBarProps>(
     widthPercent,
     selected = false,
     onPress,
-    valueFormat = 'currency',
+    valueFormat = "currency",
+    redirectable = false,
   }) => {
     const isPlaceholder = value === null;
-    const arrowIcon: MaterialIconName = deltaPositive ? 'north-east' : 'south-east';
-    const arrowColor = deltaPositive ? '#22C55E' : '#EF4444';
+    const arrowIcon: MaterialIconName = deltaPositive
+      ? "north-east"
+      : "south-east";
+    const arrowColor = deltaPositive ? "#22C55E" : "#EF4444";
     const pillFlex = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, widthPercent));
     const rightFlex = 1 - pillFlex;
     const labelMinFlex = Math.min(
@@ -75,9 +83,9 @@ export const MlMetricBar = memo<MlMetricBarProps>(
         style={{
           padding: 4,
           borderWidth: 1.5,
-          borderColor: selected ? '#6366F1' : 'transparent',
+          borderColor: selected ? "#6366F1" : "transparent",
           borderRadius: selected ? 20 : 22,
-          borderCurve: 'continuous',
+          borderCurve: "continuous",
         }}
       >
         <View className="flex-row items-center">
@@ -89,13 +97,13 @@ export const MlMetricBar = memo<MlMetricBarProps>(
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                flexDirection: "row",
+                alignItems: "center",
                 gap: 10,
                 paddingHorizontal: 18,
                 paddingVertical: 16,
                 borderRadius: 14,
-                borderCurve: 'continuous',
+                borderCurve: "continuous",
               }}
             >
               <AtIcon name={icon} size={22} color="#FFFFFF" />
@@ -109,46 +117,57 @@ export const MlMetricBar = memo<MlMetricBarProps>(
                   {label}
                 </AtTypography>
               )}
+              {!labelOutside && redirectable && selected && (
+                <AtIcon name="arrow-forward" size={22} color="#FFFFFF" />
+              )}
             </LinearGradient>
           </View>
 
           <View
             style={{
               flex: rightFlex,
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: "row",
+              alignItems: "center",
               paddingLeft: 12,
               paddingRight: 4,
             }}
           >
             {labelOutside && (
-              <AtTypography
-                variant="h3"
-                color="#1A1F36"
-                numberOfLines={1}
-                style={{ flexShrink: 1, marginRight: 8 }}
+              <View
+                className="flex-row items-center"
+                style={{ flexShrink: 1, marginRight: 8, gap: 6 }}
               >
-                {label}
-              </AtTypography>
+                <AtTypography
+                  variant="h3"
+                  color="#1A1F36"
+                  numberOfLines={1}
+                  style={{ flexShrink: 1 }}
+                >
+                  {label}
+                </AtTypography>
+                {redirectable && selected && (
+                  <AtIcon name="arrow-forward" size={20} color="#1A1F36" />
+                )}
+              </View>
             )}
             <View
               className="flex-row items-center gap-2"
-              style={{ marginLeft: 'auto' }}
+              style={{ marginLeft: "auto" }}
             >
               {!isPlaceholder && (
                 <AtIcon name={arrowIcon} size={22} color={arrowColor} />
               )}
               <AtTypography
                 variant="bodyBold"
-                color={isPlaceholder ? '#8892A4' : '#1A1F36'}
-                style={{ fontVariant: ['tabular-nums'] }}
+                color={isPlaceholder ? "#8892A4" : "#1A1F36"}
+                style={{ fontVariant: ["tabular-nums"] }}
                 numberOfLines={1}
               >
                 {isPlaceholder
-                  ? '—'
-                  : valueFormat === 'percent'
-                  ? formatPercent(value)
-                  : formatCurrency(value)}
+                  ? "—"
+                  : valueFormat === "percent"
+                    ? formatPercent(value)
+                    : formatCurrency(value)}
               </AtTypography>
             </View>
           </View>
@@ -158,4 +177,4 @@ export const MlMetricBar = memo<MlMetricBarProps>(
   },
 );
 
-MlMetricBar.displayName = 'MlMetricBar';
+MlMetricBar.displayName = "MlMetricBar";

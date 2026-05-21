@@ -5,6 +5,7 @@ sobre cambios necesarios en la API antes de pasar de mocks a integración real
 en la app de Starcorp.
 
 Estado actual (frontend):
+
 - Pantallas `/(tabs)/reportes` y `/(tabs)/reportes/[taskId]` ya maquetadas
   usando datos mock con el **shape exacto** de la API documentada (`NexiataskTareaRaw`).
 - Hooks (`useNexiataskResponsibilities`, `useNexiataskTarea`) listos —
@@ -40,7 +41,7 @@ tareas por departamento) que **no refleja la realidad de negocio**.
 {
   "proyecto_id": "uuid",
   "proyecto_titulo": "Desarrollo del área comercial",
-  "proyecto_numero": 1
+  "proyecto_numero": 1,
 }
 ```
 
@@ -62,6 +63,7 @@ ENE 01 — Semana Enero 26 - 30 — "Se están realizando los primeros pilotos�
 
 La API actual solo devuelve **una semana por request** (`week_start`). Hacer
 N requests paralelos desde el cliente es viable pero:
+
 - La API está en Render → cold start de hasta 30s en la primera llamada.
 - Cada semana = una llamada extra → 5 semanas = 5 round-trips.
 - No hay paginación ni endpoint dedicado.
@@ -159,5 +161,5 @@ una key se compromete no se ven afectados todos los consumidores.
 ---
 
 **Última actualización:** 2026-05-18
-**Owner frontend:** Daniel Zapata / Kromaticos
+**Owner frontend:** Daniel Cordero / Kromaticos
 **Owner backend:** blue.solutions2025@gmail.com
