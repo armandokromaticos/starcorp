@@ -45,6 +45,14 @@ export default function InformesScreen() {
               onPress={() => {
                 if (report.id === 'cartera') {
                   router.push('/(tabs)/informes/cartera' as never);
+                } else if (report.id === 'asociados') {
+                  router.push('/(tabs)/informes/asociados' as never);
+                } else if (report.id === 'bancos') {
+                  router.push('/(tabs)/informes/bancos' as never);
+                } else if (report.id === 'seguro') {
+                  router.push('/(tabs)/informes/seguros' as never);
+                } else if (report.id === 'pagos') {
+                  router.push('/(tabs)/informes/pagos' as never);
                 } else {
                   router.push(`/(tabs)/informes/${report.id}` as never);
                 }

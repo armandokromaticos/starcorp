@@ -29,6 +29,9 @@ export default function CarteraClientDetailScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedSliceId, setSelectedSliceId] = useState<string | null>(
+    clientId ?? null,
+  );
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const client = useMemo(
@@ -90,8 +93,11 @@ export default function CarteraClientDetailScreen() {
           <OrCarteraDonut
             title="Distribución cartera por cliente"
             data={donutData}
-            showCenterPercent
-            centerPercentText="50%"
+            labelsMode="tap-only"
+            selectedId={selectedSliceId}
+            onSelectChange={setSelectedSliceId}
+            valueFormatter={formatMoney}
+            emptyHint="Toca un sector para ver el cliente"
           />
         </View>
 
