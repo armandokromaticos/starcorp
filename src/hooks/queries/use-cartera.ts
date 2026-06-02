@@ -1,18 +1,19 @@
 /**
  * useCartera — Snapshot de Cartera (AR aging).
  *
- * Por ahora consume el mock. Cuando exista la edge function que envuelva
- * QB AgedReceivables, sustituir queryFn manteniendo el contrato.
+ * El service intercala mock vs QuickBooks vía EXPO_PUBLIC_USE_MOCKS.
+ * Real path: agrega facturas con balance > 0 de todos los Realms.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getCarteraMock } from '@/src/services/mock/cartera.mock';
+import { getCarteraSnapshot } from '@/src/services/cartera/cartera.service';
 import type { CarteraSnapshot } from '@/src/types/cartera.types';
+import { queryKeys } from './query-keys';
 
 export function useCartera() {
   return useQuery<CarteraSnapshot>({
-    queryKey: ['cartera', 'snapshot'],
-    queryFn: getCarteraMock,
+    queryKey: queryKeys.carteraSnapshot(),
+    queryFn: getCarteraSnapshot,
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
   });

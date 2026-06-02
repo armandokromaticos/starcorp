@@ -11,6 +11,7 @@ import { Pressable, ScrollView, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
+import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-skeleton';
 import { MlAgingTabsBar } from '@/src/components/molecules/ml-aging-tabs-bar';
 import { MlUpdatedAtCard } from '@/src/components/molecules/ml-updated-at-card';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
@@ -46,6 +47,7 @@ export default function CarteraScreen() {
     useState<AgingBucket>('corriente');
   const [search, setSearch] = useState('');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const visibleClients = useMemo(() => {
@@ -111,6 +113,12 @@ export default function CarteraScreen() {
       (data?.clients ?? []).map((c) => ({ id: c.id, name: c.name })),
     [data],
   );
+
+  React.useEffect(() => {
+    if (selectedSliceId && !donutData.some((s) => s.id === selectedSliceId)) {
+      setSelectedSliceId(null);
+    }
+  }, [donutData, selectedSliceId]);
 
   return (
     <View
@@ -192,6 +200,13 @@ export default function CarteraScreen() {
           <OrCarteraDonut
             title="Distribución cartera por cliente"
             data={donutData}
+            labelsMode="tap-only"
+            selectedId={selectedSliceId}
+            onSelectChange={setSelectedSliceId}
+            valueFormatter={(v) =>
+              `$${v.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }
+            emptyHint="Toca un sector para ver el cliente"
           />
         </View>
 
@@ -243,11 +258,7 @@ export default function CarteraScreen() {
         </View>
 
         <View className="gap-2 px-4">
-          {isPending && (
-            <AtTypography variant="caption" color="#8892A4">
-              Cargando…
-            </AtTypography>
-          )}
+          {isPending && <MlReportListSkeleton />}
           {!isPending && visibleClients.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
               Sin clientes que coincidan con los filtros.
