@@ -27,6 +27,8 @@ interface MlPolizaDetailCardProps {
   poliza: PolizaCompania;
   todayIso: string;
   showEmpresa?: boolean;
+  /** Resalta la card (póliza a la que se navegó desde el informe). */
+  highlighted?: boolean;
 }
 
 interface FieldProps {
@@ -67,7 +69,7 @@ function formatVencimiento(days: number): string {
 }
 
 export const MlPolizaDetailCard = memo<MlPolizaDetailCardProps>(
-  ({ poliza, todayIso, showEmpresa = false }) => {
+  ({ poliza, todayIso, showEmpresa = false, highlighted = false }) => {
     const days = diffInDays(poliza.vigenciaFin, todayIso);
     const vencida = days < 0;
     const venceProximo = days >= 0 && days <= 60;
@@ -79,8 +81,11 @@ export const MlPolizaDetailCard = memo<MlPolizaDetailCardProps>(
         className="bg-white rounded-lg p-4 gap-3"
         style={{
           borderCurve: 'continuous',
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
+          borderWidth: highlighted ? 2 : 1,
+          borderColor: highlighted ? '#E8952E' : 'rgba(0,0,0,0.06)',
+          boxShadow: highlighted
+            ? '0 0 0 3px rgba(232, 149, 46, 0.18)'
+            : undefined,
         }}
       >
         <View className="flex-row items-start justify-between gap-3">

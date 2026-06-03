@@ -10,26 +10,16 @@
 
 import { supabase } from '@/src/config/supabase';
 import { withMock } from '@/src/services/mock/mock-adapter';
-import { getAsociadosMock } from '@/src/services/mock/asociados.mock';
+import {
+  getAsociadosMock,
+  getAsociadosTrendMock,
+} from '@/src/services/mock/asociados.mock';
+import { SEGMENT_PALETTE as PALETTE } from '@/src/theme/gradients';
 import type {
   AsociadoClient,
   AsociadosSnapshot,
+  AsociadosTrend,
 } from '@/src/types/asociados.types';
-
-const PALETTE = [
-  '#9B2C2C', // wine
-  '#1A2B6D', // navy
-  '#0E7490', // teal
-  '#65A30D', // lime
-  '#D9E021', // yellow-lime
-  '#3B82F6', // azure
-  '#0B1F4A', // dark navy
-  '#F6AD55', // amber
-  '#7C3AED', // purple
-  '#DC2626', // red
-  '#059669', // emerald
-  '#A16207', // ochre
-];
 
 interface RpcEmployee {
   id: string;
@@ -70,4 +60,39 @@ async function fetchFromPBI(): Promise<AsociadosSnapshot> {
 
 export async function getAsociadosSnapshot(): Promise<AsociadosSnapshot> {
   return withMock(fetchFromPBI, () => getAsociadosMock());
+}
+
+/**
+ * Serie de tendencia de asociados por cliente.
+ * Real path: RPC get_asociados_trend (historico_emp_cli, de PBI
+ * HistoricoEmpXCli vía pbi-sync-historico).
+ */
+async function fetchTrendFromPBI(): Promise<AsociadosTrend> {
+  const { data, error } = await supabase.rpc('get_asociados_trend');
+  if (error) throw error;
+  const trend = (data ?? {
+    updatedAt: '',
+    months: [],
+    series: [],
+  }) as AsociadosTrend;
+  return {
+    updatedAt: trend.updatedAt ?? '',
+    months: trend.months ?? [],
+    series: (trend.series ?? []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      counts: (s.counts ?? []).map((n) => Number(n) || 0),
+    })),
+  };
+}
+
+export async function getAsociadosTrend(): Promise<AsociadosTrend> {
+  const trend = await withMock(fetchTrendFromPBI, () => getAsociadosTrendMock());
+  // Fallback temporal: mientras HistoricoEmpXCli no esté sincronizado a
+  // historico_emp_cli (RPC vacío), usa el mock para no mostrar la vista vacía.
+  // En cuanto el sync poblé datos reales, estos toman prioridad sin tocar código.
+  if (!trend.months.length || !trend.series.length) {
+    return getAsociadosTrendMock();
+  }
+  return trend;
 }

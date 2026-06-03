@@ -13,10 +13,16 @@ import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlEmpresaPill } from '@/src/components/molecules/ml-empresa-pill';
 import { MlPolizaDetailCard } from '@/src/components/molecules/ml-poliza-detail-card';
+import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import {
+  POLIZA_STATUS_FILTERS,
+  polizaStatus,
+  type PolizaStatus,
+} from '@/src/types/seguros.types';
 
 export default function SegurosHistoricoScreen() {
   const insets = useSafeAreaInsets();
@@ -25,6 +31,7 @@ export default function SegurosHistoricoScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [activeEmpresaId, setActiveEmpresaId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PolizaStatus>('activa');
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   // Por defecto la primera empresa queda activa.
@@ -32,10 +39,14 @@ export default function SegurosHistoricoScreen() {
 
   const polizas = useMemo(() => {
     if (!data) return [];
+    const todayIso = data.todayIso;
     const all = data.empresas.flatMap((e) => e.polizas);
-    if (!effectiveActiveId) return all;
-    return all.filter((p) => p.empresaId === effectiveActiveId);
-  }, [data, effectiveActiveId]);
+    return all.filter(
+      (p) =>
+        (!effectiveActiveId || p.empresaId === effectiveActiveId) &&
+        polizaStatus(p.vigenciaFin, todayIso) === statusFilter,
+    );
+  }, [data, effectiveActiveId, statusFilter]);
 
   return (
     <View
@@ -80,10 +91,16 @@ export default function SegurosHistoricoScreen() {
           })}
         </ScrollView>
 
+        <MlTimeFilterBar
+          options={POLIZA_STATUS_FILTERS}
+          selectedKey={statusFilter}
+          onSelect={(k) => setStatusFilter(k as PolizaStatus)}
+        />
+
         <View className="gap-3 px-4">
           {polizas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas para mostrar.
+              Sin pólizas en este estado.
             </AtTypography>
           )}
           {polizas.map((p) => (

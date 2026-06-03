@@ -55,6 +55,31 @@ export const BAR_GRADIENTS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
+ * Paleta de "segmentos": colores planos de las rodajas de los donuts de
+ * informes (cartera, asociados) y, para unificar el diseño, también de los
+ * donuts de terceros en gastos / costos administrativos. El DonutChart
+ * oscurece cada color automáticamente para dar profundidad, así que aquí
+ * solo viven los tonos base. Se cicla por índice.
+ */
+export const SEGMENT_PALETTE: readonly string[] = [
+  '#9B2C2C', // wine
+  '#1A2B6D', // navy
+  '#0E7490', // teal
+  '#65A30D', // lime
+  '#D9E021', // yellow-lime
+  '#3B82F6', // azure
+  '#0B1F4A', // dark navy
+  '#F6AD55', // amber
+  '#7C3AED', // purple
+  '#DC2626', // red
+  '#059669', // emerald
+  '#A16207', // ochre
+];
+
+/** Color del bucket "Otros" en los donuts de segmentos (gris neutro). */
+export const OTROS_SEGMENT_COLOR = '#6B7280';
+
+/**
  * Paleta de 8 gradientes para clientes (C1–C8).
  * Usada en or-top-clients-section (legend swatches) y en el bar chart
  * de or-cost-groups-chart-card. Dirección vertical (top claro → bottom oscuro).

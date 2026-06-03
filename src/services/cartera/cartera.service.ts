@@ -16,6 +16,7 @@
 
 import { withMock } from '@/src/services/mock/mock-adapter';
 import { getCarteraMock } from '@/src/services/mock/cartera.mock';
+import { SEGMENT_PALETTE as PALETTE } from '@/src/theme/gradients';
 import {
   qbQuery,
   qbStatus,
@@ -32,21 +33,6 @@ import type {
   CarteraInvoice,
   CarteraSnapshot,
 } from '@/src/types/cartera.types';
-
-const PALETTE = [
-  '#9B2C2C',
-  '#1A2B6D',
-  '#0E7490',
-  '#65A30D',
-  '#D9E021',
-  '#3B82F6',
-  '#0B1F4A',
-  '#F6AD55',
-  '#7C3AED',
-  '#DC2626',
-  '#059669',
-  '#A16207',
-];
 
 const INVOICE_QUERY = "SELECT * FROM Invoice WHERE Balance > '0' MAXRESULTS 1000";
 

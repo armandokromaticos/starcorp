@@ -17,7 +17,7 @@ export interface TimeFilterOption {
 }
 
 interface MlTimeFilterBarProps {
-  options: TimeFilterOption[];
+  options: readonly TimeFilterOption[];
   selectedKey: string;
   onSelect: (key: string) => void;
   className?: string;

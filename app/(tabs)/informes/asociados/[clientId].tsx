@@ -10,13 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
+import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
 import { MlAsociadoEmployeeRow } from '@/src/components/molecules/ml-asociado-employee-row';
 import {
   OrAsociadosFiltersSheet,
   type AsociadosFilters,
 } from '@/src/components/organisms/or-asociados-filters-sheet';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
-import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDivider } from '@/src/components/atoms/at-divider';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
@@ -102,18 +102,10 @@ export default function AsociadoClientDetailScreen() {
               </Pressable>
             )}
           </View>
-          <Pressable
+          <MlFilterButton
+            active={hasActiveFilters}
             onPress={() => setFiltersVisible(true)}
-            className="rounded-md items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              backgroundColor: hasActiveFilters ? '#E8952E' : '#0F1B4A',
-              borderCurve: 'continuous',
-            }}
-          >
-            <AtIcon name="filter-list" size="md" color="#FFFFFF" />
-          </Pressable>
+          />
         </View>
 
         {hasActiveFilters && (

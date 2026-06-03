@@ -22,16 +22,16 @@ import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-skeleton';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
 import { MlPagoCard } from '@/src/components/molecules/ml-pago-card';
+import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
 import { MlSimpleTotalFooter } from '@/src/components/molecules/ml-simple-total-footer';
 import { OrPagosCalendar } from '@/src/components/organisms/or-pagos-calendar';
-import { OrPagosDayDetailSheet } from '@/src/components/organisms/or-pagos-day-detail-sheet';
 import { OrPagosFiltersSheet } from '@/src/components/organisms/or-pagos-filters-sheet';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
-import { AtIcon } from '@/src/components/atoms/at-icon';
-import { AtToggleSwitch } from '@/src/components/atoms/at-toggle-switch';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '@/src/theme/gradients';
 import { usePagos } from '@/src/hooks/queries/use-pagos';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
@@ -109,10 +109,12 @@ export default function PagosScreen() {
     return out;
   }, [filteredPagos]);
 
+  // El donut de empresa generadora es del día seleccionado (su detalle).
   const donutData = useMemo(() => {
-    if (!data) return [];
+    if (!data || !selectedDay) return [];
+    const source = filteredPagos.filter((p) => p.fecha === selectedDay);
     const totals = new Map<string, number>();
-    for (const p of filteredPagos) {
+    for (const p of source) {
       totals.set(p.empresaId, (totals.get(p.empresaId) ?? 0) + p.monto);
     }
     return data.empresas
@@ -123,11 +125,22 @@ export default function PagosScreen() {
         color: e.color,
         label: e.name,
       }));
-  }, [data, filteredPagos]);
+  }, [data, filteredPagos, selectedDay]);
+
+  // Lista de abajo: cuando hay un día seleccionado en el calendario, se
+  // filtra a ese día. El calendario (totalsByDate / donut / totales del mes)
+  // sigue usando `filteredPagos` completo para no vaciar el heatmap.
+  const listaPagos = useMemo(
+    () =>
+      selectedDay
+        ? filteredPagos.filter((p) => p.fecha === selectedDay)
+        : filteredPagos,
+    [filteredPagos, selectedDay],
+  );
 
   const listaTotal = useMemo(
-    () => filteredPagos.reduce((s, p) => s + p.monto, 0),
-    [filteredPagos],
+    () => listaPagos.reduce((s, p) => s + p.monto, 0),
+    [listaPagos],
   );
 
   const hasActiveFilters =
@@ -137,10 +150,14 @@ export default function PagosScreen() {
     effective.centroCostosIds.length > 0 ||
     effective.empleadoIds.length > 0;
 
-  const selectedDayBucket = selectedDay
-    ? data?.dayBuckets[selectedDay] ?? null
-    : null;
-  const selectedDayTotal = selectedDay ? totalsByDate[selectedDay] ?? 0 : 0;
+  // Toggle del día como filtro de la lista: tocar el mismo día lo deselecciona.
+  const handleSelectDay = (iso: string) =>
+    setSelectedDay((prev) => (prev === iso ? null : iso));
+
+  // El botón "Ver total por empresa generadora" solo se habilita cuando hay un
+  // día seleccionado (el detalle por empresa es de ese día). En la vista donut
+  // el botón siempre permite volver al calendario.
+  const viewButtonDisabled = vista === 'calendario' && !selectedDay;
 
   // Reset selección del donut si el slice ya no existe (cambió filtro).
   React.useEffect(() => {
@@ -149,6 +166,21 @@ export default function PagosScreen() {
     }
   }, [donutData, selectedSliceId]);
 
+  // Limpia el día seleccionado si ese día ya no tiene pagos (cambió un filtro).
+  React.useEffect(() => {
+    if (selectedDay && !(totalsByDate[selectedDay] > 0)) {
+      setSelectedDay(null);
+    }
+  }, [selectedDay, totalsByDate]);
+
+  // El detalle por empresa generadora siempre es de un día; si quedamos en esa
+  // vista sin día seleccionado, volvemos al calendario.
+  React.useEffect(() => {
+    if (vista === 'donut' && !selectedDay) {
+      setFiltersActive(true);
+    }
+  }, [vista, selectedDay]);
+
   return (
     <View
       className="flex-1 bg-bg-secondary"
@@ -156,7 +188,7 @@ export default function PagosScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerClassName="gap-4 pb-6"
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -173,11 +205,56 @@ export default function PagosScreen() {
           />
         </View>
 
+        {/* Botón para alternar la vista: por fecha (calendario) ↔ por empresa
+            generadora (donut). Solo se habilita para ir al detalle por empresa
+            cuando hay un día seleccionado; el label muestra la vista destino. */}
+        <View className="px-4 gap-1">
+          <Pressable
+            onPress={() => {
+              if (viewButtonDisabled) return;
+              setFiltersActive((v) => !v);
+            }}
+            disabled={viewButtonDisabled}
+            style={{
+              borderRadius: 12,
+              borderCurve: 'continuous',
+              overflow: 'hidden',
+              opacity: viewButtonDisabled ? 0.45 : 1,
+              boxShadow: viewButtonDisabled
+                ? undefined
+                : '0 2px 6px rgba(4, 17, 63, 0.35)',
+            }}
+          >
+            <LinearGradient
+              colors={gradients.buttonBlue.colors}
+              start={gradients.buttonBlue.start}
+              end={gradients.buttonBlue.end}
+              style={{
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AtTypography variant="bodyBold" color="#FFFFFF">
+                {vista === 'calendario'
+                  ? 'Ver total por empresa generadora'
+                  : 'Ver total por fecha'}
+              </AtTypography>
+            </LinearGradient>
+          </Pressable>
+          {viewButtonDisabled && (
+            <AtTypography variant="caption" color="#8892A4" className="px-1">
+              Selecciona un día del calendario para ver el total por empresa
+              generadora.
+            </AtTypography>
+          )}
+        </View>
+
         {/* Filtros bar */}
         <View className="flex-row items-center justify-between px-4">
-          <View className="flex-row items-center gap-3 flex-1">
-            <AtTypography variant="bodyBold">Filtros</AtTypography>
-            <AtToggleSwitch value={filtersActive} onChange={setFiltersActive} />
+          <AtTypography variant="bodyBold">Filtros</AtTypography>
+          <View className="flex-row items-center gap-2">
             {hasActiveFilters && filtersActive && (
               <Pressable
                 onPress={() => setFilters(EMPTY_PAGOS_FILTERS)}
@@ -188,20 +265,11 @@ export default function PagosScreen() {
                 </AtTypography>
               </Pressable>
             )}
+            <MlFilterButton
+              active={hasActiveFilters && filtersActive}
+              onPress={() => setFiltersVisible(true)}
+            />
           </View>
-          <Pressable
-            onPress={() => setFiltersVisible(true)}
-            className="rounded-md items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              backgroundColor:
-                hasActiveFilters && filtersActive ? '#E8952E' : '#0F1B4A',
-              borderCurve: 'continuous',
-            }}
-          >
-            <AtIcon name="filter-list" size="md" color="#FFFFFF" />
-          </Pressable>
         </View>
 
         {/* Chips de filtros aplicados */}
@@ -262,7 +330,8 @@ export default function PagosScreen() {
               totalsByDate={totalsByDate}
               bucketsByDate={data.dayBuckets}
               onChangeMonth={setYearMonth}
-              onSelectDay={setSelectedDay}
+              onSelectDay={handleSelectDay}
+              selectedDay={selectedDay}
             />
           </View>
         )}
@@ -270,7 +339,11 @@ export default function PagosScreen() {
         {data && vista === 'donut' && (
           <View className="px-4">
             <OrCarteraDonut
-              title="Total por empresa generadora"
+              title={
+                selectedDay
+                  ? `Empresa generadora · ${formatShortDate(selectedDay)}`
+                  : 'Total por empresa generadora'
+              }
               data={donutData}
               headerBadge={<AtDeltaIndicator value={1.87} size="sm" />}
               labelsMode="tap-only"
@@ -278,6 +351,16 @@ export default function PagosScreen() {
               onSelectChange={setSelectedSliceId}
               valueFormatter={(v) => formatCurrency(v)}
               emptyHint="Toca un sector para ver la empresa"
+            />
+          </View>
+        )}
+
+        {/* Chip del día seleccionado (filtra la lista en la vista calendario) */}
+        {selectedDay && vista === 'calendario' && (
+          <View className="flex-row px-4">
+            <MlFilterChip
+              label={`Día: ${formatShortDate(selectedDay)}`}
+              onRemove={() => setSelectedDay(null)}
             />
           </View>
         )}
@@ -294,12 +377,14 @@ export default function PagosScreen() {
 
         <View className="gap-3 px-4">
           {isPending && <MlReportListSkeleton />}
-          {!isPending && filteredPagos.length === 0 && (
+          {!isPending && listaPagos.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pagos que coincidan con los filtros.
+              {selectedDay
+                ? 'Sin pagos en el día seleccionado.'
+                : 'Sin pagos que coincidan con los filtros.'}
             </AtTypography>
           )}
-          {filteredPagos.map((p) => {
+          {listaPagos.map((p) => {
             const empresa = empresasMap.get(p.empresaId);
             return (
               <MlPagoCard
@@ -316,20 +401,22 @@ export default function PagosScreen() {
           })}
         </View>
 
-        {filteredPagos.length > 0 && (
-          <View className="px-4">
-            <MlSimpleTotalFooter value={formatTotal(listaTotal)} />
-          </View>
-        )}
       </ScrollView>
 
-      <OrPagosDayDetailSheet
-        visible={selectedDay !== null}
-        fechaIso={selectedDay}
-        total={selectedDayTotal}
-        bucket={selectedDayBucket}
-        onClose={() => setSelectedDay(null)}
-      />
+      {/* Total fijo: anclado al fondo de la pantalla, fuera del ScrollView,
+          para que siempre sea visible al recorrer la lista de pagos. */}
+      {listaPagos.length > 0 && (
+        <View
+          className="px-4 pt-3 bg-bg-secondary"
+          style={{
+            paddingBottom: insets.bottom + 12,
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(0,0,0,0.06)',
+          }}
+        >
+          <MlSimpleTotalFooter value={formatTotal(listaTotal)} />
+        </View>
+      )}
 
       <OrPagosFiltersSheet
         visible={filtersVisible}
