@@ -27,3 +27,22 @@ export interface AsociadosSnapshot {
   clients: AsociadoClient[];
   updatedAt: string;
 }
+
+/**
+ * Serie de tendencia de asociados por cliente (vista "Asociados por
+ * tendencia"). Fuente: PBI HistoricoEmpXCli vía tabla historico_emp_cli /
+ * RPC get_asociados_trend. Cada `counts` está alineado al arreglo `months`.
+ * El `id` coincide con AsociadoClient.id para reusar el color del cliente.
+ */
+export interface AsociadoTrendSeries {
+  id: string;
+  name: string;
+  counts: number[];
+}
+
+export interface AsociadosTrend {
+  updatedAt: string;
+  /** Meses en formato 'YYYY-MM', orden ascendente. */
+  months: string[];
+  series: AsociadoTrendSeries[];
+}

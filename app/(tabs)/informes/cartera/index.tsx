@@ -15,6 +15,7 @@ import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-
 import { MlAgingTabsBar } from '@/src/components/molecules/ml-aging-tabs-bar';
 import { MlUpdatedAtCard } from '@/src/components/molecules/ml-updated-at-card';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
+import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
 import { MlCarteraClientRow } from '@/src/components/molecules/ml-cartera-client-row';
 import { MlCarteraTotalFooter } from '@/src/components/molecules/ml-cartera-total-footer';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
@@ -158,19 +159,10 @@ export default function CarteraScreen() {
               </Pressable>
             )}
           </View>
-          <Pressable
+          <MlFilterButton
+            active={filters.clientIds.length > 0}
             onPress={() => setFiltersVisible(true)}
-            className="rounded-md items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              backgroundColor:
-                filters.clientIds.length > 0 ? '#E8952E' : '#0F1B4A',
-              borderCurve: 'continuous',
-            }}
-          >
-            <AtIcon name="filter-list" size="md" color="#FFFFFF" />
-          </Pressable>
+          />
         </View>
 
         {filters.clientIds.length > 0 && (

@@ -2,17 +2,23 @@
  * Lista completa de pólizas de Propiedades.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlPropiedadDetailCard } from '@/src/components/molecules/ml-propiedad-detail-card';
+import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import {
+  POLIZA_STATUS_FILTERS,
+  polizaStatus,
+  type PolizaStatus,
+} from '@/src/types/seguros.types';
 
 export default function SegurosPropiedadesScreen() {
   const insets = useSafeAreaInsets();
@@ -20,7 +26,17 @@ export default function SegurosPropiedadesScreen() {
   const { data } = useSeguros();
 
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<PolizaStatus>('activa');
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+
+  const todayIso = data?.todayIso ?? '';
+  const propiedadesFiltradas = useMemo(
+    () =>
+      (data?.propiedades ?? []).filter(
+        (p) => polizaStatus(p.vigenciaFin, todayIso) === statusFilter,
+      ),
+    [data, todayIso, statusFilter],
+  );
 
   return (
     <View
@@ -46,18 +62,22 @@ export default function SegurosPropiedadesScreen() {
           />
         </View>
 
+        <MlTimeFilterBar
+          options={POLIZA_STATUS_FILTERS}
+          selectedKey={statusFilter}
+          onSelect={(k) => setStatusFilter(k as PolizaStatus)}
+        />
+
         <View className="gap-3 px-4">
-          {(data?.propiedades.length ?? 0) === 0 && (
+          {propiedadesFiltradas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas de propiedades.
+              {(data?.propiedades.length ?? 0) > 0
+                ? 'No hay pólizas de propiedades en este estado.'
+                : 'Sin pólizas de propiedades.'}
             </AtTypography>
           )}
-          {data?.propiedades.map((p) => (
-            <MlPropiedadDetailCard
-              key={p.id}
-              poliza={p}
-              todayIso={data.todayIso}
-            />
+          {propiedadesFiltradas.map((p) => (
+            <MlPropiedadDetailCard key={p.id} poliza={p} todayIso={todayIso} />
           ))}
         </View>
       </ScrollView>

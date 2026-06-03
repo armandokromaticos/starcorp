@@ -6,6 +6,7 @@ import type {
   AsociadoClient,
   AsociadoEmployee,
   AsociadosSnapshot,
+  AsociadosTrend,
 } from '@/src/types/asociados.types';
 
 const PALETTE = [
@@ -135,4 +136,36 @@ const SNAPSHOT: AsociadosSnapshot = {
 export async function getAsociadosMock(): Promise<AsociadosSnapshot> {
   await new Promise((resolve) => setTimeout(resolve, 120));
   return SNAPSHOT;
+}
+
+// ─── Tendencia (mock con forma de HistoricoEmpXCli) ───────────────────────────
+
+const TREND_MONTHS = [
+  '2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06',
+  '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12',
+];
+
+// Serie determinista alrededor del conteo actual: leve oscilación + tendencia
+// ascendente suave (sin Math.random para mantenerla estable entre cargas).
+function buildTrendCounts(base: number, seed: number): number[] {
+  return TREND_MONTHS.map((_, m) => {
+    const wobble = Math.round(base * 0.22 * Math.sin((m + seed) * 0.85));
+    const trend = Math.round((base * 0.12 * m) / (TREND_MONTHS.length - 1));
+    return Math.max(0, base - Math.round(base * 0.12) + wobble + trend);
+  });
+}
+
+const TREND: AsociadosTrend = {
+  updatedAt: '2026-04-07',
+  months: TREND_MONTHS,
+  series: CLIENT_NAMES.map((name, idx) => ({
+    id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    name,
+    counts: buildTrendCounts(COUNTS[idx] ?? 5, idx + 1),
+  })),
+};
+
+export async function getAsociadosTrendMock(): Promise<AsociadosTrend> {
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  return TREND;
 }

@@ -55,6 +55,7 @@ export const queryKeys = {
   nexiataskResponsibilities: () => ['nexiatask', 'responsibilities'] as const,
   nexiataskTarea: (tareaId: string) => ['nexiatask', 'tarea', tareaId] as const,
   asociadosSnapshot: () => ['asociados', 'snapshot'] as const,
+  asociadosTrend: () => ['asociados', 'trend'] as const,
   bancosSnapshot: () => ['bancos', 'snapshot'] as const,
   segurosSnapshot: () => ['seguros', 'snapshot'] as const,
   pagosSnapshot: () => ['pagos', 'snapshot'] as const,

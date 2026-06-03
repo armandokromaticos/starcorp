@@ -12,10 +12,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
+import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
 import { MlAsociadoClientRow } from '@/src/components/molecules/ml-asociado-client-row';
 import { MlSimpleTotalFooter } from '@/src/components/molecules/ml-simple-total-footer';
 import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-skeleton';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
+import {
+  OrAsociadosTrend,
+  type TrendSeries,
+} from '@/src/components/organisms/or-asociados-trend';
 import {
   OrAsociadosFiltersSheet,
   type AsociadosFilters,
@@ -24,8 +29,10 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
-import { AtToggleSwitch } from '@/src/components/atoms/at-toggle-switch';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients, SEGMENT_PALETTE } from '@/src/theme/gradients';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
+import { useAsociadosTrend } from '@/src/hooks/queries/use-asociados-trend';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
 const MAX_DONUT_SLICES = 8;
@@ -35,10 +42,13 @@ export default function AsociadosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data, isPending } = useAsociados();
+  const { data: trend } = useAsociadosTrend();
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [filtersVisible, setFiltersVisible] = useState(false);
-  const [filtersActive, setFiltersActive] = useState(true);
+  const [vista, setVista] = useState<'participacion' | 'tendencia'>(
+    'participacion',
+  );
   const [filters, setFilters] = useState<AsociadosFilters>({
     area: 'todos',
     clientIds: [],
@@ -60,9 +70,7 @@ export default function AsociadosScreen() {
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [data]);
 
-  const effectiveFilters: AsociadosFilters = filtersActive
-    ? filters
-    : { area: 'todos', clientIds: [] };
+  const effectiveFilters: AsociadosFilters = filters;
 
   const allClientCounts = useMemo(() => {
     const all = data?.clients ?? [];
@@ -124,6 +132,24 @@ export default function AsociadosScreen() {
     [visibleClients],
   );
 
+  // Series de tendencia: reusa el color del cliente (match por id) y respeta
+  // el filtro por cliente si hay alguno seleccionado.
+  const trendSeries = useMemo<TrendSeries[]>(() => {
+    if (!trend) return [];
+    const colorById = new Map(
+      (data?.clients ?? []).map((c) => [c.id, c.color]),
+    );
+    const ids = effectiveFilters.clientIds;
+    return trend.series
+      .filter((s) => ids.length === 0 || ids.includes(s.id))
+      .map((s, i) => ({
+        id: s.id,
+        name: s.name,
+        color: colorById.get(s.id) ?? SEGMENT_PALETTE[i % SEGMENT_PALETTE.length],
+        counts: s.counts,
+      }));
+  }, [trend, data, effectiveFilters.clientIds]);
+
   const hasActiveFilters =
     filters.area !== 'todos' || filters.clientIds.length > 0;
 
@@ -154,14 +180,46 @@ export default function AsociadosScreen() {
           />
         </View>
 
+        {/* Botón para alternar la vista: participación (donut) ↔ tendencia
+            (línea). El label muestra la vista a la que cambia. */}
+        <View className="px-4">
+          <Pressable
+            onPress={() =>
+              setVista((v) =>
+                v === 'participacion' ? 'tendencia' : 'participacion',
+              )
+            }
+            style={{
+              borderRadius: 12,
+              borderCurve: 'continuous',
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(4, 17, 63, 0.35)',
+            }}
+          >
+            <LinearGradient
+              colors={gradients.buttonBlue.colors}
+              start={gradients.buttonBlue.start}
+              end={gradients.buttonBlue.end}
+              style={{
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AtTypography variant="bodyBold" color="#FFFFFF">
+                {vista === 'participacion'
+                  ? 'Ver asociados por tendencia'
+                  : 'Ver asociados por participación'}
+              </AtTypography>
+            </LinearGradient>
+          </Pressable>
+        </View>
+
         <View className="flex-row items-center justify-between px-4">
-          <View className="flex-row items-center gap-3 flex-1">
-            <AtTypography variant="bodyBold">Filtros</AtTypography>
-            <AtToggleSwitch
-              value={filtersActive}
-              onChange={setFiltersActive}
-            />
-            {hasActiveFilters && filtersActive && (
+          <AtTypography variant="bodyBold">Filtros</AtTypography>
+          <View className="flex-row items-center gap-2">
+            {hasActiveFilters && (
               <Pressable
                 onPress={() => setFilters({ area: 'todos', clientIds: [] })}
                 hitSlop={6}
@@ -171,23 +229,14 @@ export default function AsociadosScreen() {
                 </AtTypography>
               </Pressable>
             )}
+            <MlFilterButton
+              active={hasActiveFilters}
+              onPress={() => setFiltersVisible(true)}
+            />
           </View>
-          <Pressable
-            onPress={() => setFiltersVisible(true)}
-            className="rounded-md items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              backgroundColor:
-                hasActiveFilters && filtersActive ? '#E8952E' : '#0F1B4A',
-              borderCurve: 'continuous',
-            }}
-          >
-            <AtIcon name="filter-list" size="md" color="#FFFFFF" />
-          </Pressable>
         </View>
 
-        {hasActiveFilters && filtersActive && (
+        {hasActiveFilters && (
           <View className="flex-row flex-wrap gap-2 px-4">
             {effectiveFilters.area !== 'todos' && (
               <MlFilterChip
@@ -215,16 +264,23 @@ export default function AsociadosScreen() {
         )}
 
         <View className="px-4">
-          <OrCarteraDonut
-            title="Asociados por participación"
-            data={donutData}
-            headerBadge={<AtDeltaIndicator value={1.87} size="sm" />}
-            selectedId={selectedSliceId}
-            onSelectChange={setSelectedSliceId}
-            labelsMode="tap-only"
-            valueFormatter={(v) => `${v} asociados`}
-            emptyHint="Toca un sector para ver el cliente"
-          />
+          {vista === 'participacion' ? (
+            <OrCarteraDonut
+              title="Asociados por participación"
+              data={donutData}
+              headerBadge={<AtDeltaIndicator value={1.87} size="sm" />}
+              selectedId={selectedSliceId}
+              onSelectChange={setSelectedSliceId}
+              labelsMode="tap-only"
+              valueFormatter={(v) => `${v} asociados`}
+              emptyHint="Toca un sector para ver el cliente"
+            />
+          ) : (
+            <OrAsociadosTrend
+              months={trend?.months ?? []}
+              series={trendSeries}
+            />
+          )}
         </View>
       </View>
 

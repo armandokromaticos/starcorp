@@ -9,6 +9,20 @@
 
 export type PolizaStatus = 'activa' | 'por_vencer' | 'vencida';
 
+/**
+ * Opciones del filtro por chips de estado de póliza (Vigente / Por vencer /
+ * Vencido). Compartido por el detalle de compañía y el histórico para
+ * unificar el diseño. Orden = orden de los chips.
+ */
+export const POLIZA_STATUS_FILTERS: readonly {
+  key: PolizaStatus;
+  label: string;
+}[] = [
+  { key: 'activa', label: 'Vigente' },
+  { key: 'por_vencer', label: 'Por vencer' },
+  { key: 'vencida', label: 'Vencido' },
+];
+
 export interface PolizaCompania {
   id: string;
   empresaId: string;

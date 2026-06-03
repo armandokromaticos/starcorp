@@ -21,7 +21,7 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { DonutChart } from '@/src/components/charts/donut-chart';
-import { CLIENT_LEGEND_GRADIENTS } from '@/src/theme/gradients';
+import { SEGMENT_PALETTE, OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 import { formatCurrency } from '@/src/utils/currency';
 import type { ThirdParty } from '@/src/types/domain.types';
 
@@ -33,17 +33,13 @@ interface OrThirdPartiesDonutCardProps {
   data: ThirdParty[];
   selectedId?: string | null;
   onSelectChange?: (id: string | null) => void;
+  /** Hint cuando no hay rodaja seleccionada. */
+  emptyHint?: string;
 }
 
 const DONUT_SIZE = 160;
 const TOP_N = 8;
 export const OTROS_TERCERO_ID = '__otros__';
-const OTROS_COLOR = '#C94E80';
-const OTROS_INNER = '#531D40';
-// La rodaja contigua a "Otros" (último tercero del top-N) va en naranja
-// oscuro para no confundirse con el vino de "Otros", que tiene un tono similar.
-const ADJACENT_COLOR = '#DF6434';
-const ADJACENT_INNER = '#5E2912';
 
 export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
   ({
@@ -54,6 +50,7 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
     data,
     selectedId = null,
     onSelectChange,
+    emptyHint = 'Toca un sector para ver el tercero',
   }) => {
     const total = data.reduce((s, t) => s + t.amount, 0);
     const topN = data.slice(0, TOP_N);
@@ -74,29 +71,23 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
       return hasOtros ? TOP_N : null;
     })();
 
-    // Color del tercero #i del top-N: el último (contiguo a "Otros") va en
-    // naranja oscuro; el resto cicla la paleta de clientes.
-    const topNGradient = (i: number): readonly [string, string] =>
-      hasOtros && i === topN.length - 1
-        ? [ADJACENT_COLOR, ADJACENT_INNER]
-        : CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+    // Color del tercero #i del top-N: cicla la paleta de segmentos (misma
+    // gama que los donuts de informes). El DonutChart oscurece cada tono
+    // automáticamente, así que basta el color plano.
+    const sliceColor = (i: number): string =>
+      SEGMENT_PALETTE[i % SEGMENT_PALETTE.length];
 
     const slices = [
-      ...topN.map((tp, i) => {
-        const grad = topNGradient(i);
-        return {
-          value: tp.amount,
-          color: grad[0],
-          innerColor: grad[1],
-          label: tp.name,
-        };
-      }),
+      ...topN.map((tp, i) => ({
+        value: tp.amount,
+        color: sliceColor(i),
+        label: tp.name,
+      })),
       ...(hasOtros
         ? [
             {
               value: restSum,
-              color: OTROS_COLOR,
-              innerColor: OTROS_INNER,
+              color: OTROS_SEGMENT_COLOR,
               label: 'Otros',
             },
           ]
@@ -188,10 +179,10 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
             if (!isOtros && !tercero) return null;
 
             const dotColor = isOtros
-              ? OTROS_COLOR
+              ? OTROS_SEGMENT_COLOR
               : effectiveIndex != null && effectiveIndex < TOP_N
-                ? topNGradient(effectiveIndex)[0]
-                : OTROS_COLOR;
+                ? sliceColor(effectiveIndex)
+                : OTROS_SEGMENT_COLOR;
             const name = isOtros ? `Otros (${rest.length})` : tercero!.name;
             const amount = isOtros ? restSum : tercero!.amount;
 
@@ -226,6 +217,19 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
               </Pressable>
             );
           })()}
+
+          {/* Hint: invita a tocar una rodaja (mismo patrón que los donuts
+              de informes), mostrado cuando no hay selección. */}
+          {selectedId == null && (
+            <View
+              className="flex-row items-center justify-center"
+              style={{ minHeight: 28 }}
+            >
+              <AtTypography variant="caption" color="#8892A4">
+                {emptyHint}
+              </AtTypography>
+            </View>
+          )}
         </View>
       </View>
     );

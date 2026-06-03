@@ -41,6 +41,8 @@ interface OrPagosCalendarProps {
   bucketsByDate: Record<string, MontoBucket>;
   onChangeMonth: (next: string) => void;
   onSelectDay: (iso: string) => void;
+  /** Día actualmente seleccionado (resaltado), o null. */
+  selectedDay?: string | null;
 }
 
 function pad(n: number): string {
@@ -71,7 +73,14 @@ function formatCompactMoney(value: number): string {
 }
 
 export const OrPagosCalendar = memo<OrPagosCalendarProps>(
-  ({ yearMonth, totalsByDate, bucketsByDate, onChangeMonth, onSelectDay }) => {
+  ({
+    yearMonth,
+    totalsByDate,
+    bucketsByDate,
+    onChangeMonth,
+    onSelectDay,
+    selectedDay = null,
+  }) => {
     const [y, m] = yearMonth.split('-').map(Number);
     const monthIdx = m - 1;
     const total = daysInMonth(y, monthIdx);
@@ -158,6 +167,7 @@ export const OrPagosCalendar = memo<OrPagosCalendarProps>(
                 <DayCell
                   key={`${rowIdx}-${colIdx}`}
                   cell={cell}
+                  selected={!!cell && cell.iso === selectedDay}
                   onPress={cell && cell.total > 0 ? () => onSelectDay(cell.iso) : undefined}
                 />
               ))}
@@ -200,10 +210,11 @@ OrPagosCalendar.displayName = 'OrPagosCalendar';
 
 interface DayCellProps {
   cell: DayCellData | null;
+  selected?: boolean;
   onPress?: () => void;
 }
 
-const DayCell = memo<DayCellProps>(({ cell, onPress }) => {
+const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress }) => {
   if (!cell) {
     return (
       <View
@@ -243,8 +254,8 @@ const DayCell = memo<DayCellProps>(({ cell, onPress }) => {
         aspectRatio: 1,
         backgroundColor: tone.bg,
         borderRadius: 6,
-        borderWidth: 1,
-        borderColor: tone.border,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? '#1A1F36' : tone.border,
         padding: 4,
         borderCurve: 'continuous',
         justifyContent: 'space-between',

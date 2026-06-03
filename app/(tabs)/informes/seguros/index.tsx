@@ -28,8 +28,7 @@ import {
   formatVigenciaDate,
   polizaStatus,
   type PolizaCompania,
-  type PolizaPropiedad,
-  type PolizaVehiculo,
+  type PolizaStatus,
 } from '@/src/types/seguros.types';
 
 function buildSubline(vigenciaFin: string, todayIso: string): string {
@@ -107,6 +106,17 @@ export default function SegurosScreen() {
   const goEmpresa = (id: string) =>
     router.push(`/(tabs)/informes/seguros/companias/${id}` as never);
 
+  // Navega al detalle de la empresa ubicando la póliza en su estado correcto.
+  const goPoliza = (
+    empresaId: string,
+    polizaId: string,
+    status: PolizaStatus,
+  ) =>
+    router.push({
+      pathname: '/(tabs)/informes/seguros/companias/[companyId]',
+      params: { companyId: empresaId, polizaId, status },
+    } as never);
+
   return (
     <View
       className="flex-1 bg-bg-secondary"
@@ -179,7 +189,7 @@ export default function SegurosScreen() {
                 name={p.nombre}
                 subline={buildSubline(p.vigenciaFin, todayIso)}
                 variant="por_vencer"
-                onPress={() => goEmpresa(p.empresaId)}
+                onPress={() => goPoliza(p.empresaId, p.id, 'por_vencer')}
               />
             ))}
           </View>
@@ -199,7 +209,7 @@ export default function SegurosScreen() {
                 name={p.nombre}
                 subline={buildSubline(p.vigenciaFin, todayIso)}
                 variant="vencida"
-                onPress={() => goEmpresa(p.empresaId)}
+                onPress={() => goPoliza(p.empresaId, p.id, 'vencida')}
               />
             ))}
           </View>

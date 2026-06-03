@@ -45,6 +45,7 @@ export const OrTaskDetailCard = memo<OrTaskDetailCardProps>(({ tarea }) => {
   const pct = Number.isFinite(tarea.cumplimientoPct)
     ? tarea.cumplimientoPct
     : 0;
+  const subtitle = tarea.descripcion?.trim();
 
   return (
     <View
@@ -54,17 +55,8 @@ export const OrTaskDetailCard = memo<OrTaskDetailCardProps>(({ tarea }) => {
         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
       }}
     >
-      <AtTypography variant="bodyBold" color="#1A1F36">
-        {tarea.departamentoNombre || "Sin Departamento"}
-      </AtTypography>
-
-      <View className="flex-row justify-between items-center gap-3">
-        <View className="flex-row flex-1 items-center gap-2">
-          <AtIcon name="check-circle" size={18} color="#5B82E6" />
-          <AtTypography variant="bodyBold" color="#1A1F36" numberOfLines={2}>
-            {tarea.titulo}
-          </AtTypography>
-        </View>
+      {/* Estado: pill solo, alineado a la derecha */}
+      <View className="flex-row justify-end">
         <LinearGradient
           colors={stateColors}
           start={{ x: 0, y: 0 }}
@@ -83,6 +75,26 @@ export const OrTaskDetailCard = memo<OrTaskDetailCardProps>(({ tarea }) => {
             {stateLabel}
           </AtTypography>
         </LinearGradient>
+      </View>
+
+      {/* Título grande (tarea) + subtítulo (descripción) con check */}
+      <View className="gap-2">
+        <AtTypography variant="h3" color="#1A1F36" numberOfLines={3}>
+          {tarea.titulo}
+        </AtTypography>
+        {!!subtitle && (
+          <View className="flex-row items-center gap-2">
+            <AtIcon name="checklist" size={20} color="#1A1F36" />
+            <AtTypography
+              variant="bodyBold"
+              color="#1A1F36"
+              numberOfLines={2}
+              className="flex-1"
+            >
+              {subtitle}
+            </AtTypography>
+          </View>
+        )}
       </View>
 
       <View className="gap-2">

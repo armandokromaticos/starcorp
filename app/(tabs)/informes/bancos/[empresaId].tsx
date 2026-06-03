@@ -61,7 +61,7 @@ export default function BancoEmpresaDetailScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerClassName="gap-4 pb-6"
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -128,13 +128,22 @@ export default function BancoEmpresaDetailScreen() {
             />
           ))}
         </View>
-
-        {empresa && empresa.cuentas.length > 0 && (
-          <View className="px-4">
-            <MlSimpleTotalFooter value={formatTotal(total)} />
-          </View>
-        )}
       </ScrollView>
+
+      {/* Total fijo: queda anclado al fondo de la pantalla, fuera del
+          ScrollView, para que siempre sea visible al recorrer las cuentas. */}
+      {empresa && empresa.cuentas.length > 0 && (
+        <View
+          className="px-4 pt-3 bg-bg-secondary"
+          style={{
+            paddingBottom: insets.bottom + 12,
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(0,0,0,0.06)',
+          }}
+        >
+          <MlSimpleTotalFooter value={formatTotal(total)} />
+        </View>
+      )}
 
       <OrDrawer
         visible={drawerVisible}

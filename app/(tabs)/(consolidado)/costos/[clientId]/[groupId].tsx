@@ -93,6 +93,7 @@ export default function CostosTercerosScreen() {
             data={data}
             selectedId={selectedTerceroId}
             onSelectChange={setSelectedTerceroId}
+            emptyHint="Toca un sector para ver el tercero"
           />
         ) : undefined
       }
