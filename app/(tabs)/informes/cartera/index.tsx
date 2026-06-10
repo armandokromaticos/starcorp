@@ -16,7 +16,11 @@ import { MlAgingTabsBar } from '@/src/components/molecules/ml-aging-tabs-bar';
 import { MlUpdatedAtCard } from '@/src/components/molecules/ml-updated-at-card';
 import { MlFilterChip } from '@/src/components/molecules/ml-filter-chip';
 import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
-import { MlCarteraClientRow } from '@/src/components/molecules/ml-cartera-client-row';
+import {
+  MlCarteraClientRow,
+  CARTERA_BUCKET_COL_W,
+  CARTERA_TOTAL_COL_W,
+} from '@/src/components/molecules/ml-cartera-client-row';
 import { MlCarteraTotalFooter } from '@/src/components/molecules/ml-cartera-total-footer';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import {
@@ -33,8 +37,10 @@ import {
   AGING_BUCKET_LABEL,
   type AgingBucket,
 } from '@/src/types/cartera.types';
+import { donutColorAt, DONUT_MAX_NAMED } from '@/src/utils/donut';
+import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 
-const MAX_DONUT_SLICES = 8;
+const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
 
 export default function CarteraScreen() {
   const insets = useSafeAreaInsets();
@@ -51,7 +57,7 @@ export default function CarteraScreen() {
   const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
-  const visibleClients = useMemo(() => {
+  const baseClients = useMemo(() => {
     const all = data?.clients ?? [];
     const filtered = filters.clientIds.length
       ? all.filter((c) => filters.clientIds.includes(c.id))
@@ -60,21 +66,33 @@ export default function CarteraScreen() {
     const searched = q
       ? filtered.filter((c) => c.name.toLowerCase().includes(q))
       : filtered;
-    return [...searched].sort((a, b) => b.total - a.total);
+    // Color por posición (mayor→menor): el sector más grande siempre naranja;
+    // del 8º en adelante (agrupados en "Otros") va remolacha. Así donut, dots
+    // de la lista y tendencia quedan consistentes.
+    return [...searched]
+      .sort((a, b) => b.total - a.total)
+      .map((c, i) => ({ ...c, color: donutColorAt(i) }));
   }, [data, filters, search]);
 
+  // Clientes agrupados bajo el sector "Otros" del donut (los que quedan
+  // fuera del top MAX_DONUT_SLICES). Vacío cuando no hay agrupación.
+  const otrosClientIds = useMemo(() => {
+    if (baseClients.length <= MAX_DONUT_SLICES) return [];
+    return baseClients.slice(MAX_DONUT_SLICES).map((c) => c.id);
+  }, [baseClients]);
+
   const donutData = useMemo(() => {
-    if (!visibleClients.length) return [];
-    if (visibleClients.length <= MAX_DONUT_SLICES) {
-      return visibleClients.map((c) => ({
+    if (!baseClients.length) return [];
+    if (baseClients.length <= MAX_DONUT_SLICES) {
+      return baseClients.map((c) => ({
         id: c.id,
         value: c.total,
         color: c.color,
         label: c.name,
       }));
     }
-    const top = visibleClients.slice(0, MAX_DONUT_SLICES);
-    const rest = visibleClients.slice(MAX_DONUT_SLICES);
+    const top = baseClients.slice(0, MAX_DONUT_SLICES);
+    const rest = baseClients.slice(MAX_DONUT_SLICES);
     return [
       ...top.map((c) => ({
         id: c.id,
@@ -85,11 +103,26 @@ export default function CarteraScreen() {
       {
         id: 'otros',
         value: rest.reduce((s, c) => s + c.total, 0),
-        color: '#6B7280',
+        color: OTROS_SEGMENT_COLOR,
         label: 'Otros',
       },
     ];
-  }, [visibleClients]);
+  }, [baseClients]);
+
+  // Lista filtrada por el sector seleccionado en el donut. El sector
+  // "Otros" agrupa varios clientes; un sector normal corresponde a uno.
+  const visibleClients = useMemo(() => {
+    if (!selectedSliceId) return baseClients;
+    if (selectedSliceId === 'otros') {
+      const ids = new Set(otrosClientIds);
+      return baseClients.filter((c) => ids.has(c.id));
+    }
+    return baseClients.filter((c) => c.id === selectedSliceId);
+  }, [baseClients, selectedSliceId, otrosClientIds]);
+
+  // Cuando la lista queda en un único cliente, se muestra expandido con
+  // todos los buckets; el header y footer se simplifican a Cliente/Total.
+  const isSingleClient = visibleClients.length === 1;
 
   const totals = useMemo(() => {
     const bucketTotal = visibleClients.reduce(
@@ -102,11 +135,12 @@ export default function CarteraScreen() {
 
   const bucketIndex = AGING_BUCKETS.indexOf(selectedBucket);
   const goPrevBucket = () => {
-    if (bucketIndex > 0) setSelectedBucket(AGING_BUCKETS[bucketIndex - 1]);
+    const n = AGING_BUCKETS.length;
+    setSelectedBucket(AGING_BUCKETS[(bucketIndex - 1 + n) % n]);
   };
   const goNextBucket = () => {
-    if (bucketIndex < AGING_BUCKETS.length - 1)
-      setSelectedBucket(AGING_BUCKETS[bucketIndex + 1]);
+    const n = AGING_BUCKETS.length;
+    setSelectedBucket(AGING_BUCKETS[(bucketIndex + 1) % n]);
   };
 
   const clientOptions = useMemo(
@@ -128,7 +162,7 @@ export default function CarteraScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 96 + insets.bottom }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -227,62 +261,81 @@ export default function CarteraScreen() {
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between px-4">
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            Cliente
-          </AtTypography>
-          <View className="flex-row items-center gap-6">
-            <View className="flex-row items-center gap-1">
-              <Pressable onPress={goPrevBucket} hitSlop={6}>
-                <AtIcon name="chevron-left" size="md" color="#1A1F36" />
-              </Pressable>
-              <AtTypography variant="bodyBold" color="#1A1F36">
-                {AGING_BUCKET_LABEL[selectedBucket]}
-              </AtTypography>
-              <Pressable onPress={goNextBucket} hitSlop={6}>
-                <AtIcon name="chevron-right" size="md" color="#1A1F36" />
-              </Pressable>
-            </View>
-            <AtTypography variant="bodyBold" color="#1A1F36">
-              Total
+        <View className="gap-2">
+          <View className="flex-row items-center px-4 gap-3">
+            <AtTypography
+              variant="captionBold"
+              color="#1A1F36"
+              className="flex-1"
+              style={{ marginLeft: 22 }}
+            >
+              Cliente
             </AtTypography>
+            {!isSingleClient && (
+              <View
+                style={{ width: CARTERA_BUCKET_COL_W }}
+                className="flex-row items-center justify-end gap-0.5"
+              >
+                <Pressable onPress={goPrevBucket} hitSlop={6}>
+                  <AtIcon name="chevron-left" size="sm" color="#1A1F36" />
+                </Pressable>
+                <AtTypography variant="captionBold" color="#1A1F36">
+                  {AGING_BUCKET_LABEL[selectedBucket]}
+                </AtTypography>
+                <Pressable onPress={goNextBucket} hitSlop={6}>
+                  <AtIcon name="chevron-right" size="sm" color="#1A1F36" />
+                </Pressable>
+              </View>
+            )}
+            <View
+              style={{ width: CARTERA_TOTAL_COL_W }}
+              className="items-center"
+            >
+              <AtTypography variant="captionBold" color="#1A1F36">
+                Total
+              </AtTypography>
+            </View>
+          </View>
+
+          <View className="gap-2 px-4">
+            {isPending && <MlReportListSkeleton />}
+            {!isPending && visibleClients.length === 0 && (
+              <AtTypography variant="caption" color="#8892A4">
+                Sin clientes que coincidan con los filtros.
+              </AtTypography>
+            )}
+            {visibleClients.map((c) => (
+              <MlCarteraClientRow
+                key={c.id}
+                name={c.name}
+                color={c.color}
+                activeBucket={selectedBucket}
+                buckets={c.buckets}
+                total={c.total}
+                expanded={isSingleClient || expandedClientId === c.id}
+                onToggle={() =>
+                  setExpandedClientId((cur) => (cur === c.id ? null : c.id))
+                }
+                onOpenDetail={() =>
+                  router.push(`/(tabs)/informes/cartera/${c.id}` as never)
+                }
+              />
+            ))}
           </View>
         </View>
-
-        <View className="gap-2 px-4">
-          {isPending && <MlReportListSkeleton />}
-          {!isPending && visibleClients.length === 0 && (
-            <AtTypography variant="caption" color="#8892A4">
-              Sin clientes que coincidan con los filtros.
-            </AtTypography>
-          )}
-          {visibleClients.map((c) => (
-            <MlCarteraClientRow
-              key={c.id}
-              name={c.name}
-              color={c.color}
-              activeBucket={selectedBucket}
-              buckets={c.buckets}
-              total={c.total}
-              expanded={expandedClientId === c.id}
-              onToggle={() =>
-                setExpandedClientId((cur) => (cur === c.id ? null : c.id))
-              }
-              onOpenDetail={() =>
-                router.push(`/(tabs)/informes/cartera/${c.id}` as never)
-              }
-            />
-          ))}
-        </View>
-
-        <View className="px-4">
-          <MlCarteraTotalFooter
-            bucketLabel={AGING_BUCKET_LABEL[selectedBucket]}
-            bucketValue={totals.bucketTotal}
-            totalValue={totals.grandTotal}
-          />
-        </View>
       </ScrollView>
+
+      <View
+        className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
+        style={{ paddingBottom: Math.max(insets.bottom - 8, 4) }}
+      >
+        <MlCarteraTotalFooter
+          showBucket={!isSingleClient}
+          bucketLabel={AGING_BUCKET_LABEL[selectedBucket]}
+          bucketValue={totals.bucketTotal}
+          totalValue={totals.grandTotal}
+        />
+      </View>
 
       <OrCarteraFiltersSheet
         visible={filtersVisible}

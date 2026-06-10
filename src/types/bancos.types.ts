@@ -11,8 +11,10 @@ export interface BancoCuenta {
   name: string;
   /** Código corto mostrado bajo el nombre (ej. "CK 0932"). */
   code: string;
-  /** Color del bar chart y del dot en la lista. */
+  /** Color sólido del dot en la lista (primer color del degradado). */
   color: string;
+  /** Degradado completo de la barra (primer color arriba → último abajo). */
+  gradient?: readonly string[];
   /** Saldo en USD. */
   balance: number;
 }
@@ -24,6 +26,11 @@ export interface BancoEmpresa {
   balance: number | null;
   /** Variación porcentual vs periodo anterior. */
   deltaPct: number;
+  /**
+   * ISO datetime de la última actualización de las cuentas en QB
+   * (máx. MetaData.LastUpdatedTime). null si no hay cuentas conectadas.
+   */
+  lastUpdatedAt: string | null;
   cuentas: BancoCuenta[];
 }
 

@@ -25,6 +25,7 @@ import { MlPagoCard } from '@/src/components/molecules/ml-pago-card';
 import { MlFilterButton } from '@/src/components/molecules/ml-filter-button';
 import { MlSimpleTotalFooter } from '@/src/components/molecules/ml-simple-total-footer';
 import { OrPagosCalendar } from '@/src/components/organisms/or-pagos-calendar';
+import { OrPagoDayDetailSheet } from '@/src/components/organisms/or-pago-day-detail-sheet';
 import { OrPagosFiltersSheet } from '@/src/components/organisms/or-pagos-filters-sheet';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
@@ -40,6 +41,10 @@ import {
   type PagosFilters,
 } from '@/src/types/pagos.types';
 import { formatCurrency } from '@/src/utils/currency';
+import { buildDonutSlices } from '@/src/utils/donut';
+
+/** Id del sector "Otros" del donut (sentinela; no choca con la empresa real). */
+const PAGOS_OTROS_ID = '__otros_donut__';
 
 function inRange(iso: string, from: string | null, to: string | null): boolean {
   if (from && iso < from) return false;
@@ -58,6 +63,7 @@ export default function PagosScreen() {
   const [filters, setFilters] = useState<PagosFilters>(EMPTY_PAGOS_FILTERS);
   const [yearMonth, setYearMonth] = useState('2026-03');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [detailDay, setDetailDay] = useState<string | null>(null);
   const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
@@ -110,33 +116,45 @@ export default function PagosScreen() {
   }, [filteredPagos]);
 
   // El donut de empresa generadora es del día seleccionado (su detalle).
-  const donutData = useMemo(() => {
-    if (!data || !selectedDay) return [];
+  // Color por posición (mayor→menor, empieza en naranja); del 8º en adelante
+  // se agrupa en "Otros" (remolacha).
+  const { donutData, donutOtrosIds } = useMemo(() => {
+    if (!data || !selectedDay) return { donutData: [], donutOtrosIds: [] };
     const source = filteredPagos.filter((p) => p.fecha === selectedDay);
     const totals = new Map<string, number>();
     for (const p of source) {
       totals.set(p.empresaId, (totals.get(p.empresaId) ?? 0) + p.monto);
     }
-    return data.empresas
-      .filter((e) => totals.has(e.id))
-      .map((e) => ({
-        id: e.id,
-        value: totals.get(e.id) ?? 0,
-        color: e.color,
-        label: e.name,
-      }));
+    const nameById = new Map(data.empresas.map((e) => [e.id, e.name]));
+    const sorted = [...totals.entries()]
+      .map(([id, value]) => ({ id, value, label: nameById.get(id) ?? id }))
+      .sort((a, b) => b.value - a.value);
+    const { slices, otrosIds } = buildDonutSlices(sorted, {
+      id: PAGOS_OTROS_ID,
+      label: 'Otros',
+    });
+    return { donutData: slices, donutOtrosIds: otrosIds };
   }, [data, filteredPagos, selectedDay]);
 
   // Lista de abajo: cuando hay un día seleccionado en el calendario, se
   // filtra a ese día. El calendario (totalsByDate / donut / totales del mes)
   // sigue usando `filteredPagos` completo para no vaciar el heatmap.
-  const listaPagos = useMemo(
-    () =>
-      selectedDay
-        ? filteredPagos.filter((p) => p.fecha === selectedDay)
-        : filteredPagos,
-    [filteredPagos, selectedDay],
-  );
+  const listaPagos = useMemo(() => {
+    let base = selectedDay
+      ? filteredPagos.filter((p) => p.fecha === selectedDay)
+      : filteredPagos;
+    // En la vista donut, el segmento seleccionado (empresa) filtra la lista.
+    // El sector "Otros" agrupa varias empresas (las que quedaron fuera del top).
+    if (vista === 'donut' && selectedSliceId) {
+      if (selectedSliceId === PAGOS_OTROS_ID) {
+        const ids = new Set(donutOtrosIds);
+        base = base.filter((p) => ids.has(p.empresaId));
+      } else {
+        base = base.filter((p) => p.empresaId === selectedSliceId);
+      }
+    }
+    return base;
+  }, [filteredPagos, selectedDay, vista, selectedSliceId, donutOtrosIds]);
 
   const listaTotal = useMemo(
     () => listaPagos.reduce((s, p) => s + p.monto, 0),
@@ -150,9 +168,12 @@ export default function PagosScreen() {
     effective.centroCostosIds.length > 0 ||
     effective.empleadoIds.length > 0;
 
-  // Toggle del día como filtro de la lista: tocar el mismo día lo deselecciona.
-  const handleSelectDay = (iso: string) =>
-    setSelectedDay((prev) => (prev === iso ? null : iso));
+  // Tocar un día abre el sheet "Detalle del día" y lo selecciona como filtro
+  // de la lista (se deselecciona desde el chip "Día: ...").
+  const handleSelectDay = (iso: string) => {
+    setSelectedDay(iso);
+    setDetailDay(iso);
+  };
 
   // El botón "Ver total por empresa generadora" solo se habilita cuando hay un
   // día seleccionado (el detalle por empresa es de ese día). En la vista donut
@@ -396,6 +417,15 @@ export default function PagosScreen() {
                 empleado={empleadosMap.get(p.empleadoId) ?? '—'}
                 concepto={p.concepto}
                 fecha={p.fecha}
+                onPress={
+                  vista === 'donut'
+                    ? () =>
+                        setSelectedSliceId((cur) =>
+                          cur === p.empresaId ? null : p.empresaId,
+                        )
+                    : undefined
+                }
+                selected={vista === 'donut' && selectedSliceId === p.empresaId}
               />
             );
           })}
@@ -407,9 +437,9 @@ export default function PagosScreen() {
           para que siempre sea visible al recorrer la lista de pagos. */}
       {listaPagos.length > 0 && (
         <View
-          className="px-4 pt-3 bg-bg-secondary"
+          className="px-4 pt-1 bg-bg-secondary"
           style={{
-            paddingBottom: insets.bottom + 12,
+            paddingBottom: Math.max(insets.bottom - 8, 4),
             borderTopWidth: 1,
             borderTopColor: 'rgba(0,0,0,0.06)',
           }}
@@ -417,6 +447,16 @@ export default function PagosScreen() {
           <MlSimpleTotalFooter value={formatTotal(listaTotal)} />
         </View>
       )}
+
+      <OrPagoDayDetailSheet
+        visible={!!detailDay}
+        onClose={() => setDetailDay(null)}
+        iso={detailDay}
+        total={detailDay ? (totalsByDate[detailDay] ?? 0) : 0}
+        bucket={
+          (detailDay && data?.dayBuckets[detailDay]) || 'medio'
+        }
+      />
 
       <OrPagosFiltersSheet
         visible={filtersVisible}

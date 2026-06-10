@@ -7,7 +7,7 @@
  * - <25%       → vino tinto (atrasado / crítico)
  *
  * Si se pasa `label` se renderiza ese texto en vez del %; útil para
- * estados nominales como "Completado" o "Activa".
+ * estados nominales como "Completado" o "En progreso".
  */
 
 import React, { memo } from 'react';

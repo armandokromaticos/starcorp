@@ -48,6 +48,7 @@ export default function BancoEmpresaDetailScreen() {
       (empresa?.cuentas ?? []).map((c) => ({
         value: c.balance,
         color: c.color,
+        gradient: c.gradient,
       })),
     [empresa],
   );
@@ -134,9 +135,9 @@ export default function BancoEmpresaDetailScreen() {
           ScrollView, para que siempre sea visible al recorrer las cuentas. */}
       {empresa && empresa.cuentas.length > 0 && (
         <View
-          className="px-4 pt-3 bg-bg-secondary"
+          className="px-4 pt-1 bg-bg-secondary"
           style={{
-            paddingBottom: insets.bottom + 12,
+            paddingBottom: Math.max(insets.bottom - 8, 4),
             borderTopWidth: 1,
             borderTopColor: 'rgba(0,0,0,0.06)',
           }}

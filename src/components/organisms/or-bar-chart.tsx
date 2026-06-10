@@ -26,7 +26,7 @@ interface OrBarChartProps {
   /** When true, renders dashed horizontal gridlines at each Y-axis tick */
   dashedGridlines?: boolean;
   /** Override the gradient palette cycled per bar. Defaults to BAR_GRADIENTS. */
-  palette?: ReadonlyArray<readonly [string, string]>;
+  palette?: readonly (readonly string[])[];
 }
 
 function formatAxis(v: number): string {
@@ -125,7 +125,7 @@ export const OrBarChart = memo<OrBarChartProps>(
                       }}
                     >
                       <LinearGradient
-                        colors={gradient as [string, string]}
+                        colors={gradient as readonly [string, string, ...string[]]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
                         style={{

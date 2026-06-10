@@ -15,6 +15,10 @@ function formatMoney(value: number): string {
   return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Ancho de la columna de monto, compartido con el encabezado "Monto"
+// del detalle de cartera (app/(tabs)/informes/cartera/[clientId].tsx).
+export const INVOICE_AMOUNT_COL_W = 110;
+
 function formatDate(iso: string): string {
   const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
   if (Number.isNaN(d.getTime())) return iso;
@@ -37,7 +41,7 @@ export const MlInvoiceRow = memo<MlInvoiceRowProps>(
     const overdue = daysOverdue < 0;
     return (
       <View>
-        <View className="flex-row items-center px-4 py-3 gap-3">
+        <View className="flex-row items-start px-4 py-3 gap-3">
           <View className="flex-1 gap-2">
             <View className="flex-row gap-6">
               <View className="flex-1 gap-0.5">
@@ -75,7 +79,14 @@ export const MlInvoiceRow = memo<MlInvoiceRowProps>(
               </View>
             </View>
           </View>
-          <AtTypography variant="bodyBold">{formatMoney(amount)}</AtTypography>
+          <View style={{ width: INVOICE_AMOUNT_COL_W }} className="items-start">
+            <AtTypography
+              variant="bodyBold"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {formatMoney(amount)}
+            </AtTypography>
+          </View>
         </View>
         {showDivider && <AtDivider className="mx-4" />}
       </View>

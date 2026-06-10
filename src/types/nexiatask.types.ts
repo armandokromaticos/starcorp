@@ -14,26 +14,44 @@ export type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'
 
 // ─── Raw API shape (1:1 con el doc de integración) ──────────────
 
+/**
+ * Estados válidos de `GET /api/integration/avance` (doc 2026-06).
+ * `include_completed=true` agrega "Aprobada / Cerrada" y "No realizada".
+ */
 export type NexiataskEstado =
-  | 'Activa'
+  | 'Pendiente'
   | 'En progreso'
-  | 'Completado'
-  | 'No realizada'
-  | 'Cerrada';
+  | 'Recurrente'
+  | 'Bloqueada'
+  | 'En espera de cliente'
+  | 'En espera de usuario/Presidencia'
+  | 'Lista para revisión'
+  | 'Devuelta / Requiere ajustes'
+  | 'Aprobada / Cerrada'
+  | 'No realizada';
 
 export type NexiataskPrioridad = 'Alta' | 'Media' | 'Baja';
 
+/**
+ * Una tarea dentro de `GET /api/integration/avance`. El endpoint
+ * `/seguimiento` fue reemplazado por `/avance`: ya no trae `descripcion`
+ * ni `resultado`; el narrativo semanal vive en `seguimiento`, y
+ * `responsabilidad` expone por fin la iniciativa padre (antes la
+ * agrupábamos con un heurístico — ver docs/nexiatask-backend-pendientes.md).
+ */
 export interface NexiataskTareaRaw {
   departamento: string;
   responsable: string;
+  /** Iniciativa / responsabilidad padre ("Desarrollo de cuentas PATRIOT") */
+  responsabilidad: string;
   tarea_id: string;
   tarea: string;
-  descripcion: string;
   objetivo: string;
   meta: string;
   estado: NexiataskEstado | string;
   prioridad: NexiataskPrioridad | string;
-  /** ISO con TZ ("2026-05-19T01:47:52.124904+00:00") o "YYYY-MM-DD" */
+  es_recurrente: boolean;
+  /** ISO con TZ ("2026-05-19T01:47:52.124904+00:00"), "YYYY-MM-DD" o "" */
   fecha_limite: string;
   /** API devuelve `""` cuando no aplica, no `null` */
   completada_en: string | null;
@@ -41,15 +59,38 @@ export interface NexiataskTareaRaw {
   /** Sábado de la semana — ISO con TZ ("2026-05-16T00:00:00+00:00") o "YYYY-MM-DD" */
   semana: string;
   actualizado: boolean;
-  resultado: string;
+  /** Narrativo del avance de la semana ("Esta semana se realizaron 3 visitas…") */
+  seguimiento: string;
   /** 0-100; `null` cuando aún no se ha medido */
   cumplimiento_pct: number | null;
   bloqueo: string;
   apoyo_requerido: string;
 }
 
-export interface NexiataskSeguimientoResponse {
+/** Respuesta de `GET /api/integration/avance` */
+export interface NexiataskAvanceResponse {
+  /** Etiqueta legible: "30/05 – 05/06/2026" */
+  semana: string;
+  /** Sábado de inicio en ISO ("2026-05-30T00:00:00+00:00") */
+  week_start: string;
+  total_tareas: number;
+  actualizadas: number;
+  sin_actualizar: number;
   tareas: NexiataskTareaRaw[];
+}
+
+/** Respuesta de `GET /api/integration/kpis` */
+export interface NexiataskKpisResponse {
+  total_tareas: number;
+  tareas_activas: number;
+  tareas_cerradas: number;
+  tareas_vencidas: number;
+  tareas_bloqueadas: number;
+  tareas_recurrentes: number;
+  /** Tasa de completado (%) */
+  tasa_completado: number;
+  por_estado: Record<string, number>;
+  por_prioridad: Record<string, number>;
 }
 
 // ─── UI-shaped tree (agrupado client-side) ──────────────────────
@@ -57,8 +98,12 @@ export interface NexiataskSeguimientoResponse {
 export interface NexiataskTarea {
   id: string;
   titulo: string;
-  descripcion: string;
+  /** Iniciativa / responsabilidad padre (de `raw.responsabilidad`) */
+  responsabilidad: string;
+  /** Narrativo del avance de la semana (de `raw.seguimiento`) */
+  seguimiento: string;
   estado: NexiataskEstado | string;
+  esRecurrente: boolean;
   /** 0-100; ya coalescido (null → 0) en el adapter */
   cumplimientoPct: number;
   semanaLabel: string;

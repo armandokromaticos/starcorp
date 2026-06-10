@@ -1,8 +1,9 @@
 /**
  * Informe Asociados activos — pantalla principal.
  *
- * Cabecera fija (search global, breadcrumb, filtros, donut). Sólo la
- * lista inferior scrollea. El donut soporta tap para resaltar slice.
+ * Todo el contenido (search, breadcrumb, filtros, donut y lista) scrollea;
+ * sólo el footer de total queda fijo abajo. Tap en un sector del donut
+ * filtra la lista de clientes de abajo.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -30,12 +31,13 @@ import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, SEGMENT_PALETTE } from '@/src/theme/gradients';
+import { gradients, SEGMENT_PALETTE, OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
 import { useAsociadosTrend } from '@/src/hooks/queries/use-asociados-trend';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import { donutColorAt, DONUT_MAX_NAMED } from '@/src/utils/donut';
 
-const MAX_DONUT_SLICES = 8;
+const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
 const VARIOS_ID = '__varios__';
 
 export default function AsociadosScreen() {
@@ -86,46 +88,79 @@ export default function AsociadosScreen() {
     });
   }, [data, effectiveFilters]);
 
+  // Filas con asociados, ordenadas por conteo (base del donut y del
+  // agrupamiento "Varios").
+  const sortedByCount = useMemo(
+    () =>
+      allClientCounts
+        .filter((r) => r.count > 0)
+        .sort((a, b) => b.count - a.count),
+    [allClientCounts],
+  );
+
+  // Clientes agrupados bajo el sector "Varios" (fuera del top MAX_DONUT_SLICES).
+  const variosClientIds = useMemo(() => {
+    if (sortedByCount.length <= MAX_DONUT_SLICES) return [];
+    return sortedByCount.slice(MAX_DONUT_SLICES).map((r) => r.client.id);
+  }, [sortedByCount]);
+
+  // Color por posición (mayor→menor): el sector más grande siempre naranja;
+  // del 8º en adelante (agrupados en "Varios") va remolacha. Mantiene donut,
+  // dots de la lista y tendencia consistentes.
+  const colorByClientId = useMemo(
+    () =>
+      new Map(sortedByCount.map((r, i) => [r.client.id, donutColorAt(i)])),
+    [sortedByCount],
+  );
+
   const donutData = useMemo(() => {
-    const rows = allClientCounts
-      .filter((r) => r.count > 0)
-      .sort((a, b) => b.count - a.count);
-    if (!rows.length) return [];
-    if (rows.length <= MAX_DONUT_SLICES) {
-      return rows.map((r) => ({
+    if (!sortedByCount.length) return [];
+    if (sortedByCount.length <= MAX_DONUT_SLICES) {
+      return sortedByCount.map((r) => ({
         id: r.client.id,
         value: r.count,
-        color: r.client.color,
+        color: colorByClientId.get(r.client.id) ?? r.client.color,
         label: r.client.name,
       }));
     }
-    const top = rows.slice(0, MAX_DONUT_SLICES);
-    const rest = rows.slice(MAX_DONUT_SLICES);
+    const top = sortedByCount.slice(0, MAX_DONUT_SLICES);
+    const rest = sortedByCount.slice(MAX_DONUT_SLICES);
     return [
       ...top.map((r) => ({
         id: r.client.id,
         value: r.count,
-        color: r.client.color,
+        color: colorByClientId.get(r.client.id) ?? r.client.color,
         label: r.client.name,
       })),
       {
         id: VARIOS_ID,
         value: rest.reduce((s, r) => s + r.count, 0),
-        color: '#6B7280',
+        color: OTROS_SEGMENT_COLOR,
         label: 'Varios',
       },
     ];
-  }, [allClientCounts]);
+  }, [sortedByCount, colorByClientId]);
 
+  // Lista filtrada por el sector seleccionado en el donut. "Varios" agrupa
+  // varios clientes; un sector normal corresponde a uno solo.
   const visibleClients = useMemo(() => {
+    let base = allClientCounts;
+    if (selectedSliceId) {
+      if (selectedSliceId === VARIOS_ID) {
+        const ids = new Set(variosClientIds);
+        base = base.filter((r) => ids.has(r.client.id));
+      } else {
+        base = base.filter((r) => r.client.id === selectedSliceId);
+      }
+    }
     const q = search.trim().toLowerCase();
     const searched = q
-      ? allClientCounts.filter((r) =>
-          r.client.name.toLowerCase().includes(q),
-        )
-      : allClientCounts;
-    return [...searched].sort((a, b) => a.client.name.localeCompare(b.client.name));
-  }, [allClientCounts, search]);
+      ? base.filter((r) => r.client.name.toLowerCase().includes(q))
+      : base;
+    return [...searched].sort((a, b) =>
+      a.client.name.localeCompare(b.client.name),
+    );
+  }, [allClientCounts, selectedSliceId, variosClientIds, search]);
 
   const total = useMemo(
     () => visibleClients.reduce((s, r) => s + r.count, 0),
@@ -136,36 +171,44 @@ export default function AsociadosScreen() {
   // el filtro por cliente si hay alguno seleccionado.
   const trendSeries = useMemo<TrendSeries[]>(() => {
     if (!trend) return [];
-    const colorById = new Map(
-      (data?.clients ?? []).map((c) => [c.id, c.color]),
-    );
     const ids = effectiveFilters.clientIds;
     return trend.series
       .filter((s) => ids.length === 0 || ids.includes(s.id))
       .map((s, i) => ({
         id: s.id,
         name: s.name,
-        color: colorById.get(s.id) ?? SEGMENT_PALETTE[i % SEGMENT_PALETTE.length],
+        color:
+          colorByClientId.get(s.id) ??
+          SEGMENT_PALETTE[i % SEGMENT_PALETTE.length],
         counts: s.counts,
       }));
-  }, [trend, data, effectiveFilters.clientIds]);
+  }, [trend, colorByClientId, effectiveFilters.clientIds]);
 
   const hasActiveFilters =
     filters.area !== 'todos' || filters.clientIds.length > 0;
 
-  // Reset selección si la slice ya no existe (cambió filtro/data)
+  // Reset selección si la slice ya no existe (cambió filtro/data). Sólo
+  // aplica a la vista de participación: en tendencia se puede seleccionar
+  // un cliente que no es slice del donut (agrupado en "Varios").
   React.useEffect(() => {
+    if (vista !== 'participacion') return;
     if (selectedSliceId && !donutData.some((s) => s.id === selectedSliceId)) {
       setSelectedSliceId(null);
     }
-  }, [donutData, selectedSliceId]);
+  }, [vista, donutData, selectedSliceId]);
 
   return (
     <View
       className="flex-1 bg-bg-secondary"
       style={{ paddingTop: insets.top }}
     >
-      <View className="gap-4 pt-2">
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="pt-2"
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 96 + insets.bottom }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="px-4">
           <MlSearchBar
             onMenuPress={() => setDrawerVisible(true)}
@@ -184,11 +227,12 @@ export default function AsociadosScreen() {
             (línea). El label muestra la vista a la que cambia. */}
         <View className="px-4">
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              setSelectedSliceId(null);
               setVista((v) =>
                 v === 'participacion' ? 'tendencia' : 'participacion',
-              )
-            }
+              );
+            }}
             style={{
               borderRadius: 12,
               borderCurve: 'continuous',
@@ -279,17 +323,14 @@ export default function AsociadosScreen() {
             <OrAsociadosTrend
               months={trend?.months ?? []}
               series={trendSeries}
+              selectedId={selectedSliceId ?? VARIOS_ID}
+              onSelectChange={(id) =>
+                setSelectedSliceId(id === VARIOS_ID ? null : id)
+              }
             />
           )}
         </View>
-      </View>
 
-      <ScrollView
-        className="flex-1 mt-4"
-        showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
-        keyboardShouldPersistTaps="handled"
-      >
         <View className="px-4">
           <View
             className="flex-row items-center gap-2 rounded-full bg-bg-card px-4 py-3"
@@ -311,41 +352,47 @@ export default function AsociadosScreen() {
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between px-4">
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            Cliente
-          </AtTypography>
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            Asociados
-          </AtTypography>
-        </View>
-
-        <View className="gap-2 px-4">
-          {isPending && <MlReportListSkeleton />}
-          {!isPending && visibleClients.length === 0 && (
-            <AtTypography variant="caption" color="#8892A4">
-              Sin clientes que coincidan con los filtros.
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between px-4">
+            <AtTypography variant="bodyBold" color="#1A1F36">
+              Cliente
             </AtTypography>
-          )}
-          {visibleClients.map((row) => (
-            <MlAsociadoClientRow
-              key={row.client.id}
-              name={row.client.name}
-              color={row.client.color}
-              count={row.count}
-              onPress={() =>
-                router.push(
-                  `/(tabs)/informes/asociados/${row.client.id}` as never,
-                )
-              }
-            />
-          ))}
+            <AtTypography variant="bodyBold" color="#1A1F36">
+              Asociados
+            </AtTypography>
+          </View>
+
+          <View className="gap-2 px-4">
+            {isPending && <MlReportListSkeleton />}
+            {!isPending && visibleClients.length === 0 && (
+              <AtTypography variant="caption" color="#8892A4">
+                Sin clientes que coincidan con los filtros.
+              </AtTypography>
+            )}
+            {visibleClients.map((row) => (
+              <MlAsociadoClientRow
+                key={row.client.id}
+                name={row.client.name}
+                color={colorByClientId.get(row.client.id) ?? row.client.color}
+                count={row.count}
+                onPress={() =>
+                  router.push(
+                    `/(tabs)/informes/asociados/${row.client.id}` as never,
+                  )
+                }
+              />
+            ))}
+          </View>
         </View>
 
-        <View className="px-4">
-          <MlSimpleTotalFooter value={total} />
-        </View>
       </ScrollView>
+
+      <View
+        className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
+        style={{ paddingBottom: Math.max(insets.bottom - 8, 4) }}
+      >
+        <MlSimpleTotalFooter value={total} />
+      </View>
 
       <OrAsociadosFiltersSheet
         visible={filtersVisible}

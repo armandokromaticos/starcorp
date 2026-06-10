@@ -11,18 +11,13 @@ import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
-import { MlEmpresaPill } from '@/src/components/molecules/ml-empresa-pill';
+import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
 import { MlPolizaDetailCard } from '@/src/components/molecules/ml-poliza-detail-card';
-import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import {
-  POLIZA_STATUS_FILTERS,
-  polizaStatus,
-  type PolizaStatus,
-} from '@/src/types/seguros.types';
+import { polizaStatus } from '@/src/types/seguros.types';
 
 export default function SegurosHistoricoScreen() {
   const insets = useSafeAreaInsets();
@@ -31,12 +26,12 @@ export default function SegurosHistoricoScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [activeEmpresaId, setActiveEmpresaId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<PolizaStatus>('activa');
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   // Por defecto la primera empresa queda activa.
   const effectiveActiveId = activeEmpresaId ?? data?.empresas[0]?.id ?? null;
 
+  // El histórico sólo muestra pólizas vencidas (de años pasados).
   const polizas = useMemo(() => {
     if (!data) return [];
     const todayIso = data.todayIso;
@@ -44,9 +39,9 @@ export default function SegurosHistoricoScreen() {
     return all.filter(
       (p) =>
         (!effectiveActiveId || p.empresaId === effectiveActiveId) &&
-        polizaStatus(p.vigenciaFin, todayIso) === statusFilter,
+        polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
     );
-  }, [data, effectiveActiveId, statusFilter]);
+  }, [data, effectiveActiveId]);
 
   return (
     <View
@@ -55,7 +50,7 @@ export default function SegurosHistoricoScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -80,27 +75,21 @@ export default function SegurosHistoricoScreen() {
           {data?.empresas.map((empresa) => {
             const active = empresa.id === effectiveActiveId;
             return (
-              <MlEmpresaPill
+              <MlCompanyCard
                 key={empresa.id}
                 name={empresa.name}
-                active={active}
-                dim={!active}
+                variant="tile"
+                selected={active}
                 onPress={() => setActiveEmpresaId(empresa.id)}
               />
             );
           })}
         </ScrollView>
 
-        <MlTimeFilterBar
-          options={POLIZA_STATUS_FILTERS}
-          selectedKey={statusFilter}
-          onSelect={(k) => setStatusFilter(k as PolizaStatus)}
-        />
-
         <View className="gap-3 px-4">
           {polizas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas en este estado.
+              Sin pólizas vencidas.
             </AtTypography>
           )}
           {polizas.map((p) => (

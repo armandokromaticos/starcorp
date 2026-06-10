@@ -299,16 +299,16 @@ export const mockClientDetail: Record<string, ClientConsolidadoDetail> = Object.
 );
 
 export const mockCostGroups: CostGroup[] = [
-  { id: 'alquiler', label: 'Alquiler vehículo', icon: 'directions-car', color: '#2D4BA0', amount: 100000, deltaPercent: 1.87 },
-  { id: 'casino', label: 'Casino y restaurante', icon: 'restaurant', color: '#E53E3E', amount: 10000, deltaPercent: -1.2 },
-  { id: 'celular', label: 'Celular', icon: 'phone-iphone', color: '#4A7FD4', amount: 10000, deltaPercent: -0.8 },
-  { id: 'combustible', label: 'Combustible', icon: 'local-gas-station', color: '#F59E0B', amount: 100000, deltaPercent: 1.87 },
-  { id: 'comisiones', label: 'Gasto comisiones', icon: 'receipt-long', color: '#6366F1', amount: 100000, deltaPercent: 1.87 },
-  { id: 'diversos', label: 'Diversos', icon: 'category', color: '#EC4899', amount: 100000, deltaPercent: 1.87 },
-  { id: 'bancarios', label: 'Gastos bancarios', icon: 'account-balance', color: '#10B981', amount: 100000, deltaPercent: 1.87 },
-  { id: 'convencion', label: 'Gastos de convención', icon: 'event', color: '#F97316', amount: 100000, deltaPercent: 1.87 },
-  { id: 'oficina', label: 'Gastos de oficina', icon: 'business', color: '#84CC16', amount: 100000, deltaPercent: 1.87 },
-  { id: 'representacion', label: 'Gastos de representación', icon: 'groups', color: '#14B8A6', amount: 100000, deltaPercent: 1.87 },
+  { id: 'alquiler', label: 'Alquiler vehículo', icon: 'directions-car', color: CHART_COLORS[0], amount: 100000, deltaPercent: 1.87 },
+  { id: 'casino', label: 'Casino y restaurante', icon: 'restaurant', color: CHART_COLORS[1], amount: 10000, deltaPercent: -1.2 },
+  { id: 'celular', label: 'Celular', icon: 'phone-iphone', color: CHART_COLORS[2], amount: 10000, deltaPercent: -0.8 },
+  { id: 'combustible', label: 'Combustible', icon: 'local-gas-station', color: CHART_COLORS[3], amount: 100000, deltaPercent: 1.87 },
+  { id: 'comisiones', label: 'Gasto comisiones', icon: 'receipt-long', color: CHART_COLORS[4], amount: 100000, deltaPercent: 1.87 },
+  { id: 'diversos', label: 'Diversos', icon: 'category', color: CHART_COLORS[5], amount: 100000, deltaPercent: 1.87 },
+  { id: 'bancarios', label: 'Gastos bancarios', icon: 'account-balance', color: CHART_COLORS[6], amount: 100000, deltaPercent: 1.87 },
+  { id: 'convencion', label: 'Gastos de convención', icon: 'event', color: CHART_COLORS[7], amount: 100000, deltaPercent: 1.87 },
+  { id: 'oficina', label: 'Gastos de oficina', icon: 'business', color: CHART_COLORS[0], amount: 100000, deltaPercent: 1.87 },
+  { id: 'representacion', label: 'Gastos de representación', icon: 'groups', color: CHART_COLORS[1], amount: 100000, deltaPercent: 1.87 },
 ];
 
 const THIRD_PARTY_NAMES = [
@@ -401,14 +401,14 @@ export const mockIngresoClientesByCompany: Record<string, IngresoCliente[]> =
 
 // Egresos has its own independent data set, visually identical to costos.
 export const mockCostGroupsEgresos: CostGroup[] = [
-  { id: 'nomina', label: 'Nómina', icon: 'payments', color: '#2D4BA0', amount: 55000, deltaPercent: 2.1 },
-  { id: 'servicios', label: 'Servicios públicos', icon: 'bolt', color: '#4A7FD4', amount: 8200, deltaPercent: -0.6 },
-  { id: 'impuestos', label: 'Impuestos', icon: 'receipt', color: '#E53E3E', amount: 14500, deltaPercent: 0.8 },
-  { id: 'seguros', label: 'Seguros', icon: 'shield', color: '#10B981', amount: 6400, deltaPercent: -1.3 },
-  { id: 'mantenimiento', label: 'Mantenimiento', icon: 'build', color: '#F59E0B', amount: 9300, deltaPercent: 1.2 },
-  { id: 'software', label: 'Software y licencias', icon: 'computer', color: '#6366F1', amount: 4100, deltaPercent: 0.9 },
-  { id: 'marketing', label: 'Marketing', icon: 'campaign', color: '#EC4899', amount: 7200, deltaPercent: 1.7 },
-  { id: 'otros', label: 'Otros gastos', icon: 'category', color: '#14B8A6', amount: 3100, deltaPercent: -0.2 },
+  { id: 'nomina', label: 'Nómina', icon: 'payments', color: CHART_COLORS[0], amount: 55000, deltaPercent: 2.1 },
+  { id: 'servicios', label: 'Servicios públicos', icon: 'bolt', color: CHART_COLORS[1], amount: 8200, deltaPercent: -0.6 },
+  { id: 'impuestos', label: 'Impuestos', icon: 'receipt', color: CHART_COLORS[2], amount: 14500, deltaPercent: 0.8 },
+  { id: 'seguros', label: 'Seguros', icon: 'shield', color: CHART_COLORS[3], amount: 6400, deltaPercent: -1.3 },
+  { id: 'mantenimiento', label: 'Mantenimiento', icon: 'build', color: CHART_COLORS[4], amount: 9300, deltaPercent: 1.2 },
+  { id: 'software', label: 'Software y licencias', icon: 'computer', color: CHART_COLORS[5], amount: 4100, deltaPercent: 0.9 },
+  { id: 'marketing', label: 'Marketing', icon: 'campaign', color: CHART_COLORS[6], amount: 7200, deltaPercent: 1.7 },
+  { id: 'otros', label: 'Otros gastos', icon: 'category', color: CHART_COLORS[7], amount: 3100, deltaPercent: -0.2 },
 ];
 
 function buildEgresosThirdParties(): ThirdParty[] {

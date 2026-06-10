@@ -11,12 +11,14 @@
 
 import React, { memo, useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from '@/src/tw';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
 import { MlTaskRow } from '@/src/components/molecules/ml-task-row';
 import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
+import { gradients } from '@/src/theme/gradients';
 import { useNexiataskResponsibilities } from '@/src/hooks/queries/use-nexiatask-responsibilities';
 import type {
   NexiataskDepartamento,
@@ -25,6 +27,9 @@ import type {
 
 const CARD_BG = '#1C224D';
 const CARD_RADIUS = 8;
+// Marco blanco que envuelve la card azul.
+const OUTER_CARD_BG = '#FFFFFF';
+const OUTER_CARD_RADIUS = 12;
 const MAX_DEPARTAMENTOS = 3;
 const MAX_TAREAS_POR_DEPTO = 4;
 
@@ -96,15 +101,46 @@ export const OrRecentReportsSection = memo(() => {
           />
         </View>
       ) : (
-        <View className="gap-4 px-4">
-          {previews.map((preview) => (
-            <DepartmentCard
-              key={preview.id}
-              preview={preview}
-              onTareaPress={handleTareaPress}
-            />
-          ))}
-        </View>
+        <>
+          <View className="gap-4 px-4">
+            {previews.map((preview) => (
+              <DepartmentCard
+                key={preview.id}
+                preview={preview}
+                onTareaPress={handleTareaPress}
+              />
+            ))}
+          </View>
+
+          {/* Footer CTA — mismo estilo que "Ver clientes" del dashboard */}
+          <View className="items-end px-4">
+            <Pressable
+              onPress={() => router.push('/(tabs)/reportes' as never)}
+              style={{
+                borderRadius: 8,
+                borderCurve: 'continuous',
+                overflow: 'hidden',
+                boxShadow: '0 2px 6px rgba(4, 17, 63, 0.35)',
+              }}
+            >
+              <LinearGradient
+                colors={gradients.buttonBlue.colors}
+                start={gradients.buttonBlue.start}
+                end={gradients.buttonBlue.end}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AtTypography variant="captionBold" color="#FFFFFF">
+                  Ver reportes
+                </AtTypography>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </>
       )}
     </View>
   );
@@ -127,38 +163,47 @@ const DepartmentCard = memo<DepartmentCardProps>(
 
     return (
       <View
-        className="p-4 gap-3"
+        className="p-2"
         style={{
-          backgroundColor: CARD_BG,
-          borderRadius: CARD_RADIUS,
+          backgroundColor: OUTER_CARD_BG,
+          borderRadius: OUTER_CARD_RADIUS,
           borderCurve: 'continuous',
-          boxShadow: '0 4px 12px rgba(15, 27, 74, 0.18)',
+          boxShadow: '0 4px 12px rgba(15, 27, 74, 0.12)',
         }}
       >
-        <View className="flex-row justify-between items-center">
-          <View className="flex-row items-center gap-2 flex-1">
-            <AtIcon name={preview.icon} size={18} color="#FFFFFF" />
-            <AtTypography
-              variant="bodyBold"
-              color="#FFFFFF"
-              numberOfLines={1}
-            >
-              {preview.nombre}
+        <View
+          className="p-4 gap-3"
+          style={{
+            backgroundColor: CARD_BG,
+            borderRadius: CARD_RADIUS,
+            borderCurve: 'continuous',
+          }}
+        >
+          <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center gap-2 flex-1">
+              <AtIcon name={preview.icon} size={18} color="#FFFFFF" />
+              <AtTypography
+                variant="bodyBold"
+                color="#FFFFFF"
+                numberOfLines={1}
+              >
+                {preview.nombre}
+              </AtTypography>
+            </View>
+            <AtTypography variant="caption" color="#8FA0D6">
+              {countLabel}
             </AtTypography>
           </View>
-          <AtTypography variant="caption" color="#8FA0D6">
-            {countLabel}
-          </AtTypography>
-        </View>
 
-        <View className="gap-4">
-          {preview.tareas.map((tarea) => (
-            <MlTaskRow
-              key={tarea.id}
-              tarea={tarea}
-              onPress={() => onTareaPress(tarea.id)}
-            />
-          ))}
+          <View className="gap-4">
+            {preview.tareas.map((tarea) => (
+              <MlTaskRow
+                key={tarea.id}
+                tarea={tarea}
+                onPress={() => onTareaPress(tarea.id)}
+              />
+            ))}
+          </View>
         </View>
       </View>
     );

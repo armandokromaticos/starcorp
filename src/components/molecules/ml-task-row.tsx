@@ -25,7 +25,8 @@ interface MlTaskRowProps {
 }
 
 function isCompletedState(estado: string): boolean {
-  return /complet/i.test(estado);
+  // Estado terminal "exitoso" en la API: "Aprobada / Cerrada".
+  return /aprobad|cerrad/i.test(estado);
 }
 
 export const MlTaskRow = memo<MlTaskRowProps>(({ tarea, onPress }) => {
@@ -80,7 +81,7 @@ export const MlTaskRow = memo<MlTaskRowProps>(({ tarea, onPress }) => {
             {tarea.semanaLabel}
           </AtTypography>
           <AtTypography variant="caption" color="#424654">
-            {tarea.descripcion}
+            {tarea.seguimiento}
           </AtTypography>
         </View>
       </View>

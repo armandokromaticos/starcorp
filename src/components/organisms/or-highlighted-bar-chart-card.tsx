@@ -119,7 +119,7 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
                   />
                 )}
                 <LinearGradient
-                  colors={gradient}
+                  colors={gradient as readonly [string, string, ...string[]]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={{

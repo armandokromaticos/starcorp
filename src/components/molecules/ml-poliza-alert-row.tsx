@@ -12,7 +12,10 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 
 interface MlPolizaAlertRowProps {
-  name: string;
+  /** Línea principal (bold 14): empresa en Compañías, nombre en Vehículos/Propiedades. */
+  title: string;
+  /** Línea secundaria opcional (12): nombre de póliza, asignación, etc. */
+  subtitle?: string;
   /** Texto secundario (ej. "Vigencia: 25/05/2026" o "Vigencia: -320 días"). */
   subline: string;
   variant: 'por_vencer' | 'vencida';
@@ -25,7 +28,7 @@ const COLORS = {
 } as const;
 
 export const MlPolizaAlertRow = memo<MlPolizaAlertRowProps>(
-  ({ name, subline, variant, onPress }) => {
+  ({ title, subtitle, subline, variant, onPress }) => {
     const tone = COLORS[variant];
     return (
       <Pressable
@@ -50,9 +53,24 @@ export const MlPolizaAlertRow = memo<MlPolizaAlertRowProps>(
           <AtIcon name="warning-amber" size={20} color={tone.icon} />
         </View>
         <View className="flex-1">
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            {name}
+          <AtTypography
+            variant="bodyBold"
+            color="#1A1F36"
+            numberOfLines={1}
+            style={{ fontSize: 14, lineHeight: 18 }}
+          >
+            {title}
           </AtTypography>
+          {subtitle && (
+            <AtTypography
+              variant="body"
+              color="#1A1F36"
+              numberOfLines={1}
+              style={{ fontSize: 12, lineHeight: 16 }}
+            >
+              {subtitle}
+            </AtTypography>
+          )}
           <AtTypography variant="caption" color={tone.text}>
             {subline}
           </AtTypography>

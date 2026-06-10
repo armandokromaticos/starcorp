@@ -42,6 +42,18 @@ const POWERBI_DATASET_ID = "43f822cf-7162-410d-bc5a-61182e5ca2d7";
 const POWERBI_GROUP_ID = "457b264f-6eb8-4b00-8f62-f65ee2700cd4";
 const DAX_BBM_INGRESO = `EVALUATE ROW("BBMIngreso", [BBMIngreso])`;
 
+// Ruta del single de cada categoría de Informes. Las que tienen carpeta
+// propia resuelven al index del folder; presupuesto cae al placeholder
+// dinámico [reportId].
+const INFORME_ROUTES: Record<string, string> = {
+  cartera: "/informes/cartera",
+  asociados: "/informes/asociados",
+  bancos: "/informes/bancos",
+  seguro: "/informes/seguros",
+  pagos: "/informes/pagos",
+  presupuesto: "/informes/presupuesto",
+};
+
 const CATEGORIES: CategoryItem[] = [
   {
     id: "ingresos",
@@ -159,7 +171,13 @@ export default function HomeScreen() {
       {/* Informes (reports) */}
       <OrInformesSection
         periodLabel={PERIOD_LABELS[activePeriodKey]}
-        onViewAll={() => router.push("/informes")}
+        onViewAll={(id) =>
+          router.push(
+            (INFORME_ROUTES[id] ?? "/informes") as Parameters<
+              typeof router.push
+            >[0],
+          )
+        }
       />
 
       {/* Reportes más recientes */}
