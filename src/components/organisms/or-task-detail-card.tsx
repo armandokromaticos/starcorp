@@ -22,30 +22,56 @@ interface OrTaskDetailCardProps {
 }
 
 function isCompletedState(estado: string): boolean {
-  return /complet/i.test(estado);
+  // Estado terminal "exitoso" en la API: "Aprobada / Cerrada".
+  return /aprobad|cerrad/i.test(estado);
 }
 
-// Verdes de marca: claro #8DC549 → oscuro #294316. Mismo par en chip
-// (diagonal) y barra (horizontal) para que se lean como una sola familia.
+// Verdes de marca: claro #8DC549 → oscuro #294316. La barra de
+// cumplimiento siempre usa esta familia; el chip de estado cambia de
+// color según el estado (ver getStateGradient).
 const GREEN_LIGHT = "#8DC549";
 const GREEN_DARK = "#294316";
-const STATE_GRADIENT: readonly [string, string] = [
-  GREEN_LIGHT,
-  GREEN_DARK,
-] as const;
 const PROGRESS_GRADIENT: readonly [string, string] = [
   GREEN_DARK,
   GREEN_LIGHT,
 ] as const;
 
+type Gradient = readonly [string, string];
+
+// Gradiente del chip por estado (claro arriba → oscuro abajo, texto blanco).
+// El extremo oscuro garantiza contraste suficiente para el label.
+const STATE_GRADIENTS: Record<string, Gradient> = {
+  success: [GREEN_LIGHT, GREEN_DARK], // Aprobada / Cerrada
+  active: ["#5B82E6", "#0C2B78"], // En progreso / Recurrente
+  review: ["#38B2AC", "#1D4044"], // Lista para revisión
+  waiting: ["#E9A23B", "#8A5A12"], // En espera (cliente / Presidencia)
+  adjust: ["#ED8936", "#7B341E"], // Devuelta / Requiere ajustes
+  blocked: ["#E53E3E", "#7B1F1F"], // Bloqueada
+  failed: ["#9B6B6B", "#3B1F1F"], // No realizada
+  pending: ["#8A94A6", "#3D4452"], // Pendiente / default
+};
+
+function getStateGradient(estado: string): Gradient {
+  const e = estado.toLowerCase();
+  if (/aprobad|cerrad/.test(e)) return STATE_GRADIENTS.success;
+  if (/bloquead/.test(e)) return STATE_GRADIENTS.blocked;
+  if (/no realizada/.test(e)) return STATE_GRADIENTS.failed;
+  if (/devuelt|ajuste/.test(e)) return STATE_GRADIENTS.adjust;
+  if (/espera/.test(e)) return STATE_GRADIENTS.waiting;
+  if (/revisi/.test(e)) return STATE_GRADIENTS.review;
+  if (/progreso|recurrente/.test(e)) return STATE_GRADIENTS.active;
+  return STATE_GRADIENTS.pending; // Pendiente y cualquier estado no mapeado
+}
+
 export const OrTaskDetailCard = memo<OrTaskDetailCardProps>(({ tarea }) => {
   const completed = isCompletedState(tarea.estado);
   const stateLabel = completed ? "Completado" : tarea.estado;
-  const stateColors = STATE_GRADIENT;
+  const stateColors = getStateGradient(tarea.estado);
   const pct = Number.isFinite(tarea.cumplimientoPct)
     ? tarea.cumplimientoPct
     : 0;
-  const subtitle = tarea.descripcion?.trim();
+  // Iniciativa padre como subtítulo; el narrativo de la semana va en "Resultado".
+  const subtitle = tarea.responsabilidad?.trim();
 
   return (
     <View
@@ -63,15 +89,15 @@ export const OrTaskDetailCard = memo<OrTaskDetailCardProps>(({ tarea }) => {
           end={{ x: 0, y: 1 }}
           style={{
             borderRadius: 999,
-            paddingHorizontal: 20,
-            paddingVertical: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 4,
             borderCurve: "continuous",
             borderWidth: 1,
             borderColor: "rgba(0, 0, 0, 0.12)",
             boxShadow: "0 1px 2px rgba(0, 0, 0, 0.15)",
           }}
         >
-          <AtTypography variant="captionBold" color="#FFFFFF">
+          <AtTypography variant="label" color="#FFFFFF">
             {stateLabel}
           </AtTypography>
         </LinearGradient>

@@ -16,7 +16,14 @@ Estado actual (frontend):
 
 ---
 
-## 1. Concepto de "Proyecto / Iniciativa padre" — **bloqueante**
+## 1. Concepto de "Proyecto / Iniciativa padre" — ✅ RESUELTO (2026-06)
+
+> **Resuelto:** `GET /api/integration/avance` ahora incluye el campo
+> `responsabilidad` por tarea (p. ej. "Desarrollo de cuentas PATRIOT"). El
+> frontend agrupa departamento → `responsabilidad` → tareas en
+> `groupTareasIntoResponsibilities`, reemplazando el heurístico de chunks de 4.
+> Si más adelante hace falta un `proyecto_id` estable (para deep-links o
+> reordenamiento), se solicitará por separado.
 
 La UI agrupa tareas en proyectos numerados:
 
@@ -30,10 +37,11 @@ La UI agrupa tareas en proyectos numerados:
 3. …
 ```
 
-La API documentada (`GET /integration/tareas`, `GET /integration/seguimiento`)
-solo expone `departamento`, `tarea_id`, `tarea` — **no hay campo de proyecto/iniciativa
-padre**, así que hoy el frontend agrupa con un heurístico temporal (chunks de 4
-tareas por departamento) que **no refleja la realidad de negocio**.
+La API previa (`GET /integration/tareas`, `GET /integration/seguimiento`)
+solo exponía `departamento`, `tarea_id`, `tarea` — no había campo de proyecto/iniciativa
+padre, así que el frontend agrupaba con un heurístico temporal (chunks de 4
+tareas por departamento) que no reflejaba la realidad de negocio. Con `/avance`
+y su campo `responsabilidad` esto quedó resuelto (ver nota arriba).
 
 **Solicitud:** agregar a cada tarea los campos:
 
@@ -81,22 +89,20 @@ Mientras tanto el frontend muestra histórico mock + empty state cuando viene va
 
 ---
 
-## 3. Enums de `estado` y `prioridad`
+## 3. Enums de `estado` y `prioridad` — ✅ RESUELTO (2026-06)
 
-La doc menciona los campos pero no lista los valores posibles. La UI ya tiene
-componentes con colores semánticos (`AtProgressPill`, badge "Activa"/"Completado",
-gradiente verde/naranja/rojo) que necesitan saber qué valores esperar para
-mapearlos correctamente.
-
-**Solicitud:** confirmar los enumerados, por ejemplo:
-
-```
-estado:     "Activa" | "En progreso" | "Completado" | "No realizada" | "Cerrada"
-prioridad:  "Alta" | "Media" | "Baja"
-```
-
-Hoy el frontend hace match insensitivo a `/complet/i` para detectar tareas
-terminadas — frágil si llegan valores como "Hecho", "Done", etc.
+> **Resuelto:** la doc de `/avance` ya lista los estados válidos:
+>
+> ```
+> estado:    "Pendiente" | "En progreso" | "Recurrente" | "Bloqueada"
+>          | "En espera de cliente" | "En espera de usuario/Presidencia"
+>          | "Lista para revisión" | "Devuelta / Requiere ajustes"
+>          | "Aprobada / Cerrada" | "No realizada"
+> prioridad: "Alta" | "Media" | "Baja"
+> ```
+>
+> El frontend detecta el estado terminal "exitoso" con `/aprobad|cerrad/i`
+> (ver `isCompletedState` en `ml-task-row` y `or-task-detail-card`).
 
 ---
 
@@ -151,9 +157,10 @@ una key se compromete no se ven afectados todos los consumidores.
 
 ## Checklist para destrabar la integración real
 
-- [ ] Backend agrega `proyecto_id` / `proyecto_titulo` / `proyecto_numero` a `/tareas`
+- [x] Backend expone `responsabilidad` (iniciativa padre) en `/avance` — resuelve el agrupamiento (2026-06)
 - [ ] Backend expone `GET /integration/tareas/{id}/historico`
-- [ ] Backend documenta enums de `estado` y `prioridad`
+- [x] Backend documenta enums de `estado` y `prioridad` (2026-06)
+- [x] Starcorp migra la conexión de `/seguimiento` → `/avance` (proxy + tipos + service + mock, 2026-06)
 - [x] Starcorp implementa `supabase/functions/nexiatask-proxy/index.ts` (deployada 2026-05-18, version 1, ACTIVE)
 - [ ] Starcorp setea el secret: `supabase secrets set NEXIATASK_API_KEY=nexia_2025_k9mX4pQr7vBjL2wN8sT`
 - [ ] Starcorp setea `EXPO_PUBLIC_USE_MOCKS=false` en `.env` y prueba en staging

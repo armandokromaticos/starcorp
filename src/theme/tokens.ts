@@ -6,6 +6,8 @@
  *
  * Para agregar gradientes: ver src/theme/gradients.ts
  */
+import { CHART_COLORS } from './chart-palette';
+
 export const tokens = {
   color: {
     // Superficie
@@ -38,17 +40,9 @@ export const tokens = {
       warning: '#DD6B20',
       info: '#3182CE',
     },
-    // Gráficos — Paleta del mockup (azules/navys/naranjas)
-    chart: [
-      '#1A2B6D',
-      '#2D4BA0',
-      '#4A7FD4',
-      '#E8952E',
-      '#F6AD55',
-      '#A0AEC0',
-      '#48BB78',
-      '#ED64A6',
-    ] as const,
+    // Gráficos — tono sólido de los 8 degradados canónicos (ver chart-palette.ts).
+    // Es el primer color de cada degradado, ciclado por índice.
+    chart: CHART_COLORS,
     // Bordes
     border: {
       default: 'rgba(0, 0, 0, 0.08)',

@@ -202,15 +202,6 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
             >
               {selectedPct != null ? (
                 <View style={{ alignItems: 'center', paddingHorizontal: 12 }}>
-                  {isTapOnly && selectedIndex != null && (
-                    <AtTypography
-                      variant="captionBold"
-                      color="#4A5568"
-                      numberOfLines={1}
-                    >
-                      {data[selectedIndex].label}
-                    </AtTypography>
-                  )}
                   <AtTypography
                     variant="metricSmall"
                     color="#1A1F36"

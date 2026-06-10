@@ -7,7 +7,7 @@
  */
 
 import React, { memo } from 'react';
-import { View } from '@/src/tw';
+import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDivider } from '@/src/components/atoms/at-divider';
 import { formatCurrency } from '@/src/utils/currency';
@@ -21,6 +21,9 @@ interface MlPagoCardProps {
   empleado: string;
   concepto: string;
   fecha: string;
+  onPress?: () => void;
+  /** Resalta la card (empresa seleccionada en el donut). */
+  selected?: boolean;
 }
 
 function formatMonto(value: number): string {
@@ -38,14 +41,18 @@ export const MlPagoCard = memo<MlPagoCardProps>(
     empleado,
     concepto,
     fecha,
+    onPress,
+    selected = false,
   }) => {
+    const Wrapper = onPress ? Pressable : View;
     return (
-      <View
+      <Wrapper
+        onPress={onPress}
         className="bg-white rounded-lg p-4 gap-3"
         style={{
           borderCurve: 'continuous',
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? '#1A1F36' : 'rgba(0,0,0,0.06)',
         }}
       >
         <View className="flex-row items-center justify-between gap-3">
@@ -110,7 +117,7 @@ export const MlPagoCard = memo<MlPagoCardProps>(
             </AtTypography>
           </View>
         </View>
-      </View>
+      </Wrapper>
     );
   },
 );

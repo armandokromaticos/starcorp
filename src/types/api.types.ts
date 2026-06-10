@@ -152,6 +152,11 @@ export interface QBAccountRaw {
   Active?: boolean;
   Classification?: string;
   CurrencyRef?: { value: string; name?: string };
+  MetaData?: {
+    CreateTime?: string;
+    /** ISO datetime de la última modificación de la cuenta en QB. */
+    LastUpdatedTime?: string;
+  };
 }
 
 export interface QBAccountQueryResponse {

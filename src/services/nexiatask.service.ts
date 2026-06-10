@@ -21,10 +21,10 @@ import type {
   NexiataskResponsibilities,
   NexiataskTareaDetalle,
   NexiataskTareaRaw,
-  NexiataskSeguimientoResponse,
+  NexiataskAvanceResponse,
 } from '@/src/types/nexiatask.types';
 
-type ProxyEndpoint = 'seguimiento' | 'tareas' | 'kpis';
+type ProxyEndpoint = 'avance' | 'tareas' | 'kpis';
 
 async function invokeProxy<T>(
   endpoint: ProxyEndpoint,
@@ -48,13 +48,12 @@ async function invokeProxy<T>(
 export async function fetchResponsibilities(): Promise<NexiataskResponsibilities> {
   return withMock(
     async () => {
-      // /seguimiento devuelve tareas de la semana actual con todos los
-      // campos (incluye objetivo/meta/bloqueo/etc). Lo preferimos sobre
-      // /tareas para tener un solo source-of-truth.
-      const resp = await invokeProxy<NexiataskSeguimientoResponse>(
-        'seguimiento',
-        { include_completed: true },
-      );
+      // /avance devuelve las tareas de la semana actual con todos los
+      // campos (responsabilidad/objetivo/meta/seguimiento/bloqueo/etc).
+      // Lo preferimos sobre /tareas para tener un solo source-of-truth.
+      const resp = await invokeProxy<NexiataskAvanceResponse>('avance', {
+        include_completed: true,
+      });
       return groupTareasIntoResponsibilities(resp.tareas ?? []);
     },
     () => groupTareasIntoResponsibilities(mockNexiataskTareasRaw),
@@ -68,13 +67,12 @@ export async function fetchTareaDetalle(
 ): Promise<NexiataskTareaDetalle | null> {
   return withMock(
     async () => {
-      // La API no expone GET por tarea_id, así que pedimos /seguimiento
+      // La API no expone GET por tarea_id, así que pedimos /avance
       // y filtramos client-side. Cuando backend agregue
       // /tareas/{id}/historico, reemplazar por una sola llamada.
-      const resp = await invokeProxy<NexiataskSeguimientoResponse>(
-        'seguimiento',
-        { include_completed: true },
-      );
+      const resp = await invokeProxy<NexiataskAvanceResponse>('avance', {
+        include_completed: true,
+      });
       const raw = (resp.tareas ?? []).find(
         (t: NexiataskTareaRaw) => t.tarea_id === tareaId,
       );
@@ -97,7 +95,9 @@ export async function fetchTareaDetalle(
         departamentoNombre: raw.departamento || 'Sin Departamento',
         objetivo: raw.objetivo,
         meta: raw.meta,
-        resultado: raw.resultado,
+        // /avance ya no trae `resultado`; el resultado de la semana es el
+        // mismo narrativo de `seguimiento`.
+        resultado: raw.seguimiento,
         bloqueo: raw.bloqueo,
         apoyoRequerido: raw.apoyo_requerido,
         fechaLimite: raw.fecha_limite,

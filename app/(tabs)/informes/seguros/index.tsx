@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-skeleton';
-import { MlEmpresaPill } from '@/src/components/molecules/ml-empresa-pill';
+import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
 import { MlPolizaAlertRow } from '@/src/components/molecules/ml-poliza-alert-row';
 import { MlSectionHeaderLink } from '@/src/components/molecules/ml-section-header-link';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
@@ -46,6 +46,11 @@ export default function SegurosScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+
+  // Estado de colapso por sección (Compañías / Vehículos / Propiedades).
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) =>
+    setCollapsed((c) => ({ ...c, [key]: !c[key] }));
 
   const { todayIso, empresas, vehiculos, propiedades } = useMemo(() => {
     if (!data) {
@@ -124,7 +129,7 @@ export default function SegurosScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-5 pb-12"
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -157,62 +162,71 @@ export default function SegurosScreen() {
               onLinkPress={() =>
                 router.push('/(tabs)/informes/seguros/companias/historico' as never)
               }
+              collapsed={collapsed.companias}
+              onToggle={() => toggleSection('companias')}
             />
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerClassName="gap-3 px-4"
-          >
-            {empresas.map((empresa) => (
-              <MlEmpresaPill
-                key={empresa.id}
-                name={empresa.name}
-                onPress={() => goEmpresa(empresa.id)}
-              />
-            ))}
-          </ScrollView>
+          {!collapsed.companias && (
+            <>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerClassName="gap-3 px-4"
+              >
+                {empresas.map((empresa) => (
+                  <MlCompanyCard
+                    key={empresa.id}
+                    name={empresa.name}
+                    variant="tile"
+                    onPress={() => goEmpresa(empresa.id)}
+                  />
+                ))}
+              </ScrollView>
 
-          <View className="px-4 gap-2">
-            <AtTypography variant="bodyBold" color="#1A1F36">
-              Pólizas por vencer
-            </AtTypography>
-            {polizasPorVencer.length === 0 && (
-              <AtTypography variant="caption" color="#8892A4">
-                Sin pólizas por vencer.
-              </AtTypography>
-            )}
-            {polizasPorVencer.map((p) => (
-              <MlPolizaAlertRow
-                key={p.id}
-                name={p.nombre}
-                subline={buildSubline(p.vigenciaFin, todayIso)}
-                variant="por_vencer"
-                onPress={() => goPoliza(p.empresaId, p.id, 'por_vencer')}
-              />
-            ))}
-          </View>
+              <View className="px-4 gap-2">
+                <AtTypography variant="bodyBold" color="#1A1F36">
+                  Pólizas por vencer
+                </AtTypography>
+                {polizasPorVencer.length === 0 && (
+                  <AtTypography variant="caption" color="#8892A4">
+                    Sin pólizas por vencer.
+                  </AtTypography>
+                )}
+                {polizasPorVencer.map((p) => (
+                  <MlPolizaAlertRow
+                    key={p.id}
+                    title={p.empresaName}
+                    subtitle={p.nombre}
+                    subline={buildSubline(p.vigenciaFin, todayIso)}
+                    variant="por_vencer"
+                    onPress={() => goPoliza(p.empresaId, p.id, 'por_vencer')}
+                  />
+                ))}
+              </View>
 
-          <View className="px-4 gap-2">
-            <AtTypography variant="bodyBold" color="#1A1F36">
-              Pólizas vencidas
-            </AtTypography>
-            {polizasVencidas.length === 0 && (
-              <AtTypography variant="caption" color="#8892A4">
-                Sin pólizas vencidas.
-              </AtTypography>
-            )}
-            {polizasVencidas.map((p) => (
-              <MlPolizaAlertRow
-                key={p.id}
-                name={p.nombre}
-                subline={buildSubline(p.vigenciaFin, todayIso)}
-                variant="vencida"
-                onPress={() => goPoliza(p.empresaId, p.id, 'vencida')}
-              />
-            ))}
-          </View>
+              <View className="px-4 gap-2">
+                <AtTypography variant="bodyBold" color="#1A1F36">
+                  Pólizas vencidas
+                </AtTypography>
+                {polizasVencidas.length === 0 && (
+                  <AtTypography variant="caption" color="#8892A4">
+                    Sin pólizas vencidas.
+                  </AtTypography>
+                )}
+                {polizasVencidas.map((p) => (
+                  <MlPolizaAlertRow
+                    key={p.id}
+                    title={p.empresaName}
+                    subtitle={p.nombre}
+                    subline={buildSubline(p.vigenciaFin, todayIso)}
+                    variant="vencida"
+                    onPress={() => goPoliza(p.empresaId, p.id, 'vencida')}
+                  />
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         <AtDivider className="mx-4" />
@@ -229,17 +243,24 @@ export default function SegurosScreen() {
           }
           porVencer={vehiculosPorVencer.map<AlertItem>((v) => ({
             id: v.id,
-            name: v.nombre,
+            title: v.nombre,
+            subtitle: v.asignacion,
             subline: buildSubline(v.vigenciaFin, todayIso),
           }))}
           vencidas={vehiculosVencidos.map<AlertItem>((v) => ({
             id: v.id,
-            name: v.nombre,
+            title: v.nombre,
+            subtitle: v.asignacion,
             subline: buildSubline(v.vigenciaFin, todayIso),
           }))}
-          onItemPress={() =>
-            router.push('/(tabs)/informes/seguros/vehiculos' as never)
+          onItemPress={(id) =>
+            router.push({
+              pathname: '/(tabs)/informes/seguros/vehiculos',
+              params: { polizaId: id },
+            } as never)
           }
+          collapsed={collapsed.vehiculos}
+          onToggle={() => toggleSection('vehiculos')}
         />
 
         <AtDivider className="mx-4" />
@@ -256,17 +277,22 @@ export default function SegurosScreen() {
           }
           porVencer={propiedadesPorVencer.map<AlertItem>((p) => ({
             id: p.id,
-            name: p.nombre,
+            title: p.nombre,
             subline: buildSubline(p.vigenciaFin, todayIso),
           }))}
           vencidas={propiedadesVencidas.map<AlertItem>((p) => ({
             id: p.id,
-            name: p.nombre,
+            title: p.nombre,
             subline: buildSubline(p.vigenciaFin, todayIso),
           }))}
-          onItemPress={() =>
-            router.push('/(tabs)/informes/seguros/propiedades' as never)
+          onItemPress={(id) =>
+            router.push({
+              pathname: '/(tabs)/informes/seguros/propiedades',
+              params: { polizaId: id },
+            } as never)
           }
+          collapsed={collapsed.propiedades}
+          onToggle={() => toggleSection('propiedades')}
         />
       </ScrollView>
 
@@ -281,7 +307,8 @@ export default function SegurosScreen() {
 
 interface AlertItem {
   id: string;
-  name: string;
+  title: string;
+  subtitle?: string;
   subline: string;
 }
 
@@ -292,7 +319,9 @@ interface SimpleAlertSectionProps {
   onLinkPress: () => void;
   porVencer: AlertItem[];
   vencidas: AlertItem[];
-  onItemPress: () => void;
+  onItemPress: (id: string) => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
 function SimpleAlertSection({
@@ -303,6 +332,8 @@ function SimpleAlertSection({
   porVencer,
   vencidas,
   onItemPress,
+  collapsed,
+  onToggle,
 }: SimpleAlertSectionProps) {
   return (
     <View className="gap-3">
@@ -313,48 +344,56 @@ function SimpleAlertSection({
           onTitlePress={onTitlePress}
           linkLabel="Histórico de pólizas"
           onLinkPress={onLinkPress}
+          collapsed={collapsed}
+          onToggle={onToggle}
         />
       </View>
 
-      <View className="px-4 gap-2">
-        <AtTypography variant="bodyBold" color="#1A1F36">
-          Pólizas por vencer
-        </AtTypography>
-        {porVencer.length === 0 && (
-          <AtTypography variant="caption" color="#8892A4">
-            Sin pólizas por vencer.
-          </AtTypography>
-        )}
-        {porVencer.map((item) => (
-          <MlPolizaAlertRow
-            key={item.id}
-            name={item.name}
-            subline={item.subline}
-            variant="por_vencer"
-            onPress={onItemPress}
-          />
-        ))}
-      </View>
+      {!collapsed && (
+        <>
+          <View className="px-4 gap-2">
+            <AtTypography variant="bodyBold" color="#1A1F36">
+              Pólizas por vencer
+            </AtTypography>
+            {porVencer.length === 0 && (
+              <AtTypography variant="caption" color="#8892A4">
+                Sin pólizas por vencer.
+              </AtTypography>
+            )}
+            {porVencer.map((item) => (
+              <MlPolizaAlertRow
+                key={item.id}
+                title={item.title}
+                subtitle={item.subtitle}
+                subline={item.subline}
+                variant="por_vencer"
+                onPress={() => onItemPress(item.id)}
+              />
+            ))}
+          </View>
 
-      <View className="px-4 gap-2">
-        <AtTypography variant="bodyBold" color="#1A1F36">
-          Pólizas vencidas
-        </AtTypography>
-        {vencidas.length === 0 && (
-          <AtTypography variant="caption" color="#8892A4">
-            Sin pólizas vencidas.
-          </AtTypography>
-        )}
-        {vencidas.map((item) => (
-          <MlPolizaAlertRow
-            key={item.id}
-            name={item.name}
-            subline={item.subline}
-            variant="vencida"
-            onPress={onItemPress}
-          />
-        ))}
-      </View>
+          <View className="px-4 gap-2">
+            <AtTypography variant="bodyBold" color="#1A1F36">
+              Pólizas vencidas
+            </AtTypography>
+            {vencidas.length === 0 && (
+              <AtTypography variant="caption" color="#8892A4">
+                Sin pólizas vencidas.
+              </AtTypography>
+            )}
+            {vencidas.map((item) => (
+              <MlPolizaAlertRow
+                key={item.id}
+                title={item.title}
+                subtitle={item.subtitle}
+                subline={item.subline}
+                variant="vencida"
+                onPress={() => onItemPress(item.id)}
+              />
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }

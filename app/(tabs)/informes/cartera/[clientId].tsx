@@ -9,7 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlUpdatedAtCard } from '@/src/components/molecules/ml-updated-at-card';
-import { MlInvoiceRow } from '@/src/components/molecules/ml-invoice-row';
+import {
+  MlInvoiceRow,
+  INVOICE_AMOUNT_COL_W,
+} from '@/src/components/molecules/ml-invoice-row';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -72,7 +75,7 @@ export default function CarteraClientDetailScreen() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 96 + insets.bottom }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -126,70 +129,82 @@ export default function CarteraClientDetailScreen() {
           </View>
         </View>
 
-        {client && (
-          <View className="flex-row items-center justify-between px-4">
-            <View className="flex-row items-center gap-2">
+        <View className="gap-2">
+          {client && (
+            <View className="flex-row items-center px-4 gap-3">
+              <View className="flex-row items-center gap-2 flex-1">
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: client.color,
+                  }}
+                />
+                <AtTypography variant="bodyBold" numberOfLines={1}>
+                  {client.name}
+                </AtTypography>
+              </View>
               <View
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: client.color,
-                }}
-              />
-              <AtTypography variant="bodyBold">{client.name}</AtTypography>
-            </View>
-            <AtTypography variant="bodyBold" color="#1A1F36">
-              Monto
-            </AtTypography>
-          </View>
-        )}
-
-        <View
-          className="bg-bg-card mx-4 rounded-lg"
-          style={{
-            borderCurve: 'continuous',
-            borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.06)',
-          }}
-        >
-          {invoices.length === 0 && (
-            <View className="px-4 py-4">
-              <AtTypography variant="caption" color="#8892A4">
-                Sin facturas para este cliente.
-              </AtTypography>
+                style={{ width: INVOICE_AMOUNT_COL_W, marginRight: 16 }}
+                className="items-start"
+              >
+                <AtTypography variant="bodyBold" color="#1A1F36">
+                  Monto
+                </AtTypography>
+              </View>
             </View>
           )}
-          {invoices.map((inv, i) => (
-            <MlInvoiceRow
-              key={inv.id}
-              date={inv.date}
-              daysOverdue={inv.daysOverdue}
-              invoiceNumber={inv.invoiceNumber}
-              note={inv.note}
-              amount={inv.amount}
-              showDivider={i < invoices.length - 1}
-            />
-          ))}
-        </View>
 
-        <View className="px-4">
           <View
-            className="rounded-lg px-4 py-3 items-end gap-1"
+            className="bg-bg-card mx-4 rounded-lg"
             style={{
-              backgroundColor: '#0F1B4A',
               borderCurve: 'continuous',
+              borderWidth: 1,
+              borderColor: 'rgba(0,0,0,0.06)',
             }}
           >
-            <AtTypography variant="bodyBold" color="#FFFFFF">
-              Total
-            </AtTypography>
-            <AtTypography variant="metricSmall" color="#FFFFFF">
-              {formatMoney(total)}
-            </AtTypography>
+            {invoices.length === 0 && (
+              <View className="px-4 py-4">
+                <AtTypography variant="caption" color="#8892A4">
+                  Sin facturas para este cliente.
+                </AtTypography>
+              </View>
+            )}
+            {invoices.map((inv, i) => (
+              <MlInvoiceRow
+                key={inv.id}
+                date={inv.date}
+                daysOverdue={inv.daysOverdue}
+                invoiceNumber={inv.invoiceNumber}
+                note={inv.note}
+                amount={inv.amount}
+                showDivider={i < invoices.length - 1}
+              />
+            ))}
           </View>
         </View>
       </ScrollView>
+
+      <View
+        className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
+        style={{ paddingBottom: Math.max(insets.bottom - 8, 4) }}
+      >
+        <View
+          className="rounded-lg px-4 py-3 items-end gap-1"
+          style={{
+            backgroundColor: '#0F1B4A',
+            borderCurve: 'continuous',
+          }}
+        >
+          <AtTypography variant="bodyBold" color="#FFFFFF">
+            Total
+          </AtTypography>
+          <AtTypography variant="metricSmall" color="#FFFFFF">
+            {formatMoney(total)}
+          </AtTypography>
+        </View>
+      </View>
 
       <OrDrawer
         visible={drawerVisible}

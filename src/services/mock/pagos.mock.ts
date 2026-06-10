@@ -16,21 +16,25 @@ import type {
   Pago,
   PagosSnapshot,
 } from '@/src/types/pagos.types';
+import { CHART_COLORS } from '@/src/theme/chart-palette';
+import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 
 const TODAY_ISO = '2026-05-28';
 
+// Colores del donut homologados a la paleta canónica (ciclo por índice).
+// El bucket "Otros" usa el gris neutro como en los demás donuts de informes.
 const EMPRESAS: EmpresaGeneradora[] = [
-  { id: 'blue-star', name: 'Blue star', color: '#1A2B6D' },
-  { id: 'clean-with-me', name: 'Clean with me', color: '#E8952E' },
-  { id: 'mcs', name: 'MCS', color: '#0E7490' },
-  { id: 'living-group', name: 'Living group', color: '#1A3FE8' },
-  { id: 'anchorage-inn', name: 'Anchorage inn', color: '#1F2937' },
-  { id: 'back-9-golf', name: 'Back 9 golf and entertainment', color: '#F59E0B' },
-  { id: 'kona-village', name: 'Kona Village', color: '#0F766E' },
-  { id: 'great-wolf', name: 'Great Wolf resort holding', color: '#3B82F6' },
-  { id: 'kalahari', name: 'Kalahari developement LLC', color: '#65A30D' },
-  { id: 'innvite', name: 'Innvite hospitality', color: '#A3E635' },
-  { id: 'otros', name: 'Otros', color: '#7C3AED' },
+  { id: 'blue-star', name: 'Blue star', color: CHART_COLORS[0] },
+  { id: 'clean-with-me', name: 'Clean with me', color: CHART_COLORS[1] },
+  { id: 'mcs', name: 'MCS', color: CHART_COLORS[2] },
+  { id: 'living-group', name: 'Living group', color: CHART_COLORS[3] },
+  { id: 'anchorage-inn', name: 'Anchorage inn', color: CHART_COLORS[4] },
+  { id: 'back-9-golf', name: 'Back 9 golf and entertainment', color: CHART_COLORS[5] },
+  { id: 'kona-village', name: 'Kona Village', color: CHART_COLORS[6] },
+  { id: 'great-wolf', name: 'Great Wolf resort holding', color: CHART_COLORS[7] },
+  { id: 'kalahari', name: 'Kalahari developement LLC', color: CHART_COLORS[0] },
+  { id: 'innvite', name: 'Innvite hospitality', color: CHART_COLORS[1] },
+  { id: 'otros', name: 'Otros', color: OTROS_SEGMENT_COLOR },
 ];
 
 const CENTROS_COSTOS: CentroCostos[] = [

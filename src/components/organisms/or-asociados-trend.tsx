@@ -12,6 +12,7 @@ import { Pressable, ScrollView, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { AreaChart } from '@/src/components/charts/area-chart';
+import { CHART_COLORS } from '@/src/theme/chart-palette';
 
 export interface TrendSeries {
   id: string;
@@ -24,10 +25,17 @@ interface OrAsociadosTrendProps {
   /** Meses en 'YYYY-MM', orden ascendente. */
   months: string[];
   series: TrendSeries[];
+  /**
+   * Segmento seleccionado (controlado). VARIOS_ID = todas las series.
+   * Si se omite, el componente maneja la selección internamente.
+   */
+  selectedId?: string;
+  /** Notifica el cambio de segmento (para filtrar la lista externa). */
+  onSelectChange?: (id: string) => void;
 }
 
 const VARIOS_ID = '__varios__';
-const VARIOS_COLOR = '#9B2C2C';
+const VARIOS_COLOR = CHART_COLORS[0];
 const PLOT_HEIGHT = 160;
 const Y_GUTTER = 34;
 
@@ -50,8 +58,13 @@ function niceCeil(v: number): number {
 }
 
 export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
-  ({ months, series }) => {
-    const [selectedId, setSelectedId] = useState<string>(VARIOS_ID);
+  ({ months, series, selectedId: controlledId, onSelectChange }) => {
+    const [internalId, setInternalId] = useState<string>(VARIOS_ID);
+    const selectedId = controlledId ?? internalId;
+    const handleSelect = (id: string) => {
+      if (onSelectChange) onSelectChange(id);
+      else setInternalId(id);
+    };
     const [plotWidth, setPlotWidth] = useState(0);
 
     // Serie "Varios" = suma de todas las series por mes.
@@ -215,7 +228,7 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
             return (
               <Pressable
                 key={opt.id}
-                onPress={() => setSelectedId(opt.id)}
+                onPress={() => handleSelect(opt.id)}
                 className="flex-row items-center gap-2 rounded-lg px-2 py-1.5"
                 style={{
                   borderCurve: 'continuous',

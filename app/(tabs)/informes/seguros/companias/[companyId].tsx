@@ -94,7 +94,7 @@ export default function SeguroEmpresaDetailScreen() {
       <RNScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ gap: 16, paddingBottom: 48 }}
+        contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-2">
@@ -119,6 +119,7 @@ export default function SeguroEmpresaDetailScreen() {
         </View>
 
         <MlTimeFilterBar
+          fill
           options={POLIZA_STATUS_FILTERS}
           selectedKey={statusFilter}
           onSelect={(k) => setStatusFilter(k as PolizaStatus)}

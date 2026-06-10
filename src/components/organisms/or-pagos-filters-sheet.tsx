@@ -386,7 +386,10 @@ function MultiSelectSection({
             maxHeight: 220,
           }}
         >
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <ScrollView
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
             {filtered.length === 0 && (
               <View className="px-4 py-3">
                 <AtTypography variant="caption" color="#8892A4">

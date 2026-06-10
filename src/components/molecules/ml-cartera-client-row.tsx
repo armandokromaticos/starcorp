@@ -21,6 +21,11 @@ function formatMoney(value: number): string {
   return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Anchos de columna compartidos con el header de la lista
+// (app/(tabs)/informes/cartera/index.tsx). Mantener sincronizados.
+export const CARTERA_BUCKET_COL_W = 108;
+export const CARTERA_TOTAL_COL_W = 96;
+
 interface MlCarteraClientRowProps {
   name: string;
   color: string;
@@ -71,26 +76,38 @@ export const MlCarteraClientRow = memo<MlCarteraClientRowProps>(
             hitSlop={6}
             className="flex-row items-center gap-1 flex-1"
           >
-            <AtTypography variant="bodyBold" numberOfLines={2}>
+            <AtTypography variant="captionBold" numberOfLines={2}>
               {name}
             </AtTypography>
             <AtIcon name="arrow-forward" size="sm" color="#1A1F36" />
           </Pressable>
-          {!expanded && (
-            <View className="flex-row gap-6">
-              <AtTypography variant="body" color="#4A5568">
+          <View
+            style={{ width: CARTERA_BUCKET_COL_W }}
+            className="items-end"
+          >
+            {!expanded && (
+              <AtTypography
+                variant="caption"
+                color="#4A5568"
+                numberOfLines={1}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
                 {formatMoney(buckets[activeBucket])}
               </AtTypography>
-              <AtTypography variant="bodyBold">
-                {formatMoney(total)}
-              </AtTypography>
-            </View>
-          )}
-          {expanded && (
-            <AtTypography variant="bodyBold">
+            )}
+          </View>
+          <View
+            style={{ width: CARTERA_TOTAL_COL_W }}
+            className="items-end"
+          >
+            <AtTypography
+              variant="captionBold"
+              numberOfLines={1}
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
               {formatMoney(total)}
             </AtTypography>
-          )}
+          </View>
         </Pressable>
 
         {expanded && (

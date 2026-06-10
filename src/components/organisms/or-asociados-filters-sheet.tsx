@@ -193,18 +193,14 @@ export const OrAsociadosFiltersSheet = memo<OrAsociadosFiltersSheetProps>(
               >
                 <View className="gap-3">
                   <AtTypography variant="bodyBold">Por área</AtTypography>
-                  <View className="flex-row flex-wrap">
+                  <View className="gap-3">
                     {areaOptions.map((opt) => (
-                      <View
+                      <AtRadio
                         key={opt.value}
-                        style={{ width: '50%', paddingVertical: 6 }}
-                      >
-                        <AtRadio
-                          selected={area === opt.value}
-                          label={opt.label}
-                          onPress={() => setArea(opt.value)}
-                        />
-                      </View>
+                        selected={area === opt.value}
+                        label={opt.label}
+                        onPress={() => setArea(opt.value)}
+                      />
                     ))}
                   </View>
                 </View>
@@ -275,7 +271,10 @@ export const OrAsociadosFiltersSheet = memo<OrAsociadosFiltersSheetProps>(
                             maxHeight: 220,
                           }}
                         >
-                          <ScrollView keyboardShouldPersistTaps="handled">
+                          <ScrollView
+                            nestedScrollEnabled
+                            keyboardShouldPersistTaps="handled"
+                          >
                             {filteredClients.length === 0 && (
                               <View className="px-4 py-3">
                                 <AtTypography variant="caption" color="#8892A4">

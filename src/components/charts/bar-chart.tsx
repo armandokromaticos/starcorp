@@ -14,6 +14,11 @@ export interface BarDatum {
   value: number;
   color: string;
   darkColor?: string;
+  /**
+   * Degradado completo (multi-stop, primer color arriba → último abajo).
+   * Si se provee, tiene prioridad sobre `color`/`darkColor`.
+   */
+  gradient?: readonly string[];
 }
 
 interface BarChartProps {
@@ -36,13 +41,16 @@ export const BarChart = memo<BarChartProps>(
         max: m,
         bars: data.map((d, i) => {
           const h = Math.max(baseline, (d.value / m) * height);
+          const stops =
+            d.gradient && d.gradient.length >= 2
+              ? d.gradient
+              : [d.color, d.darkColor ?? darkenHex(d.color, 0.72)];
           return {
             x: i * (barWidth + gap),
             y: height - h,
             w: barWidth,
             h,
-            topColor: d.color,
-            bottomColor: d.darkColor ?? darkenHex(d.color, 0.72),
+            stops,
             gradId: `bar-grad-${i}`,
           };
         }),
@@ -63,8 +71,13 @@ export const BarChart = memo<BarChartProps>(
               x2="0"
               y2="1"
             >
-              <Stop offset="0" stopColor={b.topColor} />
-              <Stop offset="1" stopColor={b.bottomColor} />
+              {b.stops.map((c, si) => (
+                <Stop
+                  key={si}
+                  offset={b.stops.length > 1 ? si / (b.stops.length - 1) : 0}
+                  stopColor={c}
+                />
+              ))}
             </LinearGradient>
           ))}
         </Defs>

@@ -32,15 +32,7 @@ import type {
   BancoEmpresa,
   BancosSnapshot,
 } from '@/src/types/bancos.types';
-
-const BAR_PALETTE = [
-  '#E8952E', // orange — primary checking
-  '#B4D04A', // lime — secondary savings
-  '#1A3FE8', // azure
-  '#9B2C2C', // wine
-  '#0E7490', // teal
-  '#7C3AED', // purple
-];
+import { CHART_COLORS, CHART_GRADIENTS } from '@/src/theme/chart-palette';
 
 const BANK_ACCOUNT_QUERY = "SELECT * FROM Account WHERE AccountType='Bank'";
 
@@ -74,6 +66,16 @@ function buildCode(acc: QBAccountRaw): string {
   return `${prefix} ${acc.Id.slice(-4)}`;
 }
 
+/** Máx. MetaData.LastUpdatedTime (ISO) entre las cuentas; null si no hay. */
+function latestUpdatedTime(raw: QBAccountRaw[]): string | null {
+  let latest: string | null = null;
+  for (const acc of raw) {
+    const t = acc.MetaData?.LastUpdatedTime;
+    if (t && (latest === null || t > latest)) latest = t;
+  }
+  return latest;
+}
+
 function normalizeAccounts(
   empresaId: string,
   raw: QBAccountRaw[],
@@ -83,7 +85,8 @@ function normalizeAccounts(
     id: `${empresaId}-acc-${acc.Id}`,
     name: acc.Name,
     code: buildCode(acc),
-    color: BAR_PALETTE[idx % BAR_PALETTE.length],
+    color: CHART_COLORS[idx % CHART_COLORS.length],
+    gradient: CHART_GRADIENTS[idx % CHART_GRADIENTS.length],
     balance: typeof acc.CurrentBalance === 'number' ? acc.CurrentBalance : 0,
   }));
 }
@@ -104,6 +107,7 @@ async function fetchEmpresa(
       name: empresaName,
       balance: null,
       deltaPct: 0,
+      lastUpdatedAt: null,
       cuentas: [],
     };
   }
@@ -124,6 +128,7 @@ async function fetchEmpresa(
       name: empresaName,
       balance,
       deltaPct: 0,
+      lastUpdatedAt: latestUpdatedTime(raw),
       cuentas,
     };
   } catch (e) {
@@ -135,6 +140,7 @@ async function fetchEmpresa(
         name: empresaName,
         balance: null,
         deltaPct: 0,
+        lastUpdatedAt: null,
         cuentas: [],
       };
     }
@@ -144,6 +150,7 @@ async function fetchEmpresa(
       name: empresaName,
       balance: null,
       deltaPct: 0,
+      lastUpdatedAt: null,
       cuentas: [],
     };
   }
@@ -170,10 +177,18 @@ async function fetchFromQB(): Promise<BancosSnapshot> {
   const totalizado = empresas.reduce((s, e) => s + (e.balance ?? 0), 0);
   const todayIso = new Date().toISOString().slice(0, 10);
 
+  // Fecha de corte = última actualización de cuentas en QB (máx. entre
+  // empresas); fallback a hoy si ninguna cuenta trae LastUpdatedTime.
+  const latestAccountUpdate = empresas
+    .map((e) => e.lastUpdatedAt)
+    .filter((t): t is string => t != null)
+    .sort()
+    .pop();
+
   return {
     totalizado,
     deltaPct: 0,
-    updatedAt: todayIso,
+    updatedAt: latestAccountUpdate?.slice(0, 10) ?? todayIso,
     empresas,
   };
 }

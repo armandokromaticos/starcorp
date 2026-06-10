@@ -1,4 +1,4 @@
-import { tokens } from './tokens';
+import { CHART_COLORS, CHART_GRADIENTS } from './chart-palette';
 
 /**
  * Gradientes del design system.
@@ -16,7 +16,7 @@ export const gradients = {
   },
   // Gráfico de área principal
   chartArea: {
-    colors: [`${tokens.color.chart[0]}40`, `${tokens.color.chart[0]}05`] as const,
+    colors: [`${CHART_COLORS[0]}40`, `${CHART_COLORS[0]}05`] as const,
     start: { x: 0, y: 0 },
     end: { x: 0, y: 1 },
   },
@@ -43,54 +43,31 @@ export const gradients = {
 export type GradientName = keyof typeof gradients;
 
 /**
- * Paleta de gradientes para barras de gráficos (ingresos / costos / egresos / terceros).
- * Se cicla por índice. Direccion vertical (top claro → bottom oscuro).
+ * Paleta de gradientes para barras (ingresos / costos / egresos / terceros).
+ * Se cicla por índice. Dirección vertical: primer color arriba → último abajo.
+ *
+ * Homologada a los 8 degradados canónicos (ver chart-palette.ts).
  */
-export const BAR_GRADIENTS: ReadonlyArray<readonly [string, string]> = [
-  ['#215EF7', '#0F2674'], // deep navy
-  ['#3B82F6', '#1E3A8A'], // azure
-  ['#14B8A6', '#0E7490'], // teal
-  ['#D9E021', '#6B8E23'], // lime
-  ['#F6AD55', '#E8952E'], // amber
-];
+export const BAR_GRADIENTS: readonly (readonly string[])[] = CHART_GRADIENTS;
 
 /**
- * Paleta de "segmentos": colores planos de las rodajas de los donuts de
- * informes (cartera, asociados) y, para unificar el diseño, también de los
- * donuts de terceros en gastos / costos administrativos. El DonutChart
- * oscurece cada color automáticamente para dar profundidad, así que aquí
- * solo viven los tonos base. Se cicla por índice.
+ * Paleta de "segmentos": tono sólido de las rodajas de los donuts de informes
+ * (cartera, asociados) y de los donuts de terceros en gastos / costos. El
+ * DonutChart le aplica profundidad automáticamente; aquí solo vive el color
+ * base = primer color de cada degradado canónico. Se cicla por índice.
  */
-export const SEGMENT_PALETTE: readonly string[] = [
-  '#9B2C2C', // wine
-  '#1A2B6D', // navy
-  '#0E7490', // teal
-  '#65A30D', // lime
-  '#D9E021', // yellow-lime
-  '#3B82F6', // azure
-  '#0B1F4A', // dark navy
-  '#F6AD55', // amber
-  '#7C3AED', // purple
-  '#DC2626', // red
-  '#059669', // emerald
-  '#A16207', // ochre
-];
-
-/** Color del bucket "Otros" en los donuts de segmentos (gris neutro). */
-export const OTROS_SEGMENT_COLOR = '#6B7280';
+export const SEGMENT_PALETTE: readonly string[] = CHART_COLORS;
 
 /**
- * Paleta de 8 gradientes para clientes (C1–C8).
- * Usada en or-top-clients-section (legend swatches) y en el bar chart
- * de or-cost-groups-chart-card. Dirección vertical (top claro → bottom oscuro).
+ * Color del bucket "Otros" en los donuts de segmentos = último degradado
+ * canónico (remolacha). Reservado: los sectores con nombre solo usan los
+ * índices 0–6, así "Otros" (índice 7) nunca colisiona.
  */
-export const CLIENT_LEGEND_GRADIENTS: ReadonlyArray<readonly [string, string]> = [
-  ['#F0A968', '#C67A3C'], // C1 orange
-  ['#1F2A6B', '#0A0E2E'], // C2 dark navy
-  ['#6B8FC9', '#3D5A8A'], // C3 sky blue
-  ['#D4E061', '#8B9B3A'], // C4 lime
-  ['#7BA854', '#4A6B2E'], // C5 green
-  ['#3C5C5C', '#1A2E2E'], // C6 teal
-  ['#3A5BC4', '#1F3580'], // C7 royal blue
-  ['#A8527A', '#5C2A47'], // C8 magenta
-];
+export const OTROS_SEGMENT_COLOR = CHART_COLORS[7];
+
+/**
+ * Gradientes para leyendas de clientes (C1–C8) — swatches y barras.
+ * Homologada a los 8 degradados canónicos (ver chart-palette.ts).
+ */
+export const CLIENT_LEGEND_GRADIENTS: readonly (readonly string[])[] =
+  CHART_GRADIENTS;

@@ -22,6 +22,7 @@ import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { DonutChart } from '@/src/components/charts/donut-chart';
 import { SEGMENT_PALETTE, OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
+import { DONUT_MAX_NAMED } from '@/src/utils/donut';
 import { formatCurrency } from '@/src/utils/currency';
 import type { ThirdParty } from '@/src/types/domain.types';
 
@@ -38,7 +39,7 @@ interface OrThirdPartiesDonutCardProps {
 }
 
 const DONUT_SIZE = 160;
-const TOP_N = 8;
+const TOP_N = DONUT_MAX_NAMED;
 export const OTROS_TERCERO_ID = '__otros__';
 
 export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(

@@ -26,7 +26,7 @@ export const AtRadio = memo<AtRadioProps>(
         accessibilityRole="radio"
         accessibilityState={{ selected, disabled }}
         hitSlop={4}
-        className="flex-row items-center gap-2"
+        className="flex-row items-start gap-2"
       >
         <View
           style={{
@@ -54,6 +54,7 @@ export const AtRadio = memo<AtRadioProps>(
         <AtTypography
           variant="body"
           color={disabled ? '#8892A4' : '#1A1F36'}
+          className="flex-1"
         >
           {label}
         </AtTypography>

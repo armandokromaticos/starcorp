@@ -21,24 +21,25 @@ import type {
 // ─── Raw tasks (shape API) ──────────────────────────────────────
 
 export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
-  // ── Administrativo · Proyecto "Desarrollo del área comercial" ──
+  // ── Administrativo · Responsabilidad "Desarrollo del área comercial" ──
   {
     departamento: 'Departamento Administrativo',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo del área comercial',
     tarea_id: 'admin-1-t1',
     tarea: 'Estrategia de referidos desde la operación',
-    descripcion:
-      'Se están realizando los primeros pilotos para generar estadísticas',
     objetivo: 'Aumentar asociados',
     meta: '20 personas',
-    estado: 'Completado',
+    estado: 'Aprobada / Cerrada',
     prioridad: 'Alta',
+    es_recurrente: false,
     fecha_limite: '2026-05-30',
     completada_en: '2026-05-12',
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: '2 personas',
+    seguimiento:
+      'Se están realizando los primeros pilotos para generar estadísticas; subimos a 2 personas referidas',
     cumplimiento_pct: 100,
     bloqueo: 'Sin planeación por parte del cliente',
     apoyo_requerido: 'Acompañamiento comercial',
@@ -46,20 +47,20 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   {
     departamento: 'Departamento Administrativo',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo del área comercial',
     tarea_id: 'admin-1-t2',
     tarea: 'Enviar reporte de presupuesto de pauta',
-    descripcion:
-      'Se están realizando los primeros pilotos para generar estadísticas',
     objetivo: 'Validar presupuesto Q2',
     meta: 'Reporte semanal',
-    estado: 'Activa',
+    estado: 'En progreso',
     prioridad: 'Media',
+    es_recurrente: true,
     fecha_limite: '2026-05-25',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'Avance parcial',
+    seguimiento: 'Avance parcial: enviado el reporte de las primeras dos semanas',
     cumplimiento_pct: 50,
     bloqueo: '',
     apoyo_requerido: '',
@@ -67,20 +68,20 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   {
     departamento: 'Departamento Administrativo',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo del área comercial',
     tarea_id: 'admin-1-t3',
     tarea: 'Evaluar viabilidad de seguir desarrollando K',
-    descripcion:
-      'Se están realizando los primeros pilotos para generar estadísticas',
     objetivo: 'Decisión go/no-go',
     meta: 'Informe técnico',
-    estado: 'Activa',
+    estado: 'En progreso',
     prioridad: 'Alta',
+    es_recurrente: false,
     fecha_limite: '2026-06-10',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'En análisis',
+    seguimiento: 'En análisis técnico; pendiente reunión con producto',
     cumplimiento_pct: 60,
     bloqueo: '',
     apoyo_requerido: '',
@@ -88,62 +89,64 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   {
     departamento: 'Departamento Administrativo',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo del área comercial',
     tarea_id: 'admin-1-t4',
     tarea: 'Atacar a los OMNI',
-    descripcion:
-      'Se están realizando los primeros pilotos para generar estadísticas',
     objetivo: 'Reducir competencia',
     meta: '5 cuentas migradas',
-    estado: 'Activa',
+    estado: 'Bloqueada',
     prioridad: 'Baja',
+    es_recurrente: false,
     fecha_limite: '2026-07-01',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'Inicial',
+    seguimiento: 'Avance inicial; a la espera de material comercial',
     cumplimiento_pct: 10,
     bloqueo: 'Falta material comercial',
     apoyo_requerido: 'Diseño',
   },
-  // ── Administrativo · Proyecto 2 ──
+  // ── Administrativo · Responsabilidad "Gestión de talento" ──
   {
     departamento: 'Departamento Administrativo',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Gestión de talento',
     tarea_id: 'admin-2-t1',
     tarea: 'Onboarding nuevos asociados',
-    descripcion: 'Documentación y kits de bienvenida',
     objetivo: 'Estándar de onboarding',
     meta: 'Proceso documentado',
-    estado: 'Activa',
+    estado: 'En progreso',
     prioridad: 'Media',
+    es_recurrente: false,
     fecha_limite: '2026-06-15',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'Draft v1',
+    seguimiento: 'Draft v1 de documentación y kits de bienvenida en revisión',
     cumplimiento_pct: 40,
     bloqueo: '',
     apoyo_requerido: '',
   },
-  // ── Comercial ──
+  // ── Comercial · Responsabilidad "Desarrollo de cuentas PATRIOT" ──
   {
     departamento: 'Departamento Comercial',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo de cuentas PATRIOT',
     tarea_id: 'com-1-t1',
     tarea: 'Cierre de contrato OMNI Madrid',
-    descripcion: 'Negociación en fase final',
     objetivo: 'Firmar contrato',
     meta: '1 cliente',
-    estado: 'Activa',
+    estado: 'En progreso',
     prioridad: 'Alta',
+    es_recurrente: false,
     fecha_limite: '2026-05-20',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'Pendiente firma',
+    seguimiento: 'Negociación en fase final, pendiente firma',
     cumplimiento_pct: 80,
     bloqueo: '',
     apoyo_requerido: '',
@@ -151,40 +154,42 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   {
     departamento: 'Departamento Comercial',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Desarrollo de cuentas PATRIOT',
     tarea_id: 'com-1-t2',
     tarea: 'Renovación de cuentas Q2',
-    descripcion: '5 cuentas en revisión',
     objetivo: 'Retención',
     meta: '90% renovación',
-    estado: 'Activa',
+    estado: 'Recurrente',
     prioridad: 'Alta',
+    es_recurrente: true,
     fecha_limite: '2026-06-30',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: '3 de 5 confirmadas',
+    seguimiento: '3 de 5 cuentas confirmadas para renovación',
     cumplimiento_pct: 60,
     bloqueo: '',
     apoyo_requerido: '',
   },
-  // ── Financiero ──
+  // ── Financiero · Responsabilidad "Cierre contable" ──
   {
     departamento: 'Departamento Financiero',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Cierre contable',
     tarea_id: 'fin-1-t1',
     tarea: 'Conciliación bancaria abril',
-    descripcion: 'Cruce con extractos',
     objetivo: 'Cierre contable',
     meta: '100% conciliado',
-    estado: 'Completado',
+    estado: 'Aprobada / Cerrada',
     prioridad: 'Alta',
+    es_recurrente: false,
     fecha_limite: '2026-05-10',
     completada_en: '2026-05-08',
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'Cerrado',
+    seguimiento: 'Cruce con extractos cerrado al 100%',
     cumplimiento_pct: 100,
     bloqueo: '',
     apoyo_requerido: '',
@@ -192,19 +197,20 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   {
     departamento: 'Departamento Financiero',
     responsable: 'Daniel Zapata',
+    responsabilidad: 'Cierre contable',
     tarea_id: 'fin-1-t2',
     tarea: 'Presupuesto operativo Q3',
-    descripcion: 'Proyección por centro de costo',
     objetivo: 'Aprobación junta',
     meta: 'Borrador entregado',
-    estado: 'Activa',
+    estado: 'En progreso',
     prioridad: 'Media',
+    es_recurrente: false,
     fecha_limite: '2026-06-20',
     completada_en: null,
     razon_no_realizada: null,
     semana: '2026-05-09',
     actualizado: true,
-    resultado: 'En curso',
+    seguimiento: 'Proyección por centro de costo en curso',
     cumplimiento_pct: 30,
     bloqueo: '',
     apoyo_requerido: '',
@@ -262,10 +268,11 @@ const DEPARTMENT_ORDER = [
 ];
 
 /**
- * HEURÍSTICA TEMPORAL: agrupa tareas por departamento → "proyecto"
- * (hoy un único proyecto por depto llamado "Desarrollo del área comercial"
- * como en el mockup). Cuando backend exponga `proyecto_id` / `proyecto_titulo`,
- * reemplazar por agrupación real.
+ * Agrupa tareas por departamento → "proyecto" usando el campo
+ * `responsabilidad` que ahora expone `GET /api/integration/avance`
+ * (antes se agrupaba con un heurístico de chunks de 4). Cada
+ * responsabilidad distinta se vuelve un proyecto numerado, preservando
+ * el orden de aparición dentro del departamento.
  */
 export function groupTareasIntoResponsibilities(
   tareas: NexiataskTareaRaw[],
@@ -283,20 +290,25 @@ export function groupTareasIntoResponsibilities(
       const ib = DEPARTMENT_ORDER.indexOf(b);
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     })
-    .map(([nombre, tareasDelDepto], idx) => {
-      // HACK: hasta tener proyecto_id real, separamos en chunks
-      // de máximo 4 tareas para emular "1. … (4 tareas)" del mockup.
-      const proyectos: NexiataskProyecto[] = [];
-      const chunkSize = 4;
-      for (let i = 0; i < tareasDelDepto.length; i += chunkSize) {
-        const slice = tareasDelDepto.slice(i, i + chunkSize);
-        proyectos.push({
-          id: `${nombre}-p${Math.floor(i / chunkSize) + 1}`,
-          numero: Math.floor(i / chunkSize) + 1,
-          titulo: 'Desarrollo del área comercial',
-          tareas: slice.map(rawToUiTarea),
-        });
+    .map(([nombre, tareasDelDepto]) => {
+      // Agrupar por responsabilidad preservando el orden de aparición.
+      const byResp = new Map<string, NexiataskTareaRaw[]>();
+      for (const t of tareasDelDepto) {
+        const key = t.responsabilidad?.trim() || 'Sin responsabilidad';
+        const list = byResp.get(key) ?? [];
+        list.push(t);
+        byResp.set(key, list);
       }
+
+      const proyectos: NexiataskProyecto[] = Array.from(byResp.entries()).map(
+        ([titulo, tareasDeResp], idx) => ({
+          id: `${nombre.toLowerCase().replace(/\s+/g, '-')}-p${idx + 1}`,
+          numero: idx + 1,
+          titulo,
+          tareas: tareasDeResp.map(rawToUiTarea),
+        }),
+      );
+
       return {
         id: nombre.toLowerCase().replace(/\s+/g, '-'),
         nombre,
@@ -314,8 +326,10 @@ function rawToUiTarea(raw: NexiataskTareaRaw): NexiataskTarea {
   return {
     id: raw.tarea_id,
     titulo: raw.tarea,
-    descripcion: raw.descripcion,
+    responsabilidad: raw.responsabilidad,
+    seguimiento: raw.seguimiento,
     estado: raw.estado,
+    esRecurrente: raw.es_recurrente,
     cumplimientoPct: raw.cumplimiento_pct ?? 0,
     semanaLabel: formatSemanaLabel(raw.semana),
     fechaMes: mes,
@@ -345,7 +359,8 @@ export function getNexiataskTareaDetalle(
     departamentoNombre: raw.departamento || 'Sin Departamento',
     objetivo: raw.objetivo,
     meta: raw.meta,
-    resultado: raw.resultado,
+    // /avance ya no trae `resultado`; usamos el narrativo de `seguimiento`.
+    resultado: raw.seguimiento,
     bloqueo: raw.bloqueo,
     apoyoRequerido: raw.apoyo_requerido,
     fechaLimite: raw.fecha_limite,

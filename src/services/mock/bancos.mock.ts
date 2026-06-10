@@ -7,15 +7,7 @@
  */
 
 import type { BancoEmpresa, BancosSnapshot } from '@/src/types/bancos.types';
-
-const BAR_PALETTE = [
-  '#E8952E', // orange — Chase Checking
-  '#B4D04A', // lime — Chase Saving
-  '#1A3FE8', // azure
-  '#9B2C2C', // wine
-  '#0E7490', // teal
-  '#7C3AED', // purple
-];
+import { CHART_COLORS, CHART_GRADIENTS } from '@/src/theme/chart-palette';
 
 const CUENTAS_POR_EMPRESA: Record<string, { name: string; code: string; balance: number }[]> = {
   '5-stars': [
@@ -65,6 +57,7 @@ function buildSnapshot(): BancosSnapshot {
         name: e.name,
         balance: null,
         deltaPct: e.deltaPct,
+        lastUpdatedAt: null,
         cuentas: [],
       };
     }
@@ -73,7 +66,8 @@ function buildSnapshot(): BancosSnapshot {
       id: `${e.id}-acc-${idx + 1}`,
       name: c.name,
       code: c.code,
-      color: BAR_PALETTE[idx % BAR_PALETTE.length],
+      color: CHART_COLORS[idx % CHART_COLORS.length],
+      gradient: CHART_GRADIENTS[idx % CHART_GRADIENTS.length],
       balance: c.balance,
     }));
     const balance = cuentas.reduce((s, c) => s + c.balance, 0);
@@ -82,6 +76,7 @@ function buildSnapshot(): BancosSnapshot {
       name: e.name,
       balance,
       deltaPct: e.deltaPct,
+      lastUpdatedAt: '2026-04-07T12:00:00Z',
       cuentas,
     };
   });

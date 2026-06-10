@@ -19,6 +19,8 @@ import {
 interface MlVehiculoDetailCardProps {
   poliza: PolizaVehiculo;
   todayIso: string;
+  /** Resalta la card (póliza a la que se navegó desde el informe). */
+  highlighted?: boolean;
 }
 
 function formatVencimiento(days: number): string {
@@ -28,7 +30,7 @@ function formatVencimiento(days: number): string {
 }
 
 export const MlVehiculoDetailCard = memo<MlVehiculoDetailCardProps>(
-  ({ poliza, todayIso }) => {
+  ({ poliza, todayIso, highlighted = false }) => {
     const days = diffInDays(poliza.vigenciaFin, todayIso);
     const vencida = days < 0;
     const venceProximo = days >= 0 && days <= 60;
@@ -40,8 +42,11 @@ export const MlVehiculoDetailCard = memo<MlVehiculoDetailCardProps>(
         className="bg-white rounded-lg p-4 gap-3"
         style={{
           borderCurve: 'continuous',
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
+          borderWidth: highlighted ? 2 : 1,
+          borderColor: highlighted ? '#E8952E' : 'rgba(0,0,0,0.06)',
+          boxShadow: highlighted
+            ? '0 0 0 3px rgba(232, 149, 46, 0.18)'
+            : undefined,
         }}
       >
         <View>

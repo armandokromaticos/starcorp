@@ -9,7 +9,7 @@
  * inyecta la API key desde Deno.env y proxea el GET solicitado.
  *
  * Body esperado:
- *   { endpoint: "seguimiento" | "tareas" | "kpis", params?: Record<string,string> }
+ *   { endpoint: "avance" | "tareas" | "kpis", params?: Record<string,string> }
  *
  * Secret requerido:
  *   NEXIATASK_API_KEY  (ver: supabase secrets set NEXIATASK_API_KEY=...)
@@ -19,7 +19,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const NEXIATASK_BASE = "https://nexiatask-api.onrender.com/api/integration";
 
-const ALLOWED_ENDPOINTS = new Set(["seguimiento", "tareas", "kpis"]);
+// /seguimiento fue reemplazado por /avance en la API de NexiaTask
+// (campos extra: responsabilidad, seguimiento, bloqueo, apoyo_requerido).
+const ALLOWED_ENDPOINTS = new Set(["avance", "tareas", "kpis"]);
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
