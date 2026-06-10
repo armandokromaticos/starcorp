@@ -34,10 +34,12 @@ export type NexiataskPrioridad = 'Alta' | 'Media' | 'Baja';
 
 /**
  * Una tarea dentro de `GET /api/integration/avance`. El endpoint
- * `/seguimiento` fue reemplazado por `/avance`: ya no trae `descripcion`
- * ni `resultado`; el narrativo semanal vive en `seguimiento`, y
- * `responsabilidad` expone por fin la iniciativa padre (antes la
- * agrupábamos con un heurístico — ver docs/nexiatask-backend-pendientes.md).
+ * `/seguimiento` fue reemplazado por `/avance`; `responsabilidad` expone
+ * la iniciativa padre (antes la agrupábamos con un heurístico — ver
+ * docs/nexiatask-backend-pendientes.md). Desde 2026-06 el endpoint
+ * volvió a devolver `resultado` (mismo valor que `seguimiento`, por
+ * compatibilidad) y `cumplimiento_pct` ya nunca llega `null` (0 si no
+ * hay medición esa semana).
  */
 export interface NexiataskTareaRaw {
   departamento: string;
@@ -61,8 +63,10 @@ export interface NexiataskTareaRaw {
   actualizado: boolean;
   /** Narrativo del avance de la semana ("Esta semana se realizaron 3 visitas…") */
   seguimiento: string;
-  /** 0-100; `null` cuando aún no se ha medido */
-  cumplimiento_pct: number | null;
+  /** Alias de `seguimiento` (mismo valor) — la API lo reintrodujo por compat (2026-06) */
+  resultado: string;
+  /** 0-100; la API devuelve `0` (no `null`) cuando no hay medición esa semana */
+  cumplimiento_pct: number;
   bloqueo: string;
   apoyo_requerido: string;
 }
@@ -77,6 +81,40 @@ export interface NexiataskAvanceResponse {
   actualizadas: number;
   sin_actualizar: number;
   tareas: NexiataskTareaRaw[];
+}
+
+// ─── Historial de avances (GET /api/integration/historial) ──────
+
+/**
+ * Un avance semanal dentro de `tarea.avances` del endpoint `/historial`.
+ * `resultado` es el narrativo de esa semana; `cumplimiento_pct` ya nunca
+ * llega `null` (0 si no se midió).
+ */
+export interface NexiataskAvanceRaw {
+  /** Sábado de la semana — ISO con TZ ("2026-06-07T00:00:00+00:00") o "YYYY-MM-DD" */
+  semana: string;
+  resultado: string;
+  cumplimiento_pct: number;
+  bloqueo: string;
+  apoyo_requerido: string;
+}
+
+/** Una tarea con su historial completo de avances semana por semana. */
+export interface NexiataskHistorialTarea {
+  tarea_id: string;
+  tarea: string;
+  responsable: string;
+  total_avances: number;
+  /** Historial completo, más reciente primero. */
+  avances: NexiataskAvanceRaw[];
+}
+
+/**
+ * Respuesta de `GET /api/integration/historial`. Sin params devuelve
+ * todas las tareas; con `?tarea_id=<id>` devuelve solo esa.
+ */
+export interface NexiataskHistorialResponse {
+  tareas: NexiataskHistorialTarea[];
 }
 
 /** Respuesta de `GET /api/integration/kpis` */
@@ -122,11 +160,15 @@ export interface NexiataskProyecto {
   tareas: NexiataskTarea[];
 }
 
-export interface NexiataskDepartamento {
+/** Campos comunes a todo "departamento" (sirven al carrusel de filtro). */
+export interface NexiataskDepartamentoBase {
   id: string;
   nombre: string;
   responsable: string;
   icon: MaterialIconName;
+}
+
+export interface NexiataskDepartamento extends NexiataskDepartamentoBase {
   proyectos: NexiataskProyecto[];
 }
 
@@ -156,4 +198,28 @@ export interface NexiataskTareaDetalle extends NexiataskTarea {
   apoyoRequerido: string;
   fechaLimite: string;
   avances: NexiataskAvance[];
+}
+
+// ─── Árbol por tarea + avances (lista /reportes: drawer = tarea) ─
+
+/**
+ * Una tarea con su historial de avances semanales (de `/historial`).
+ * En la lista de reportes cada tarea es un drawer y sus `avances` son
+ * las subtareas que muestra adentro.
+ */
+export interface NexiataskTareaConAvances extends NexiataskTarea {
+  /** Total de avances registrados (de `historial.total_avances`). */
+  totalAvances: number;
+  /** Historial ya en shape UI, más reciente primero. */
+  avances: NexiataskAvance[];
+}
+
+export interface NexiataskDepartamentoConAvances
+  extends NexiataskDepartamentoBase {
+  tareas: NexiataskTareaConAvances[];
+}
+
+/** Árbol departamento → tareas (con avances) para la lista de reportes. */
+export interface NexiataskHistorialTree {
+  departamentos: NexiataskDepartamentoConAvances[];
 }

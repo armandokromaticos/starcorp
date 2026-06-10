@@ -16,15 +16,20 @@ import {
   mockNexiataskTareasRaw,
   groupTareasIntoResponsibilities,
   getNexiataskTareaDetalle,
+  getNexiataskHistorialTree,
+  buildTareasConAvancesTree,
+  mapHistorialAvances,
 } from '@/src/services/mock/nexiatask.mock';
 import type {
   NexiataskResponsibilities,
   NexiataskTareaDetalle,
   NexiataskTareaRaw,
   NexiataskAvanceResponse,
+  NexiataskHistorialResponse,
+  NexiataskHistorialTree,
 } from '@/src/types/nexiatask.types';
 
-type ProxyEndpoint = 'avance' | 'tareas' | 'kpis';
+type ProxyEndpoint = 'avance' | 'tareas' | 'kpis' | 'historial';
 
 async function invokeProxy<T>(
   endpoint: ProxyEndpoint,
@@ -60,6 +65,28 @@ export async function fetchResponsibilities(): Promise<NexiataskResponsibilities
   );
 }
 
+// ─── Lista por tarea + avances (drawer = tarea) ─────────────────
+
+/**
+ * Árbol departamento → tareas (cada una con su historial de avances) para
+ * la lista de reportes. Combina `/avance` (departamento, estado, %) con
+ * `/historial` (avances por tarea) — ver buildTareasConAvancesTree.
+ */
+export async function fetchTareasConHistorial(): Promise<NexiataskHistorialTree> {
+  return withMock(
+    async () => {
+      const [avance, historial] = await Promise.all([
+        invokeProxy<NexiataskAvanceResponse>('avance', {
+          include_completed: true,
+        }),
+        invokeProxy<NexiataskHistorialResponse>('historial'),
+      ]);
+      return buildTareasConAvancesTree(avance.tareas ?? [], historial);
+    },
+    () => getNexiataskHistorialTree(),
+  );
+}
+
 // ─── Detalle de una tarea ───────────────────────────────────────
 
 export async function fetchTareaDetalle(
@@ -67,12 +94,18 @@ export async function fetchTareaDetalle(
 ): Promise<NexiataskTareaDetalle | null> {
   return withMock(
     async () => {
-      // La API no expone GET por tarea_id, así que pedimos /avance
-      // y filtramos client-side. Cuando backend agregue
-      // /tareas/{id}/historico, reemplazar por una sola llamada.
-      const resp = await invokeProxy<NexiataskAvanceResponse>('avance', {
-        include_completed: true,
-      });
+      // /avance no expone GET por tarea_id → pedimos la semana actual y
+      // filtramos client-side para los campos de la tarea. En paralelo
+      // pedimos /historial?tarea_id=<id> para el histórico de avances.
+      const [resp, historial] = await Promise.all([
+        invokeProxy<NexiataskAvanceResponse>('avance', {
+          include_completed: true,
+        }),
+        invokeProxy<NexiataskHistorialResponse>('historial', {
+          tarea_id: tareaId,
+        }),
+      ]);
+
       const raw = (resp.tareas ?? []).find(
         (t: NexiataskTareaRaw) => t.tarea_id === tareaId,
       );
@@ -89,19 +122,23 @@ export async function fetchTareaDetalle(
         .find((t) => t.id === tareaId);
       if (!ui) return null;
 
+      const historialTarea = (historial.tareas ?? []).find(
+        (t) => t.tarea_id === tareaId,
+      );
+
       return {
         ...ui,
         departamentoId: depto?.id ?? '',
         departamentoNombre: raw.departamento || 'Sin Departamento',
         objetivo: raw.objetivo,
         meta: raw.meta,
-        // /avance ya no trae `resultado`; el resultado de la semana es el
-        // mismo narrativo de `seguimiento`.
-        resultado: raw.seguimiento,
+        // `resultado` === `seguimiento` (la API lo reintrodujo por compat);
+        // usamos `resultado` con fallback al narrativo de `seguimiento`.
+        resultado: raw.resultado || raw.seguimiento,
         bloqueo: raw.bloqueo,
         apoyoRequerido: raw.apoyo_requerido,
         fechaLimite: raw.fecha_limite,
-        avances: [], // backend pendiente: /tareas/{id}/historico
+        avances: mapHistorialAvances(historialTarea?.avances ?? [], tareaId),
       };
     },
     () => getNexiataskTareaDetalle(tareaId),

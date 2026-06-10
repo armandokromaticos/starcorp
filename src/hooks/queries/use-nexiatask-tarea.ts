@@ -1,8 +1,9 @@
 /**
  * useNexiataskTarea
  *
- * Detalle de una tarea + avances históricos. El histórico hoy viene
- * del mock — backend pendiente de exponer /tareas/{id}/historico.
+ * Detalle de una tarea + avances históricos. El histórico viene de
+ * `GET /api/integration/historial?tarea_id=<id>` (vía nexiatask-proxy);
+ * con EXPO_PUBLIC_USE_MOCKS=true sale del mock.
  */
 
 import { useQuery } from '@tanstack/react-query';

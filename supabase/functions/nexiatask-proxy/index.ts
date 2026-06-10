@@ -9,7 +9,7 @@
  * inyecta la API key desde Deno.env y proxea el GET solicitado.
  *
  * Body esperado:
- *   { endpoint: "avance" | "tareas" | "kpis", params?: Record<string,string> }
+ *   { endpoint: "avance" | "tareas" | "kpis" | "historial", params?: Record<string,string> }
  *
  * Secret requerido:
  *   NEXIATASK_API_KEY  (ver: supabase secrets set NEXIATASK_API_KEY=...)
@@ -21,7 +21,9 @@ const NEXIATASK_BASE = "https://nexiatask-api.onrender.com/api/integration";
 
 // /seguimiento fue reemplazado por /avance en la API de NexiaTask
 // (campos extra: responsabilidad, seguimiento, bloqueo, apoyo_requerido).
-const ALLOWED_ENDPOINTS = new Set(["avance", "tareas", "kpis"]);
+// /historial (2026-06) devuelve el histórico de avances por tarea; admite
+// el param opcional `tarea_id` para filtrar una sola tarea.
+const ALLOWED_ENDPOINTS = new Set(["avance", "tareas", "kpis", "historial"]);
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
