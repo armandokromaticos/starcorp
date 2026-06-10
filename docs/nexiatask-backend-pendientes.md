@@ -58,7 +58,17 @@ jerarquía completa `proyecto → tareas[]`.
 
 ---
 
-## 2. Histórico de avances por tarea — **bloqueante para Image #2**
+## 2. Histórico de avances por tarea — ✅ RESUELTO (2026-06)
+
+> **Resuelto:** backend expuso `GET /api/integration/historial`, que
+> devuelve cada tarea con un array `avances` (historial completo semana
+> por semana, más reciente primero). Admite `?tarea_id=<id>` para una
+> sola tarea. El frontend lo consume desde `fetchTareaDetalle` (en
+> paralelo con `/avance`) y lo mapea con `mapHistorialAvances`
+> (`src/services/mock/nexiatask.mock.ts`). Se agregó `historial` a la
+> allowlist del proxy. Además: `/avance` reintrodujo `resultado` (mismo
+> valor que `seguimiento`, por compat) y `cumplimiento_pct` ya nunca
+> llega `null` (0 si no se midió esa semana).
 
 La pantalla de detalle (`/reportes/[taskId]`) tiene una sección **"Avances"**
 que muestra N semanas previas de la misma tarea:
@@ -69,23 +79,10 @@ FEB 02 — Semana Febrero 02-06 — "Se presentaron las primeras estadísticas�
 ENE 01 — Semana Enero 26 - 30 — "Se están realizando los primeros pilotos…"
 ```
 
-La API actual solo devuelve **una semana por request** (`week_start`). Hacer
-N requests paralelos desde el cliente es viable pero:
-
-- La API está en Render → cold start de hasta 30s en la primera llamada.
-- Cada semana = una llamada extra → 5 semanas = 5 round-trips.
-- No hay paginación ni endpoint dedicado.
-
-**Solicitud:** un endpoint del tipo:
-
-```
-GET /integration/tareas/{tarea_id}/historico?weeks=8
-```
-
-Que retorne un array de semanas con los campos: `semana`, `actualizado`,
-`resultado`, `descripcion`, `cumplimiento_pct`, `bloqueo`, `apoyo_requerido`.
-
-Mientras tanto el frontend muestra histórico mock + empty state cuando viene vacío.
+Cada avance de `/historial` trae: `semana`, `resultado`, `cumplimiento_pct`,
+`bloqueo`, `apoyo_requerido`. El frontend sintetiza el `id` UI como
+`tarea_id__semana` (la API no devuelve id por avance) y muestra empty
+state cuando `avances` viene vacío.
 
 ---
 
@@ -129,8 +126,8 @@ app/(tabs)/reportes/*  ──► useNexiataskResponsibilities ──►
                             supabase/functions/nexiatask-proxy/
                             - valida JWT del usuario
                             - inyecta X-API-Key desde Deno.env (secret)
-                            - allowlist: ['seguimiento', 'tareas', 'kpis',
-                                          'tareas/{id}/historico']
+                            - allowlist: ['avance', 'tareas', 'kpis',
+                                          'historial']
                             - fetch a nexiatask-api.onrender.com
                             - retorna response al cliente
 ```
@@ -158,15 +155,16 @@ una key se compromete no se ven afectados todos los consumidores.
 ## Checklist para destrabar la integración real
 
 - [x] Backend expone `responsabilidad` (iniciativa padre) en `/avance` — resuelve el agrupamiento (2026-06)
-- [ ] Backend expone `GET /integration/tareas/{id}/historico`
+- [x] Backend expone `GET /integration/historial` (histórico de avances por tarea, opt. `?tarea_id=`) (2026-06)
 - [x] Backend documenta enums de `estado` y `prioridad` (2026-06)
 - [x] Starcorp migra la conexión de `/seguimiento` → `/avance` (proxy + tipos + service + mock, 2026-06)
+- [x] Starcorp conecta `/historial` (proxy allowlist + tipos + `mapHistorialAvances` + `fetchTareaDetalle`, 2026-06)
 - [x] Starcorp implementa `supabase/functions/nexiatask-proxy/index.ts` (deployada 2026-05-18, version 1, ACTIVE)
 - [ ] Starcorp setea el secret: `supabase secrets set NEXIATASK_API_KEY=nexia_2025_k9mX4pQr7vBjL2wN8sT`
 - [ ] Starcorp setea `EXPO_PUBLIC_USE_MOCKS=false` en `.env` y prueba en staging
 
 ---
 
-**Última actualización:** 2026-05-18
+**Última actualización:** 2026-06-10
 **Owner frontend:** Daniel Cordero / Kromaticos
 **Owner backend:** blue.solutions2025@gmail.com

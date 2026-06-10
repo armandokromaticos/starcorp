@@ -42,7 +42,8 @@ Incluir en cada llamado:
    - semana
    - actualizado  (true/false)
    - seguimiento
-   - cumplimiento_pct
+   - resultado           (mismo valor que seguimiento, por compat)
+   - cumplimiento_pct    (0-100; nunca null - 0 si no se midio)
    - bloqueo
    - apoyo_requerido
 
@@ -70,6 +71,40 @@ Incluir en cada llamado:
 
    Ejemplo:
    GET https://nexiatask-api.onrender.com/api/integration/kpis
+
+4. HISTORIAL DE AVANCES POR TAREA  (NUEVO 2026-06)
+      GET /integration/historial
+
+   Devuelve cada tarea con un array vances (historial completo
+   semana por semana, mas reciente primero).
+
+   Parametros opcionales:
+   - tarea_id=<id>   (devuelve solo el historial de esa tarea)
+
+   Ejemplo:
+   GET https://nexiatask-api.onrender.com/api/integration/historial
+   GET https://nexiatask-api.onrender.com/api/integration/historial?tarea_id=<id>
+
+   Respuesta:
+   {
+     "tareas": [
+       {
+         "tarea_id": "...",
+         "tarea": "Visitas a cliente",
+         "responsable": "Daniel Zapata",
+         "total_avances": 18,
+         "avances": [
+           {
+             "semana": "2026-06-07T00:00:00+00:00",
+             "resultado": "Esta semana se realizaron...",
+             "cumplimiento_pct": 80,
+             "bloqueo": "",
+             "apoyo_requerido": ""
+           }
+         ]
+       }
+     ]
+   }
 
 ====================================================
   EJEMPLO EN PYTHON

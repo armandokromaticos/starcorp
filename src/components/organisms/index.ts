@@ -31,7 +31,7 @@ export { OrExpenseCentralCard } from './or-expense-central-card';
 export { OrHighlightedBarChartCard } from './or-highlighted-bar-chart-card';
 export type { HighlightedBarChartPoint } from './or-highlighted-bar-chart-card';
 export { OrDepartmentsCarousel } from './or-departments-carousel';
-export { OrResponsibilitiesList } from './or-responsibilities-list';
+export { OrTareasAccordionList } from './or-tareas-accordion-list';
 export { OrTaskDetailCard } from './or-task-detail-card';
 export { OrTaskAvancesList } from './or-task-avances-list';
 

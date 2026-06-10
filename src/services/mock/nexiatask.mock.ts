@@ -9,8 +9,12 @@
 
 import type {
   NexiataskTareaRaw,
+  NexiataskAvanceRaw,
+  NexiataskHistorialResponse,
   NexiataskResponsibilities,
   NexiataskTareaDetalle,
+  NexiataskTareaConAvances,
+  NexiataskHistorialTree,
   NexiataskDepartamento,
   NexiataskProyecto,
   NexiataskTarea,
@@ -20,7 +24,10 @@ import type {
 
 // ─── Raw tasks (shape API) ──────────────────────────────────────
 
-export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
+// `resultado` es siempre el mismo valor que `seguimiento` (la API lo
+// reintrodujo por compat en 2026-06), así que lo derivamos abajo en vez
+// de duplicarlo en cada objeto.
+const baseTareasRaw: Omit<NexiataskTareaRaw, 'resultado'>[] = [
   // ── Administrativo · Responsabilidad "Desarrollo del área comercial" ──
   {
     departamento: 'Departamento Administrativo',
@@ -217,41 +224,60 @@ export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = [
   },
 ];
 
-// ─── Avances históricos (mock — backend pendiente) ──────────────
+export const mockNexiataskTareasRaw: NexiataskTareaRaw[] = baseTareasRaw.map(
+  (t) => ({ ...t, resultado: t.seguimiento }),
+);
 
-const mockAvancesByTaskId: Record<string, NexiataskAvance[]> = {
+// ─── Avances históricos (mock — shape raw de /historial) ────────
+// Mismo shape que `tarea.avances` de GET /api/integration/historial,
+// para que el adapter (mapHistorialAvances) sea el único code path.
+
+const mockHistorialByTaskId: Record<string, NexiataskAvanceRaw[]> = {
   'admin-1-t1': [
     {
-      id: 'av-1-1',
       semana: '2026-02-09',
-      semanaLabel: 'Semana Febrero 09-13',
-      fechaMes: 'FEB',
-      fechaDia: '02',
-      descripcion: '—',
-      cumplimientoPct: 60,
+      resultado: '',
+      cumplimiento_pct: 60,
+      bloqueo: '',
+      apoyo_requerido: '',
     },
     {
-      id: 'av-1-2',
       semana: '2026-02-02',
-      semanaLabel: 'Semana Febrero 02-06',
-      fechaMes: 'FEB',
-      fechaDia: '02',
-      descripcion:
+      resultado:
         'Se presentaron las primeras estadísticas al cliente y subimos a 4 personas',
-      cumplimientoPct: 40,
+      cumplimiento_pct: 40,
+      bloqueo: '',
+      apoyo_requerido: '',
     },
     {
-      id: 'av-1-3',
       semana: '2026-01-26',
-      semanaLabel: 'Semana Enero 26 - 30',
-      fechaMes: 'ENE',
-      fechaDia: '01',
-      descripcion:
+      resultado:
         'Se están realizando los primeros pilotos para generar estadísticas',
-      cumplimientoPct: 20,
+      cumplimiento_pct: 20,
+      bloqueo: '',
+      apoyo_requerido: '',
     },
   ],
 };
+
+/**
+ * Avances raw de una tarea para el mock. Si no hay histórico explícito,
+ * sintetizamos un único avance con la semana actual del raw (toda tarea
+ * tiene al menos la semana en curso de `/avance`).
+ */
+function mockHistorialRaw(raw: NexiataskTareaRaw): NexiataskAvanceRaw[] {
+  return (
+    mockHistorialByTaskId[raw.tarea_id] ?? [
+      {
+        semana: raw.semana,
+        resultado: raw.resultado,
+        cumplimiento_pct: raw.cumplimiento_pct,
+        bloqueo: raw.bloqueo,
+        apoyo_requerido: raw.apoyo_requerido,
+      },
+    ]
+  );
+}
 
 // ─── Grouping logic (heurístico — backend pendiente) ────────────
 
@@ -340,6 +366,30 @@ function rawToUiTarea(raw: NexiataskTareaRaw): NexiataskTarea {
 }
 
 /**
+ * Convierte los avances crudos de `GET /api/integration/historial`
+ * (shape `NexiataskAvanceRaw`) al shape UI `NexiataskAvance`. La API ya
+ * no devuelve un `id` por avance, así que lo sintetizamos con
+ * tarea_id + semana (estable y único dentro de la tarea).
+ */
+export function mapHistorialAvances(
+  avancesRaw: NexiataskAvanceRaw[],
+  tareaId: string,
+): NexiataskAvance[] {
+  return avancesRaw.map((a) => {
+    const { mes, dia } = parseSemanaDate(a.semana);
+    return {
+      id: `${tareaId}__${a.semana}`,
+      semana: a.semana,
+      semanaLabel: formatSemanaLabel(a.semana),
+      fechaMes: mes,
+      fechaDia: dia,
+      descripcion: a.resultado || '—',
+      cumplimientoPct: a.cumplimiento_pct ?? 0,
+    };
+  });
+}
+
+/**
  * Construye el detalle de una tarea + sus avances históricos.
  * El histórico hoy viene del mock (backend pendiente).
  */
@@ -359,13 +409,75 @@ export function getNexiataskTareaDetalle(
     departamentoNombre: raw.departamento || 'Sin Departamento',
     objetivo: raw.objetivo,
     meta: raw.meta,
-    // /avance ya no trae `resultado`; usamos el narrativo de `seguimiento`.
-    resultado: raw.seguimiento,
+    // `resultado` === `seguimiento` (la API lo reintrodujo por compat).
+    resultado: raw.resultado || raw.seguimiento,
     bloqueo: raw.bloqueo,
     apoyoRequerido: raw.apoyo_requerido,
     fechaLimite: raw.fecha_limite,
-    avances: mockAvancesByTaskId[tareaId] ?? [],
+    avances: mapHistorialAvances(mockHistorialRaw(raw), tareaId),
   };
+}
+
+// ─── Árbol tarea → avances (lista de reportes) ──────────────────
+
+/**
+ * Construye el árbol departamento → tareas (con avances) combinando las
+ * tareas de `/avance` (dan departamento/estado/%) con el historial de
+ * `/historial` (da los avances por tarea). Join por `tarea_id`.
+ */
+export function buildTareasConAvancesTree(
+  tareasRaw: NexiataskTareaRaw[],
+  historial: NexiataskHistorialResponse,
+): NexiataskHistorialTree {
+  const avancesByTask = new Map<string, NexiataskAvance[]>();
+  const totalByTask = new Map<string, number>();
+  for (const ht of historial.tareas ?? []) {
+    avancesByTask.set(
+      ht.tarea_id,
+      mapHistorialAvances(ht.avances ?? [], ht.tarea_id),
+    );
+    totalByTask.set(ht.tarea_id, ht.total_avances ?? (ht.avances?.length ?? 0));
+  }
+
+  const tree = groupTareasIntoResponsibilities(tareasRaw);
+  const departamentos = tree.departamentos.map((d) => {
+    const tareas: NexiataskTareaConAvances[] = d.proyectos
+      .flatMap((p) => p.tareas)
+      .map((t) => {
+        const avances = avancesByTask.get(t.id) ?? [];
+        return {
+          ...t,
+          avances,
+          totalAvances: totalByTask.get(t.id) ?? avances.length,
+        };
+      });
+    return {
+      id: d.id,
+      nombre: d.nombre,
+      responsable: d.responsable,
+      icon: d.icon,
+      tareas,
+    };
+  });
+
+  return { departamentos };
+}
+
+/** Versión mock del árbol tarea → avances. */
+export function getNexiataskHistorialTree(): NexiataskHistorialTree {
+  const historial: NexiataskHistorialResponse = {
+    tareas: mockNexiataskTareasRaw.map((t) => {
+      const avances = mockHistorialRaw(t);
+      return {
+        tarea_id: t.tarea_id,
+        tarea: t.tarea,
+        responsable: t.responsable,
+        total_avances: avances.length,
+        avances,
+      };
+    }),
+  };
+  return buildTareasConAvancesTree(mockNexiataskTareasRaw, historial);
 }
 
 // ─── Date helpers ───────────────────────────────────────────────

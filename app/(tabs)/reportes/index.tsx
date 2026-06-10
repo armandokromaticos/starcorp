@@ -1,12 +1,13 @@
 /**
- * Reportes — Lista de responsabilidades (NexiaTask).
+ * Reportes — Lista de tareas por departamento (NexiaTask).
  *
  * Composición:
  *  1. SearchBar + Drawer trigger (consistente con resto de tabs)
  *  2. Breadcrumb "< Reportes"
  *  3. H2 "Lista de responsabilidades"
- *  4. Carrusel horizontal de departamentos
- *  5. Acordeón de proyectos del departamento seleccionado
+ *  4. Carrusel horizontal de departamentos (filtro)
+ *  5. Un drawer por tarea del departamento seleccionado; dentro, sus
+ *     avances semanales (subtareas). Tap en un avance → single de tarea.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -16,13 +17,13 @@ import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { OrDepartmentsCarousel } from '@/src/components/organisms/or-departments-carousel';
-import { OrResponsibilitiesList } from '@/src/components/organisms/or-responsibilities-list';
+import { OrTareasAccordionList } from '@/src/components/organisms/or-tareas-accordion-list';
 import { TmDashboard } from '@/src/components/templates/tm-dashboard';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
 import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import { useNexiataskResponsibilities } from '@/src/hooks/queries/use-nexiatask-responsibilities';
+import { useNexiataskTareasHistorial } from '@/src/hooks/queries/use-nexiatask-tareas-historial';
 
 export default function ReportesScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -31,10 +32,14 @@ export default function ReportesScreen() {
   const router = useRouter();
 
   const { data, isLoading, isError, refetch, isRefetching } =
-    useNexiataskResponsibilities();
+    useNexiataskTareasHistorial();
 
   const departamentos = useMemo(() => data?.departamentos ?? [], [data]);
   const effectiveSelectedId = selectedDeptId ?? departamentos[0]?.id;
+  const selectedDept = useMemo(
+    () => departamentos.find((d) => d.id === effectiveSelectedId),
+    [departamentos, effectiveSelectedId],
+  );
 
   return (
     <TmDashboard>
@@ -82,13 +87,20 @@ export default function ReportesScreen() {
             onSelect={setSelectedDeptId}
           />
 
-          <OrResponsibilitiesList
-            departamentos={departamentos}
-            selectedId={effectiveSelectedId}
-            onTareaPress={(tareaId) =>
-              router.push(`/(tabs)/reportes/${tareaId}` as never)
-            }
-          />
+          {selectedDept && selectedDept.tareas.length > 0 ? (
+            <OrTareasAccordionList
+              tareas={selectedDept.tareas}
+              onAvancePress={(tareaId) =>
+                router.push(`/(tabs)/reportes/${tareaId}` as never)
+              }
+            />
+          ) : (
+            <MlEmptyState
+              icon="assignment"
+              title="Sin tareas en este departamento"
+              description="Aún no hay tareas cargadas para esta semana."
+            />
+          )}
         </>
       )}
 
