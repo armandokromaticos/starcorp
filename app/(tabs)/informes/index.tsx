@@ -49,6 +49,8 @@ export default function InformesScreen() {
                   router.push('/(tabs)/informes/asociados' as never);
                 } else if (report.id === 'bancos') {
                   router.push('/(tabs)/informes/bancos' as never);
+                } else if (report.id === 'presupuesto') {
+                  router.push('/(tabs)/informes/presupuesto' as never);
                 } else if (report.id === 'seguro') {
                   router.push('/(tabs)/informes/seguros' as never);
                 } else if (report.id === 'pagos') {

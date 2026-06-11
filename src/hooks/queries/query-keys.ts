@@ -52,6 +52,8 @@ export const queryKeys = {
     compare: boolean,
   ) => ['dashboard', 'timeseries', period, centroCosto, compare] as const,
   pbiSyncLatest: () => ['pbi', 'sync', 'latest'] as const,
+  presupuesto: (tipo: string, periodo: string) =>
+    ['presupuesto', tipo, periodo] as const,
   nexiataskResponsibilities: () => ['nexiatask', 'responsibilities'] as const,
   nexiataskHistorial: () => ['nexiatask', 'historial'] as const,
   nexiataskTarea: (tareaId: string) => ['nexiatask', 'tarea', tareaId] as const,
