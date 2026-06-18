@@ -327,7 +327,10 @@ export default function CarteraScreen() {
 
       <View
         className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
-        style={{ paddingBottom: Math.max(insets.bottom - 8, 4) }}
+        // El safe-area inset de algunos dispositivos (home indicator ~34px)
+        // dejaba un gran espacio bajo la card y la hacía "flotar". Acotamos a
+        // una holgura pequeña y consistente para pegarla al fondo en todos.
+        style={{ paddingBottom: Math.min(Math.max(insets.bottom, 8), 12) }}
       >
         <MlCarteraTotalFooter
           showBucket={!isSingleClient}
