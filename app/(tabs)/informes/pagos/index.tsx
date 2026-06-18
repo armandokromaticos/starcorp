@@ -127,6 +127,21 @@ export default function PagosScreen() {
     return out;
   }, [filteredPagos]);
 
+  // Variación % del total del día seleccionado vs el día con pagos
+  // inmediatamente anterior (badge del donut). null si no hay día previo.
+  const dayDeltaPercent = useMemo(() => {
+    if (!selectedDay) return null;
+    const prevDay = Object.keys(totalsByDate)
+      .filter((d) => d < selectedDay)
+      .sort()
+      .pop();
+    if (!prevDay) return null;
+    const prev = totalsByDate[prevDay] ?? 0;
+    if (prev === 0) return null;
+    const current = totalsByDate[selectedDay] ?? 0;
+    return ((current - prev) / prev) * 100;
+  }, [selectedDay, totalsByDate]);
+
   // El donut de empresa generadora es del día seleccionado (su detalle).
   // Color por posición (mayor→menor, empieza en naranja); del 8º en adelante
   // se agrupa en "Otros" (remolacha).
@@ -404,7 +419,11 @@ export default function PagosScreen() {
                   : 'Total por empresa generadora'
               }
               data={donutData}
-              headerBadge={<AtDeltaIndicator value={1.87} size="sm" />}
+              headerBadge={
+                dayDeltaPercent != null ? (
+                  <AtDeltaIndicator value={dayDeltaPercent} size="sm" />
+                ) : undefined
+              }
               labelsMode="tap-only"
               selectedId={selectedSliceId}
               onSelectChange={setSelectedSliceId}

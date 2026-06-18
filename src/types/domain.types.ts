@@ -31,37 +31,12 @@ export interface NormalizedClient {
   source: 'quickbooks' | 'powerbi';
 }
 
-export interface NormalizedCashFlow {
-  inflows: number;
-  outflows: number;
-  net: number;
-  deltaPercent: number;
-  sparklineData: TimeSeriesPoint[];
-  breakdown: CashFlowBreakdownItem[];
-}
-
-export interface CashFlowBreakdownItem {
-  category: string;
-  amount: number;
-}
-
 export interface NormalizedCategory {
   id: string;
   label: string;
   icon: string;
   total: number;
   actionLabel: string;
-}
-
-export interface NormalizedReport {
-  id: string;
-  label: string;
-  icon: string;
-  color: string;
-  total: number;
-  currency: string;
-  deltaPercent: number;
-  series: number[];
 }
 
 export type TrendDirection = 'up' | 'down' | 'flat';

@@ -184,6 +184,21 @@ export default function AsociadosScreen() {
       }));
   }, [trend, colorByClientId, effectiveFilters.clientIds]);
 
+  // Variación % del total de asociados activos: último mes vs mes anterior
+  // (suma de counts de todas las series en cada mes). null si no hay base.
+  const totalDeltaPercent = useMemo(() => {
+    if (!trend || trend.months.length < 2) return null;
+    const n = trend.months.length;
+    let last = 0;
+    let prev = 0;
+    for (const s of trend.series) {
+      last += s.counts[n - 1] ?? 0;
+      prev += s.counts[n - 2] ?? 0;
+    }
+    if (prev === 0) return null;
+    return ((last - prev) / prev) * 100;
+  }, [trend]);
+
   const hasActiveFilters =
     filters.area !== 'todos' || filters.clientIds.length > 0;
 
@@ -312,7 +327,11 @@ export default function AsociadosScreen() {
             <OrCarteraDonut
               title="Asociados por participación"
               data={donutData}
-              headerBadge={<AtDeltaIndicator value={1.87} size="sm" />}
+              headerBadge={
+                totalDeltaPercent != null ? (
+                  <AtDeltaIndicator value={totalDeltaPercent} size="sm" />
+                ) : undefined
+              }
               selectedId={selectedSliceId}
               onSelectChange={setSelectedSliceId}
               labelsMode="tap-only"
