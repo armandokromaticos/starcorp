@@ -13,9 +13,10 @@
  * Tap en una celda del calendario abre el sheet "Detalle del día".
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from '@/src/tw';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
@@ -38,6 +39,7 @@ import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
   EMPTY_PAGOS_FILTERS,
   formatShortDate,
+  type Pago,
   type PagosFilters,
 } from '@/src/types/pagos.types';
 import { formatCurrency } from '@/src/utils/currency';
@@ -45,6 +47,11 @@ import { buildDonutSlices } from '@/src/utils/donut';
 
 /** Id del sector "Otros" del donut (sentinela; no choca con la empresa real). */
 const PAGOS_OTROS_ID = '__otros_donut__';
+
+/** Separador de 12px entre cards de pago en la lista virtualizada. */
+function Separator() {
+  return <View style={{ height: 12 }} />;
+}
 
 function inRange(iso: string, from: string | null, to: string | null): boolean {
   if (from && iso < from) return false;
@@ -207,17 +214,43 @@ export default function PagosScreen() {
     }
   }, [vista, selectedDay]);
 
-  return (
-    <View
-      className="flex-1 bg-bg-secondary"
-      style={{ paddingTop: insets.top }}
-    >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-4 pb-6"
-        keyboardShouldPersistTaps="handled"
-      >
-        <View className="px-4 pt-2">
+  // Item de la lista virtualizada (FlashList). Va envuelto en px-4 para que
+  // el padding horizontal no afecte al header.
+  const renderItem = useCallback(
+    ({ item: p }: { item: Pago }) => {
+      const empresa = empresasMap.get(p.empresaId);
+      return (
+        <View className="px-4">
+          <MlPagoCard
+            empresaName={empresa?.name ?? p.empresaId}
+            empresaColor={empresa?.color ?? '#1A1F36'}
+            monto={p.monto}
+            centroCostos={centrosMap.get(p.centroCostosId) ?? '—'}
+            empleado={empleadosMap.get(p.empleadoId) ?? '—'}
+            concepto={p.concepto}
+            fecha={p.fecha}
+            onPress={
+              vista === 'donut'
+                ? () =>
+                    setSelectedSliceId((cur) =>
+                      cur === p.empresaId ? null : p.empresaId,
+                    )
+                : undefined
+            }
+            selected={vista === 'donut' && selectedSliceId === p.empresaId}
+          />
+        </View>
+      );
+    },
+    [empresasMap, centrosMap, empleadosMap, vista, selectedSliceId],
+  );
+
+  // Todo lo que va por encima de la lista de pagos. Se pasa como elemento
+  // (no como componente inline) para que el calendario/donut no se
+  // re-monten en cada render. El gap-4 reproduce el espaciado original.
+  const listHeader = (
+    <View className="gap-4" style={{ marginBottom: 12 }}>
+      <View className="px-4 pt-2">
           <MlSearchBar
             onMenuPress={() => setDrawerVisible(true)}
             onPress={openGlobalSearch}
@@ -391,52 +424,46 @@ export default function PagosScreen() {
           </View>
         )}
 
-        {/* Lista headers */}
-        <View className="flex-row items-center justify-between px-4">
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            Empresa generadora
-          </AtTypography>
-          <AtTypography variant="bodyBold" color="#1A1F36">
-            Total
-          </AtTypography>
-        </View>
+      {/* Lista headers */}
+      <View className="flex-row items-center justify-between px-4">
+        <AtTypography variant="bodyBold" color="#1A1F36">
+          Empresa generadora
+        </AtTypography>
+        <AtTypography variant="bodyBold" color="#1A1F36">
+          Total
+        </AtTypography>
+      </View>
+    </View>
+  );
 
-        <View className="gap-3 px-4">
-          {isPending && <MlReportListSkeleton />}
-          {!isPending && listaPagos.length === 0 && (
-            <AtTypography variant="caption" color="#8892A4">
-              {selectedDay
-                ? 'Sin pagos en el día seleccionado.'
-                : 'Sin pagos que coincidan con los filtros.'}
-            </AtTypography>
-          )}
-          {listaPagos.map((p) => {
-            const empresa = empresasMap.get(p.empresaId);
-            return (
-              <MlPagoCard
-                key={p.id}
-                empresaName={empresa?.name ?? p.empresaId}
-                empresaColor={empresa?.color ?? '#1A1F36'}
-                monto={p.monto}
-                centroCostos={centrosMap.get(p.centroCostosId) ?? '—'}
-                empleado={empleadosMap.get(p.empleadoId) ?? '—'}
-                concepto={p.concepto}
-                fecha={p.fecha}
-                onPress={
-                  vista === 'donut'
-                    ? () =>
-                        setSelectedSliceId((cur) =>
-                          cur === p.empresaId ? null : p.empresaId,
-                        )
-                    : undefined
-                }
-                selected={vista === 'donut' && selectedSliceId === p.empresaId}
-              />
-            );
-          })}
-        </View>
-
-      </ScrollView>
+  return (
+    <View
+      className="flex-1 bg-bg-secondary"
+      style={{ paddingTop: insets.top }}
+    >
+      <FlashList
+        data={listaPagos}
+        keyExtractor={(p) => p.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View className="px-4">
+            {isPending ? (
+              <MlReportListSkeleton />
+            ) : (
+              <AtTypography variant="caption" color="#8892A4">
+                {selectedDay
+                  ? 'Sin pagos en el día seleccionado.'
+                  : 'Sin pagos que coincidan con los filtros.'}
+              </AtTypography>
+            )}
+          </View>
+        }
+        ItemSeparatorComponent={Separator}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      />
 
       {/* Total fijo: anclado al fondo de la pantalla, fuera del ScrollView,
           para que siempre sea visible al recorrer la lista de pagos. */}
