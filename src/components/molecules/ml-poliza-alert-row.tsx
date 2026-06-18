@@ -23,8 +23,8 @@ interface MlPolizaAlertRowProps {
 }
 
 const COLORS = {
-  por_vencer: { bg: '#FEF3C7', icon: '#D97706', text: '#1A1F36' },
-  vencida: { bg: '#FEE2E2', icon: '#DC2626', text: '#DC2626' },
+  por_vencer: { icon: '#D97706', subline: '#8892A4' },
+  vencida: { icon: '#DC2626', subline: '#DC2626' },
 } as const;
 
 export const MlPolizaAlertRow = memo<MlPolizaAlertRowProps>(
@@ -34,48 +34,50 @@ export const MlPolizaAlertRow = memo<MlPolizaAlertRowProps>(
       <Pressable
         onPress={onPress}
         accessibilityRole={onPress ? 'button' : undefined}
-        className="bg-white rounded-lg flex-row items-center px-3 py-3 gap-3"
+        className="flex-row items-center px-3 py-3 gap-3"
         style={{
+          backgroundColor: '#F5F5F7',
+          borderRadius: 16,
           borderCurve: 'continuous',
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
         }}
       >
         <View
-          className="items-center justify-center rounded-lg"
+          className="items-center justify-center"
           style={{
-            width: 36,
-            height: 36,
-            backgroundColor: tone.bg,
+            width: 48,
+            height: 48,
+            backgroundColor: '#FFFFFF',
+            borderRadius: 14,
             borderCurve: 'continuous',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}
         >
-          <AtIcon name="warning-amber" size={20} color={tone.icon} />
+          <AtIcon name="warning-amber" size={24} color={tone.icon} />
         </View>
         <View className="flex-1">
           <AtTypography
             variant="bodyBold"
             color="#1A1F36"
             numberOfLines={1}
-            style={{ fontSize: 14, lineHeight: 18 }}
+            style={{ fontSize: 15, lineHeight: 20 }}
           >
             {title}
           </AtTypography>
           {subtitle && (
             <AtTypography
-              variant="body"
+              variant="bodyBold"
               color="#1A1F36"
               numberOfLines={1}
-              style={{ fontSize: 12, lineHeight: 16 }}
+              style={{ fontSize: 13, lineHeight: 18 }}
             >
               {subtitle}
             </AtTypography>
           )}
-          <AtTypography variant="caption" color={tone.text}>
+          <AtTypography variant="caption" color={tone.subline}>
             {subline}
           </AtTypography>
         </View>
-        <AtIcon name="arrow-forward" size="sm" color="#1A1F36" />
+        <AtIcon name="arrow-forward" size="sm" color="#4A5568" />
       </Pressable>
     );
   },

@@ -19,7 +19,6 @@ import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
 import { MlPolizaAlertRow } from '@/src/components/molecules/ml-poliza-alert-row';
 import { MlSectionHeaderLink } from '@/src/components/molecules/ml-section-header-link';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
-import { AtDivider } from '@/src/components/atoms/at-divider';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
@@ -30,6 +29,14 @@ import {
   type PolizaCompania,
   type PolizaStatus,
 } from '@/src/types/seguros.types';
+
+/** Card blanca que encierra cada categoría de seguros. */
+const CARD_CLASS = 'mx-4 bg-white rounded-lg p-4 gap-3';
+const CARD_STYLE = {
+  borderCurve: 'continuous',
+  borderWidth: 1,
+  borderColor: 'rgba(0,0,0,0.06)',
+} as const;
 
 function buildSubline(vigenciaFin: string, todayIso: string): string {
   const status = polizaStatus(vigenciaFin, todayIso);
@@ -153,26 +160,24 @@ export default function SegurosScreen() {
         )}
 
         {/* — Compañías — */}
-        <View className="gap-3">
-          <View className="px-4">
-            <MlSectionHeaderLink
-              title="Compañías"
-              iconName="business-center"
-              linkLabel="Histórico de pólizas"
-              onLinkPress={() =>
-                router.push('/(tabs)/informes/seguros/companias/historico' as never)
-              }
-              collapsed={collapsed.companias}
-              onToggle={() => toggleSection('companias')}
-            />
-          </View>
+        <View className={CARD_CLASS} style={CARD_STYLE}>
+          <MlSectionHeaderLink
+            title="Compañías"
+            iconName="business-center"
+            linkLabel="Histórico de pólizas"
+            onLinkPress={() =>
+              router.push('/(tabs)/informes/seguros/companias/historico' as never)
+            }
+            collapsed={collapsed.companias}
+            onToggle={() => toggleSection('companias')}
+          />
 
           {!collapsed.companias && (
             <>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerClassName="gap-3 px-4"
+                contentContainerClassName="gap-3"
               >
                 {empresas.map((empresa) => (
                   <MlCompanyCard
@@ -184,7 +189,7 @@ export default function SegurosScreen() {
                 ))}
               </ScrollView>
 
-              <View className="px-4 gap-2">
+              <View className="gap-2">
                 <AtTypography variant="bodyBold" color="#1A1F36">
                   Pólizas por vencer
                 </AtTypography>
@@ -205,7 +210,7 @@ export default function SegurosScreen() {
                 ))}
               </View>
 
-              <View className="px-4 gap-2">
+              <View className="gap-2">
                 <AtTypography variant="bodyBold" color="#1A1F36">
                   Pólizas vencidas
                 </AtTypography>
@@ -228,8 +233,6 @@ export default function SegurosScreen() {
             </>
           )}
         </View>
-
-        <AtDivider className="mx-4" />
 
         {/* — Vehículos — */}
         <SimpleAlertSection
@@ -262,8 +265,6 @@ export default function SegurosScreen() {
           collapsed={collapsed.vehiculos}
           onToggle={() => toggleSection('vehiculos')}
         />
-
-        <AtDivider className="mx-4" />
 
         {/* — Propiedades — */}
         <SimpleAlertSection
@@ -336,22 +337,20 @@ function SimpleAlertSection({
   onToggle,
 }: SimpleAlertSectionProps) {
   return (
-    <View className="gap-3">
-      <View className="px-4">
-        <MlSectionHeaderLink
-          title={title}
-          iconName={iconName}
-          onTitlePress={onTitlePress}
-          linkLabel="Histórico de pólizas"
-          onLinkPress={onLinkPress}
-          collapsed={collapsed}
-          onToggle={onToggle}
-        />
-      </View>
+    <View className={CARD_CLASS} style={CARD_STYLE}>
+      <MlSectionHeaderLink
+        title={title}
+        iconName={iconName}
+        onTitlePress={onTitlePress}
+        linkLabel="Histórico de pólizas"
+        onLinkPress={onLinkPress}
+        collapsed={collapsed}
+        onToggle={onToggle}
+      />
 
       {!collapsed && (
         <>
-          <View className="px-4 gap-2">
+          <View className="gap-2">
             <AtTypography variant="bodyBold" color="#1A1F36">
               Pólizas por vencer
             </AtTypography>
@@ -372,7 +371,7 @@ function SimpleAlertSection({
             ))}
           </View>
 
-          <View className="px-4 gap-2">
+          <View className="gap-2">
             <AtTypography variant="bodyBold" color="#1A1F36">
               Pólizas vencidas
             </AtTypography>
