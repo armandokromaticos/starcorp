@@ -34,8 +34,14 @@ export const BarChart = memo<BarChartProps>(
   ({ data, width, height, gap = 10, cornerRadius = 6, baseline = 4 }) => {
     const { bars, max } = useMemo(() => {
       const m = Math.max(...data.map((d) => d.value), 1);
+      const n = data.length;
+      // Gap adaptativo: con muchas barras, un gap fijo puede consumir todo
+      // el ancho y dejar barras de ancho ≤ 0 (invisibles). Lo acotamos para
+      // que cada barra conserve al menos la mitad de su "slot".
+      const slot = n > 0 ? width / n : 0;
+      const effGap = Math.min(gap, slot * 0.5);
       const barWidth =
-        data.length > 0 ? (width - gap * (data.length - 1)) / data.length : 0;
+        n > 0 ? Math.max(1, (width - effGap * (n - 1)) / n) : 0;
 
       return {
         max: m,
@@ -46,7 +52,7 @@ export const BarChart = memo<BarChartProps>(
               ? d.gradient
               : [d.color, d.darkColor ?? darkenHex(d.color, 0.72)];
           return {
-            x: i * (barWidth + gap),
+            x: i * (barWidth + effGap),
             y: height - h,
             w: barWidth,
             h,
