@@ -748,9 +748,9 @@ interface BancoSlice {
 }
 
 /**
- * Donut de Bancos: una rodaja por empresa (saldo) y debajo una rejilla de
- * chips compactos en 2 columnas (color + nombre + monto). Tocar una rodaja
- * o un chip muestra su % en el centro del donut.
+ * Donut de Bancos: una rodaja por empresa (saldo) y debajo una leyenda
+ * compacta (una fila por empresa: dot + nombre + monto). Tocar una rodaja
+ * o una fila muestra su % en el centro del donut y atenúa el resto.
  */
 const ReportBancosDonut = memo<{ empresas: BancoSlice[]; width: number }>(
   ({ empresas, width }) => {
@@ -799,7 +799,6 @@ const ReportBancosDonut = memo<{ empresas: BancoSlice[]; width: number }>(
     ];
 
     const size = Math.min(150, Math.max(120, width));
-    const containerH = size + 56;
     const pct =
       selected != null && total > 0
         ? (slices[selected].value / total) * 100
@@ -808,27 +807,11 @@ const ReportBancosDonut = memo<{ empresas: BancoSlice[]; width: number }>(
     const toggle = (i: number) =>
       setSelected((prev) => (prev === i ? null : i));
 
-    // Esquinas para los chips flotantes (en orden de los slices).
-    const CORNERS: Array<Record<string, number>> = [
-      { top: 0, left: 0 },
-      { top: 0, right: 0 },
-      { bottom: 0, left: 0 },
-      { bottom: 0, right: 0 },
-    ];
-
     return (
-      <View style={{ width, height: containerH }}>
+      <View style={{ width }}>
         {/* Donut centrado */}
         <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ height: size, alignItems: 'center', justifyContent: 'center' }}
         >
           <DonutChart
             data={slices}
@@ -850,43 +833,55 @@ const ReportBancosDonut = memo<{ empresas: BancoSlice[]; width: number }>(
           </DonutChart>
         </View>
 
-        {/* Chips flotantes en las esquinas */}
-        {chips.map((c, i) => {
-          const active = selected === i;
-          return (
-            <Pressable
-              key={c.key}
-              onPress={() => toggle(i)}
-              style={{
-                position: 'absolute',
-                maxWidth: 100,
-                ...CORNERS[i],
-                borderRadius: 8,
-                borderCurve: 'continuous',
-                paddingHorizontal: 8,
-                paddingVertical: 5,
-                backgroundColor: c.color,
-                opacity: selected == null || active ? 1 : 0.5,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
-              }}
-            >
-              <AtTypography
-                variant="captionBold"
-                color="#FFFFFF"
-                numberOfLines={1}
+        {/* Leyenda: una fila por empresa (dot + nombre + monto), tappable.
+            Reemplaza los chips flotantes en esquinas, que se dispersaban
+            sin relación con la posición del sector. */}
+        <View style={{ marginTop: 10, gap: 4 }}>
+          {chips.map((c, i) => {
+            const active = selected === i;
+            return (
+              <Pressable
+                key={c.key}
+                onPress={() => toggle(i)}
+                className="flex-row items-center gap-2"
+                style={{
+                  paddingVertical: 4,
+                  paddingHorizontal: 6,
+                  borderRadius: 8,
+                  borderCurve: 'continuous',
+                  opacity: selected == null || active ? 1 : 0.45,
+                  backgroundColor: active ? 'rgba(0,0,0,0.05)' : 'transparent',
+                }}
               >
-                {c.name}
-              </AtTypography>
-              <AtTypography
-                variant="label"
-                color="rgba(255,255,255,0.9)"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {formatCurrency(c.balance)}
-              </AtTypography>
-            </Pressable>
-          );
-        })}
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 3,
+                    backgroundColor: c.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <AtTypography
+                  variant="caption"
+                  color="#1A1F36"
+                  numberOfLines={1}
+                  style={{ flexGrow: 1, flexShrink: 1 }}
+                >
+                  {c.name}
+                </AtTypography>
+                <AtTypography
+                  variant="captionBold"
+                  color="#1A1F36"
+                  numberOfLines={1}
+                  style={{ fontVariant: ['tabular-nums'], flexShrink: 0 }}
+                >
+                  {formatCurrency(c.balance)}
+                </AtTypography>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     );
   },

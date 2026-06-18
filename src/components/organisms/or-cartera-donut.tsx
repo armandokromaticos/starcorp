@@ -280,6 +280,7 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
               <Pressable
                 onPress={() => onSelectChange?.(null)}
                 className="flex-row items-center gap-2"
+                style={{ flexShrink: 1, maxWidth: '100%' }}
                 hitSlop={6}
               >
                 <View
@@ -288,19 +289,22 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
                     height: 10,
                     borderRadius: 5,
                     backgroundColor: data[selectedIndex].color,
+                    flexShrink: 0,
                   }}
                 />
                 <AtTypography
                   variant="bodyBold"
                   color="#1A1F36"
                   numberOfLines={1}
+                  style={{ flexShrink: 1 }}
                 >
                   {data[selectedIndex].label}
                 </AtTypography>
                 <AtTypography
                   variant="caption"
                   color="#8892A4"
-                  style={{ fontVariant: ['tabular-nums'] }}
+                  numberOfLines={1}
+                  style={{ fontVariant: ['tabular-nums'], flexShrink: 0 }}
                 >
                   {valueFormatter
                     ? valueFormatter(data[selectedIndex].value)
