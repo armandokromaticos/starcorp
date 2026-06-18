@@ -25,7 +25,7 @@ import { useFiltersStore } from "@/src/stores/filters.store";
 import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, TextInput, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
-import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
+import { formatAxisDate, PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -87,6 +87,11 @@ export default function UtilidadConsolidadaScreen() {
       },
     ];
   }, [timeseries.data, selected]);
+
+  const xLabels = useMemo(
+    () => (timeseries.data ?? []).map((b) => formatAxisDate(b.start)),
+    [timeseries.data],
+  );
 
   const isPending = isLoading && !data;
   const isEmpty = !!data && data.length === 0;
@@ -150,7 +155,7 @@ export default function UtilidadConsolidadaScreen() {
                 </AtTypography>
               </View>
             ) : (
-              <OrAreaChart series={series} height={160} />
+              <OrAreaChart series={series} height={160} xLabels={xLabels} />
             )}
           </View>
         ) : null}

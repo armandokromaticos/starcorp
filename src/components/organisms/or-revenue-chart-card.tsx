@@ -24,6 +24,7 @@ import {
   type TimeseriesBucket,
 } from '@/src/hooks/queries/use-dashboard-timeseries';
 import type { PeriodKey } from '@/src/types/domain.types';
+import { formatAxisDate, pickEvenly } from '@/src/utils/date';
 
 interface OrRevenueChartCardProps {
   onPress?: () => void;
@@ -110,7 +111,7 @@ const ConsolidadoChartCard = memo<{
     centroCosto: centroCosto ?? null,
   });
 
-  const buckets = timeseries.data ?? [];
+  const buckets = useMemo(() => timeseries.data ?? [], [timeseries.data]);
   const corriente = useMemo(
     () => buckets.map((b) => b[categoryId]),
     [buckets, categoryId],
@@ -118,6 +119,10 @@ const ConsolidadoChartCard = memo<{
   const historico = useMemo(
     () => buckets.map((b) => prevField(b, categoryId)),
     [buckets, categoryId],
+  );
+  const xLabels = useMemo(
+    () => buckets.map((b) => formatAxisDate(b.start)),
+    [buckets],
   );
 
   const totalCorriente = corriente.reduce((s, v) => s + v, 0);
@@ -172,6 +177,7 @@ const ConsolidadoChartCard = memo<{
           corriente={corriente}
           historico={historico}
           view={view}
+          xLabels={xLabels}
         />
       )}
 
@@ -194,11 +200,14 @@ function prevField(bucket: TimeseriesBucket, category: CategoryId): number {
   }
 }
 
+const X_AXIS_HEIGHT = 18;
+
 const ConsolidadoChart = memo<{
   corriente: number[];
   historico: number[];
   view: ConsolidadoView;
-}>(({ corriente, historico, view }) => {
+  xLabels: string[];
+}>(({ corriente, historico, view, xLabels }) => {
   const { width: screenWidth } = useWindowDimensions();
   const yAxisWidth = 56;
   const chartWidth = screenWidth - 16 * 4 - yAxisWidth;
@@ -220,9 +229,15 @@ const ConsolidadoChart = memo<{
   const showCorriente = view === 'totalizado' || view === 'corriente';
   const showHistorico = view === 'totalizado' || view === 'historico';
   const hasData = corriente.some((v) => v !== 0) || historico.some((v) => v !== 0);
+  const showXAxis = hasData && xLabels.length >= 2;
 
   return (
-    <View style={{ height: chartHeight + 8, marginTop: 4 }}>
+    <View
+      style={{
+        height: chartHeight + 8 + (showXAxis ? X_AXIS_HEIGHT : 0),
+        marginTop: 4,
+      }}
+    >
       <View
         style={{
           position: 'absolute',
@@ -242,85 +257,103 @@ const ConsolidadoChart = memo<{
         ))}
       </View>
 
-      <View style={{ marginLeft: yAxisWidth, position: 'relative' }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: chartHeight,
-            justifyContent: 'space-between',
-          }}
-        >
-          {yTicks.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                height: 1,
-                backgroundColor: tokens.color.border.subtle,
-              }}
-            />
-          ))}
-        </View>
-
-        {!hasData && (
+      <View style={{ marginLeft: yAxisWidth }}>
+        <View style={{ position: 'relative', height: chartHeight }}>
           <View
             style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
               height: chartHeight,
-              alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            <AtTypography variant="label" color="#8892A4">
-              Sin datos en este periodo
-            </AtTypography>
+            {yTicks.map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  height: 1,
+                  backgroundColor: tokens.color.border.subtle,
+                }}
+              />
+            ))}
           </View>
-        )}
 
-        {hasData && showCorriente && (
-          <View style={{ position: 'absolute', top: 0, left: 0 }}>
-            <AreaChart
-              data={corriente}
-              width={chartWidth}
-              height={chartHeight}
-              color="#E8952E"
-              smooth={false}
-              strokeWidth={2}
-              strokeOpacity={0.9}
-              gradientId="grad-corriente"
-              yMin={yMin}
-              yMax={yMax}
-              fillGradient={{
-                stops: [
-                  { offset: 0, color: '#F2A24A', opacity: 0.85 },
-                  { offset: 1, color: '#E8952E', opacity: 0.35 },
-                ],
+          {!hasData && (
+            <View
+              style={{
+                height: chartHeight,
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
-          </View>
-        )}
+            >
+              <AtTypography variant="label" color="#8892A4">
+                Sin datos en este periodo
+              </AtTypography>
+            </View>
+          )}
 
-        {hasData && showHistorico && (
-          <View style={{ position: 'absolute', top: 0, left: 0 }}>
-            <AreaChart
-              data={historico}
-              width={chartWidth}
-              height={chartHeight}
-              color="#2D4BA0"
-              smooth={false}
-              strokeWidth={3}
-              strokeOpacity={1}
-              gradientId="grad-historico"
-              yMin={yMin}
-              yMax={yMax}
-              fillGradient={{
-                stops: [
-                  { offset: 0, color: '#5B82E6', opacity: 0.35 },
-                  { offset: 1, color: '#2D4BA0', opacity: 0.05 },
-                ],
-              }}
-            />
+          {hasData && showCorriente && (
+            <View style={{ position: 'absolute', top: 0, left: 0 }}>
+              <AreaChart
+                data={corriente}
+                width={chartWidth}
+                height={chartHeight}
+                color="#E8952E"
+                smooth={false}
+                strokeWidth={2}
+                strokeOpacity={0.9}
+                gradientId="grad-corriente"
+                yMin={yMin}
+                yMax={yMax}
+                fillGradient={{
+                  stops: [
+                    { offset: 0, color: '#F2A24A', opacity: 0.85 },
+                    { offset: 1, color: '#E8952E', opacity: 0.35 },
+                  ],
+                }}
+              />
+            </View>
+          )}
+
+          {hasData && showHistorico && (
+            <View style={{ position: 'absolute', top: 0, left: 0 }}>
+              <AreaChart
+                data={historico}
+                width={chartWidth}
+                height={chartHeight}
+                color="#2D4BA0"
+                smooth={false}
+                strokeWidth={3}
+                strokeOpacity={1}
+                gradientId="grad-historico"
+                yMin={yMin}
+                yMax={yMax}
+                fillGradient={{
+                  stops: [
+                    { offset: 0, color: '#5B82E6', opacity: 0.35 },
+                    { offset: 1, color: '#2D4BA0', opacity: 0.05 },
+                  ],
+                }}
+              />
+            </View>
+          )}
+        </View>
+
+        {showXAxis && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 4,
+            }}
+          >
+            {pickEvenly(xLabels, 6).map((label, i) => (
+              <AtTypography key={`${label}-${i}`} variant="label" color="#8892A4">
+                {label}
+              </AtTypography>
+            ))}
           </View>
         )}
       </View>

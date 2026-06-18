@@ -48,6 +48,10 @@ export interface Pago {
   concepto: string;
   fecha: string;
   monto: number;
+  /** Campos de BITACORA almacenados pero aún no mostrados en la UI. */
+  banco?: string | null;
+  cuenta?: string | null;
+  tipoPago?: string | null;
 }
 
 export interface PagosFilters {

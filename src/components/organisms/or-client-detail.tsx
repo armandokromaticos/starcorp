@@ -222,6 +222,15 @@ export function OrClientDetail({
         widthPercent: w(costo),
       },
       {
+        key: "utilidad-bruta" as MetricKey,
+        label: "U. bruta",
+        icon: "insights" as MaterialIconName,
+        value: utilidadBruta as number | null,
+        deltaPositive: utilidadBruta >= 0,
+        gradient: ["#1A2B6D", "#3A5BBB"] as const,
+        widthPercent: w(utilidadBruta),
+      },
+      {
         key: "gastos" as MetricKey,
         label: "Gastos",
         icon: "credit-card" as MaterialIconName,
@@ -238,15 +247,6 @@ export function OrClientDetail({
         deltaPositive: summary.utilidadDeltaPercent >= 0,
         gradient: ["#84CC16", "#D9E26A"] as const,
         widthPercent: w(utilidadNeta),
-      },
-      {
-        key: "utilidad-bruta" as MetricKey,
-        label: "U. bruta",
-        icon: "insights" as MaterialIconName,
-        value: utilidadBruta as number | null,
-        deltaPositive: utilidadBruta >= 0,
-        gradient: ["#1A2B6D", "#3A5BBB"] as const,
-        widthPercent: w(utilidadBruta),
       },
       // Cartera: outstanding balance for this client's QB Customer (resolved
       // via clientes_master.Quickbook → useQBCustomerBalance). Null when the
