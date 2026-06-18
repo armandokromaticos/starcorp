@@ -61,7 +61,8 @@ export default function PagosScreen() {
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filtersActive, setFiltersActive] = useState(true);
   const [filters, setFilters] = useState<PagosFilters>(EMPTY_PAGOS_FILTERS);
-  const [yearMonth, setYearMonth] = useState('2026-03');
+  // null hasta que el usuario navegue; antes sigue el último mes con datos.
+  const [yearMonth, setYearMonth] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [detailDay, setDetailDay] = useState<string | null>(null);
   const [selectedSliceId, setSelectedSliceId] = useState<string | null>(null);
@@ -71,6 +72,10 @@ export default function PagosScreen() {
   // empresa generadora. Misma señal que controla los chips de filtros.
   const vista: 'calendario' | 'donut' = filtersActive ? 'calendario' : 'donut';
   const effective = filtersActive ? filters : EMPTY_PAGOS_FILTERS;
+
+  // Mes visible del calendario: el último mes con datos hasta que el usuario
+  // navegue con las flechas (que fijan `yearMonth`).
+  const ym = yearMonth ?? (data?.todayIso ? data.todayIso.slice(0, 7) : '2026-06');
 
   const empresasMap = useMemo(() => {
     const map = new Map<string, { name: string; color: string }>();
@@ -347,7 +352,7 @@ export default function PagosScreen() {
         {data && vista === 'calendario' && (
           <View className="px-4">
             <OrPagosCalendar
-              yearMonth={yearMonth}
+              yearMonth={ym}
               totalsByDate={totalsByDate}
               bucketsByDate={data.dayBuckets}
               onChangeMonth={setYearMonth}
