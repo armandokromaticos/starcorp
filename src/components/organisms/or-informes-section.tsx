@@ -27,7 +27,6 @@ import { usePagos } from '@/src/hooks/queries/use-pagos';
 import { usePresupuesto } from '@/src/hooks/queries/use-presupuesto';
 import {
   AGING_BUCKETS,
-  AGING_BUCKET_LABEL,
   type AgingBucket,
 } from '@/src/types/cartera.types';
 import { polizaStatus } from '@/src/types/seguros.types';
@@ -121,13 +120,30 @@ function compactMoney(value: number): string {
   return `$${Math.round(value)}`;
 }
 
-/** Rampa de severidad de aging: corriente (verde) → 91+ (rojo). */
+/**
+ * Rampa de severidad de aging: corriente (verde) → 91+ (rojo).
+ * Pasos diferenciados (verde → amarillo → naranja → naranja intenso → rojo)
+ * para que cada bucket se distinga; tonos alineados a la paleta del proyecto.
+ */
 const AGING_BUCKET_COLOR: Record<AgingBucket, string> = {
   corriente: '#3FB97A',
-  '0-30': '#E89A3E',
-  '31-60': '#E8803E',
-  '61-90': '#E85F3E',
+  '0-30': '#F2C94C',
+  '31-60': '#F2994A',
+  '61-90': '#E8602E',
   '91+': '#D7443E',
+};
+
+/**
+ * Etiquetas compactas del eje X solo para la mini-gráfica del dashboard:
+ * sin espacios alrededor del guion para que quepan en una sola línea.
+ * (Las etiquetas largas de `AGING_BUCKET_LABEL` se usan en la lista/tabs.)
+ */
+const AGING_BUCKET_SHORT_LABEL: Record<AgingBucket, string> = {
+  corriente: 'Corriente',
+  '0-30': '1-30',
+  '31-60': '31-60',
+  '61-90': '61-90',
+  '91+': '+91',
 };
 
 function niceCeil(value: number): number {
@@ -561,8 +577,13 @@ const ReportBucketChart = memo<{
         >
           {AGING_BUCKETS.map((b) => (
             <View key={b} style={{ flex: 1, alignItems: 'center' }}>
-              <AtTypography variant="label" color="#8892A4">
-                {AGING_BUCKET_LABEL[b]}
+              <AtTypography
+                variant="label"
+                color="#8892A4"
+                numberOfLines={1}
+                style={{ fontSize: 10, lineHeight: 14, letterSpacing: 0 }}
+              >
+                {AGING_BUCKET_SHORT_LABEL[b]}
               </AtTypography>
             </View>
           ))}
