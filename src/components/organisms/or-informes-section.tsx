@@ -7,7 +7,7 @@
  * chart with axes, and a "Ver <categoría>" CTA pinned to the bottom.
  */
 
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { Pressable, View } from '@/src/tw';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
@@ -18,13 +18,13 @@ import { BarChart } from '@/src/components/charts/bar-chart';
 import { DonutChart } from '@/src/components/charts/donut-chart';
 import { GaugeChart } from '@/src/components/charts/gauge-chart';
 import { MlReportCategoryRow } from '@/src/components/molecules/ml-report-category-row';
-import { useReports } from '@/src/hooks/queries/use-reports';
 import { useCartera } from '@/src/hooks/queries/use-cartera';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
 import { useAsociadosTrend } from '@/src/hooks/queries/use-asociados-trend';
 import { useBancos } from '@/src/hooks/queries/use-bancos';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { usePagos } from '@/src/hooks/queries/use-pagos';
+import { usePresupuesto } from '@/src/hooks/queries/use-presupuesto';
 import {
   AGING_BUCKETS,
   AGING_BUCKET_LABEL,
@@ -53,19 +53,29 @@ interface OrInformesSectionProps {
   onViewAll?: (reportId: string) => void;
 }
 
-const MONTHS_ES_SHORT = [
-  'E',
-  'F',
-  'M',
-  'A',
-  'M',
-  'J',
-  'J',
-  'A',
-  'S',
-  'O',
-  'N',
-  'D',
+type CategoryIcon = React.ComponentProps<typeof MlReportCategoryRow>['icon'];
+
+interface ReportCategory {
+  id: string;
+  label: string;
+  icon: CategoryIcon;
+  color: string;
+  currency: string;
+}
+
+/**
+ * Metadata estática de las categorías del dashboard (orden, label, icono,
+ * color, moneda). El total y el chart de cada una se derivan en runtime de
+ * su hook conectado (cartera, asociados, bancos, presupuesto, seguros, pagos);
+ * aquí ya no vive ningún dato financiero mock.
+ */
+const REPORT_CATEGORIES: ReportCategory[] = [
+  { id: 'cartera', label: 'Carteras', icon: 'account-balance-wallet', color: '#E89A3E', currency: 'USD' },
+  { id: 'asociados', label: 'Asociados activos', icon: 'groups', color: '#1B2A6B', currency: 'USD' },
+  { id: 'bancos', label: 'Bancos', icon: 'account-balance', color: '#4A7FD4', currency: 'USD' },
+  { id: 'presupuesto', label: 'Presupuestos', icon: 'assessment', color: '#B4C93A', currency: 'USD' },
+  { id: 'seguro', label: 'Seguros', icon: 'verified-user', color: '#78A63A', currency: 'USD' },
+  { id: 'pagos', label: 'Pagos', icon: 'payments', color: '#3D6F4E', currency: 'USD' },
 ];
 
 const MONTHS_ES_3 = [
@@ -135,15 +145,19 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
     initialSelectedId,
     onViewAll,
   }) => {
-    const { data, isLoading } = useReports();
     const { data: carteraData } = useCartera();
     const { data: asociadosData } = useAsociados();
     const { data: asociadosTrend } = useAsociadosTrend();
     const { data: bancosData } = useBancos();
     const { data: segurosData } = useSeguros();
     const { data: pagosData } = usePagos();
-    const [selectedId, setSelectedId] = useState<string | null>(
-      initialSelectedId ?? null,
+    // Presupuesto: ejecución de gasto del mes corriente (PROYECCION, Power BI).
+    const { data: presupuestoData } = usePresupuesto({
+      tipo: 'gasto',
+      periodo: 'corriente',
+    });
+    const [selectedId, setSelectedId] = useState<string>(
+      initialSelectedId ?? REPORT_CATEGORIES[0].id,
     );
     const [chartWidth, setChartWidth] = useState(0);
 
@@ -268,46 +282,51 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
       return { days, weekTotal, monthLabel };
     }, [pagosData]);
 
-    useEffect(() => {
-      if (!selectedId && data?.reports.length) {
-        setSelectedId(data.reports[0].id);
-      }
-    }, [data, selectedId]);
+    // Presupuesto: ejecución (ejecutado/proyectado) para el gauge + total.
+    const presupuestoAgg = useMemo(() => {
+      if (!presupuestoData) return null;
+      const { ejecutado, proyectado, fraction } = presupuestoData.ejecucion;
+      return { ejecutado, proyectado, fraction };
+    }, [presupuestoData]);
 
-    const selected = useMemo(() => {
-      if (!data) return null;
-      return data.reports.find((r) => r.id === selectedId) ?? data.reports[0];
-    }, [data, selectedId]);
+    const selected = useMemo(
+      () =>
+        REPORT_CATEGORIES.find((r) => r.id === selectedId) ??
+        REPORT_CATEGORIES[0],
+      [selectedId],
+    );
 
-    const isCartera = selected?.id === 'cartera' && carteraAgg !== null;
-    const isAsociados = selected?.id === 'asociados' && asociadosAgg !== null;
-    const isBancos = selected?.id === 'bancos' && bancosAgg !== null;
-    // Presupuesto: aún sin conexión real (mock). Seguros y Pagos: conectados.
-    const isPresupuesto = selected?.id === 'presupuesto';
-    const isSeguros = selected?.id === 'seguro' && segurosAgg !== null;
-    const isPagos = selected?.id === 'pagos' && pagosAgg !== null;
+    const isCartera = selected.id === 'cartera' && carteraAgg !== null;
+    const isAsociados = selected.id === 'asociados' && asociadosAgg !== null;
+    const isBancos = selected.id === 'bancos' && bancosAgg !== null;
+    const isPresupuesto = selected.id === 'presupuesto' && presupuestoAgg !== null;
+    const isSeguros = selected.id === 'seguro' && segurosAgg !== null;
+    const isPagos = selected.id === 'pagos' && pagosAgg !== null;
+
+    // La data de la categoría seleccionada está lista (su hook ya respondió).
+    const dataReady =
+      isCartera ||
+      isAsociados ||
+      isBancos ||
+      isPresupuesto ||
+      isSeguros ||
+      isPagos;
+
     const displayTotal = isCartera
-      ? (carteraAgg?.total ?? 0)
+      ? carteraAgg.total
       : isAsociados
-        ? (asociadosAgg?.total ?? 0)
+        ? asociadosAgg.total
         : isBancos
-          ? (bancosAgg?.total ?? 0)
-          : isSeguros
-            ? (segurosAgg?.total ?? 0)
-            : isPagos
-              ? (pagosAgg?.weekTotal ?? 0)
-              : (selected?.total ?? 0);
+          ? bancosAgg.total
+          : isPresupuesto
+            ? presupuestoAgg.ejecutado
+            : isSeguros
+              ? segurosAgg.total
+              : isPagos
+                ? pagosAgg.weekTotal
+                : 0;
     // Conteos (asociados, seguros) se muestran como número plano, no moneda.
     const isCount = isAsociados || isSeguros;
-
-    if (isLoading || !data || !selected) {
-      return (
-        <View className="px-4 gap-3">
-          <AtSkeleton width={160} height={24} />
-          <AtSkeleton width="100%" height={320} borderRadius={16} />
-        </View>
-      );
-    }
 
     return (
       <View className="gap-4">
@@ -326,11 +345,11 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
         >
           <View className="flex-row gap-3">
             <View className="gap-1" style={{ minWidth: 84 }}>
-              {data.reports.map((r) => (
+              {REPORT_CATEGORIES.map((r) => (
                 <MlReportCategoryRow
                   key={r.id}
                   label={r.label}
-                  icon={r.icon as React.ComponentProps<typeof MlReportCategoryRow>['icon']}
+                  icon={r.icon}
                   color={r.color}
                   selected={selected.id === r.id}
                   onPress={() => setSelectedId(r.id)}
@@ -342,7 +361,9 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
               <AtTypography variant="bodyBold" color="#1A1F36">
                 {selected.label}
               </AtTypography>
-              {isCount ? (
+              {!dataReady ? (
+                <AtSkeleton width={120} height={26} borderRadius={6} />
+              ) : isCount ? (
                 <AtTypography
                   variant="metricSmall"
                   color="#1A1F36"
@@ -364,7 +385,13 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                 onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}
               >
                 {chartWidth > 0 &&
-                  (isCartera && carteraAgg ? (
+                  (!dataReady ? (
+                    <AtSkeleton
+                      width="100%"
+                      height={132}
+                      borderRadius={12}
+                    />
+                  ) : isCartera && carteraAgg ? (
                     <ReportBucketChart
                       buckets={carteraAgg.buckets}
                       width={chartWidth}
@@ -381,11 +408,12 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                       empresas={bancosAgg.empresas}
                       width={chartWidth}
                     />
-                  ) : isPresupuesto ? (
+                  ) : isPresupuesto && presupuestoAgg ? (
                     <ReportGauge
                       width={chartWidth}
-                      minLabel="$0 mil"
-                      maxLabel="$99 mil"
+                      fraction={presupuestoAgg.fraction}
+                      minLabel={compactMoney(0)}
+                      maxLabel={compactMoney(presupuestoAgg.proyectado)}
                     />
                   ) : isSeguros && segurosAgg ? (
                     <ReportSegurosStats
@@ -398,12 +426,7 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                       days={pagosAgg.days}
                       monthLabel={pagosAgg.monthLabel}
                     />
-                  ) : (
-                    <ReportLineChart
-                      series={selected.series}
-                      width={chartWidth}
-                    />
-                  ))}
+                  ) : null)}
               </View>
 
               <View className="items-end mt-2">
@@ -441,108 +464,6 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
   },
 );
 OrInformesSection.displayName = 'OrInformesSection';
-
-const ReportLineChart = memo<{ series: number[]; width: number }>(
-  ({ series, width }) => {
-    const yAxisWidth = 28;
-    const chartWidth = Math.max(40, width - yAxisWidth);
-    const chartHeight = 110;
-
-    const yMax = useMemo(() => niceCeil(Math.max(...series)), [series]);
-    const yTicks = useMemo(() => [yMax, yMax / 2, 0], [yMax]);
-
-    return (
-      <View style={{ width, height: chartHeight + 22 }}>
-        {/* Y-axis labels */}
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            height: chartHeight,
-            width: yAxisWidth - 4,
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            zIndex: 1,
-          }}
-        >
-          {yTicks.map((t, i) => (
-            <AtTypography key={i} variant="label" color="#8892A4">
-              {t === 0 ? '0' : String(t)}
-            </AtTypography>
-          ))}
-        </View>
-
-        <View style={{ marginLeft: yAxisWidth, position: 'relative' }}>
-          {/* Dashed grid lines */}
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: chartHeight,
-              justifyContent: 'space-between',
-            }}
-          >
-            {yTicks.map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  height: 1,
-                  borderTopWidth: 1,
-                  borderTopColor: tokens.color.border.default,
-                  borderStyle: 'dashed',
-                }}
-              />
-            ))}
-          </View>
-
-          {/* Line — navy stroke, no fill */}
-          <View style={{ position: 'absolute', top: 0, left: 0 }}>
-            <AreaChart
-              data={series}
-              width={chartWidth}
-              height={chartHeight}
-              color="#1B2A6B"
-              smooth
-              strokeWidth={2.5}
-              strokeOpacity={1}
-              gradientId="grad-report-line"
-              yMin={0}
-              yMax={yMax}
-              fillGradient={{
-                stops: [
-                  { offset: 0, color: '#1B2A6B', opacity: 0 },
-                  { offset: 1, color: '#1B2A6B', opacity: 0 },
-                ],
-              }}
-            />
-          </View>
-
-          {/* X-axis month labels */}
-          <View
-            style={{
-              position: 'absolute',
-              top: chartHeight + 4,
-              left: 0,
-              right: 0,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-            }}
-          >
-            {MONTHS_ES_SHORT.map((m, i) => (
-              <AtTypography key={i} variant="label" color="#8892A4">
-                {m}
-              </AtTypography>
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  },
-);
-ReportLineChart.displayName = 'ReportLineChart';
 
 /**
  * Bar chart de aging para Cartera: una barra por bucket
@@ -974,17 +895,19 @@ ReportBancosDonut.displayName = 'ReportBancosDonut';
 
 /**
  * Gauge de Presupuestos: medidor semicircular con gradiente + etiquetas de
- * escala (min/max) bajo cada extremo. Visual por ahora (sin conexión real).
+ * escala (min/max) bajo cada extremo. `fraction` = ejecutado/proyectado real
+ * (usePresupuesto, tabla PROYECCION de Power BI).
  */
 const ReportGauge = memo<{
   width: number;
   minLabel: string;
   maxLabel: string;
-}>(({ width, minLabel, maxLabel }) => {
+  fraction: number;
+}>(({ width, minLabel, maxLabel, fraction }) => {
   const w = Math.min(width, 220);
   return (
     <View style={{ alignItems: 'center' }}>
-      <GaugeChart width={w} />
+      <GaugeChart width={w} fraction={fraction} />
       <View
         style={{
           width: w,
