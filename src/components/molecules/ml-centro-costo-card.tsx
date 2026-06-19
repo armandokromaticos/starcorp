@@ -12,6 +12,7 @@ import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { formatMoney2 } from '@/src/utils/currency';
 import { formatNumber } from '@/src/utils/number';
+import { tokens } from '@/src/theme/tokens';
 import type { PresupuestoCentroCosto } from '@/src/types/presupuesto.types';
 
 interface MlCentroCostoCardProps {
@@ -19,8 +20,9 @@ interface MlCentroCostoCardProps {
 }
 
 const LABEL_COLOR = '#1A1F36';
-const VALUE_COLOR = '#5B7BBF';
-const NAME_COLOR = '#2A4DA8';
+// Nombre y valores en gris azulado (antes azul) — token de la paleta.
+const VALUE_COLOR = tokens.color.ink.label;
+const NAME_COLOR = tokens.color.ink.label;
 
 const Field = memo<{ label: string; value: string }>(({ label, value }) => (
   <View className="flex-1 gap-0.5">

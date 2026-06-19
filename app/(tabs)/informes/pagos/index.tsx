@@ -160,8 +160,16 @@ export default function PagosScreen() {
       id: PAGOS_OTROS_ID,
       label: 'Otros',
     });
-    return { donutData: slices, donutOtrosIds: otrosIds };
-  }, [data, filteredPagos, selectedDay]);
+    // Cada sector con el color de su empresa (igual que el dot de las cards de
+    // la lista de abajo), no por posición. El sector "Otros" conserva su
+    // remolacha de agrupado.
+    const colored = slices.map((s) =>
+      s.id === PAGOS_OTROS_ID
+        ? s
+        : { ...s, color: empresasMap.get(s.id)?.color ?? s.color },
+    );
+    return { donutData: colored, donutOtrosIds: otrosIds };
+  }, [data, filteredPagos, selectedDay, empresasMap]);
 
   // Lista de abajo: cuando hay un día seleccionado en el calendario, se
   // filtra a ese día. El calendario (totalsByDate / donut / totales del mes)

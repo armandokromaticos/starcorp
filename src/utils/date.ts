@@ -94,6 +94,19 @@ export function formatAxisDate(iso: string): string {
 }
 
 /**
+ * ISO date shifted by `days`, parsed/formatted by parts in UTC to avoid
+ * timezone day-shifts. Used to turn an exclusive bucket end (e.g. "2026-06-01")
+ * into its inclusive last day ("2026-05-31").
+ */
+export function shiftIsoDate(iso: string, days: number): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const dt = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days));
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${dt.getUTCFullYear()}-${mm}-${dd}`;
+}
+
+/**
  * Evenly-spaced subset of `arr` (always including the first and last items),
  * capped at `max` entries. Used to thin axis labels so they don't crowd.
  */

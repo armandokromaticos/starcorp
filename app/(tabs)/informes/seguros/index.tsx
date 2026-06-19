@@ -14,7 +14,7 @@ import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
-import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-skeleton';
+import { MlSegurosSkeleton } from '@/src/components/molecules/ml-seguros-skeleton';
 import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
 import { MlPolizaAlertRow } from '@/src/components/molecules/ml-poliza-alert-row';
 import { MlSectionHeaderLink } from '@/src/components/molecules/ml-section-header-link';
@@ -55,7 +55,12 @@ export default function SegurosScreen() {
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   // Estado de colapso por sección (Compañías / Vehículos / Propiedades).
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Por defecto las 3 arrancan cerradas.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    companias: true,
+    vehiculos: true,
+    propiedades: true,
+  });
   const toggleSection = (key: string) =>
     setCollapsed((c) => ({ ...c, [key]: !c[key] }));
 
@@ -153,12 +158,10 @@ export default function SegurosScreen() {
           />
         </View>
 
-        {isPending && (
-          <View className="px-4">
-            <MlReportListSkeleton />
-          </View>
-        )}
-
+        {isPending ? (
+          <MlSegurosSkeleton />
+        ) : (
+        <>
         {/* — Compañías — */}
         <View className={CARD_CLASS} style={CARD_STYLE}>
           <MlSectionHeaderLink
@@ -295,6 +298,8 @@ export default function SegurosScreen() {
           collapsed={collapsed.propiedades}
           onToggle={() => toggleSection('propiedades')}
         />
+        </>
+        )}
       </ScrollView>
 
       <OrDrawer
