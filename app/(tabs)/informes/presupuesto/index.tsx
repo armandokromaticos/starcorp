@@ -112,8 +112,14 @@ export default function PresupuestoScreen() {
 
       {data && empresas.length > 0 && (
         <View
-          className="px-4 pt-2 bg-bg-secondary"
-          style={{ paddingBottom: insets.bottom + 8 }}
+          className="px-4 pt-1 bg-bg-secondary"
+          style={{
+            // Holgura acotada (8–12px) para pegar la card al fondo de forma
+            // consistente, igual que las otras pantallas de informes.
+            paddingBottom: Math.min(Math.max(insets.bottom, 8), 12),
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(0,0,0,0.06)',
+          }}
         >
           <OrPresupuestoTotalCard
             proyectado={data.totalProyectado}
