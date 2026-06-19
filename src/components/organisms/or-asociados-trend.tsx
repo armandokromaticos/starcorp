@@ -3,8 +3,10 @@
  *
  * Card de la vista "Asociados por tendencia": título + delta, chip del
  * segmento seleccionado, gráfico de línea (# de asociados por mes) y una fila
- * de swatches para elegir qué segmento ver. La opción "Varios" agrega todas
- * las series. Fuente de datos: PBI HistoricoEmpXCli (RPC get_asociados_trend).
+ * de swatches para elegir qué segmento ver. La opción "Total" (color neutro)
+ * agrega todas las series; los clientes individuales y el grupo "Varios" (cola
+ * agrupada) los provee el padre con colores únicos de la paleta. Fuente de
+ * datos: PBI HistoricoEmpXCli (RPC get_asociados_trend).
  */
 
 import React, { memo, useMemo, useState } from 'react';
@@ -12,7 +14,6 @@ import { Pressable, ScrollView, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { AreaChart } from '@/src/components/charts/area-chart';
-import { CHART_COLORS } from '@/src/theme/chart-palette';
 
 export interface TrendSeries {
   id: string;
@@ -26,7 +27,7 @@ interface OrAsociadosTrendProps {
   months: string[];
   series: TrendSeries[];
   /**
-   * Segmento seleccionado (controlado). VARIOS_ID = todas las series.
+   * Segmento seleccionado (controlado). TODOS_ID = todas las series.
    * Si se omite, el componente maneja la selección internamente.
    */
   selectedId?: string;
@@ -34,8 +35,9 @@ interface OrAsociadosTrendProps {
   onSelectChange?: (id: string) => void;
 }
 
-const VARIOS_ID = '__varios__';
-const VARIOS_COLOR = CHART_COLORS[0];
+/** Opción agregada "Total" (suma de todas las series), color neutro. */
+export const TODOS_ID = '__todos__';
+const TODOS_COLOR = '#1A1F36';
 const PLOT_HEIGHT = 160;
 const Y_GUTTER = 34;
 
@@ -59,7 +61,7 @@ function niceCeil(v: number): number {
 
 export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
   ({ months, series, selectedId: controlledId, onSelectChange }) => {
-    const [internalId, setInternalId] = useState<string>(VARIOS_ID);
+    const [internalId, setInternalId] = useState<string>(TODOS_ID);
     const selectedId = controlledId ?? internalId;
     const handleSelect = (id: string) => {
       if (onSelectChange) onSelectChange(id);
@@ -67,8 +69,8 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
     };
     const [plotWidth, setPlotWidth] = useState(0);
 
-    // Serie "Varios" = suma de todas las series por mes.
-    const variosCounts = useMemo(() => {
+    // Serie "Total" = suma de todas las series por mes.
+    const todosCounts = useMemo(() => {
       const n = months.length;
       const out = new Array(n).fill(0);
       for (const s of series) {
@@ -79,10 +81,10 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
 
     const options = useMemo<TrendSeries[]>(
       () => [
-        { id: VARIOS_ID, name: 'Varios', color: VARIOS_COLOR, counts: variosCounts },
+        { id: TODOS_ID, name: 'Total', color: TODOS_COLOR, counts: todosCounts },
         ...series,
       ],
-      [series, variosCounts],
+      [series, todosCounts],
     );
 
     const selected =
@@ -131,11 +133,11 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
                 width: 16,
                 height: 16,
                 borderRadius: 4,
-                backgroundColor: selected?.color ?? VARIOS_COLOR,
+                backgroundColor: selected?.color ?? TODOS_COLOR,
               }}
             />
             <AtTypography variant="captionBold" color="#1A1F36">
-              {selected?.name ?? 'Varios'}
+              {selected?.name ?? 'Total'}
             </AtTypography>
           </View>
         </View>

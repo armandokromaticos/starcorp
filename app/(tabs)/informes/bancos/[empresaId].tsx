@@ -137,7 +137,9 @@ export default function BancoEmpresaDetailScreen() {
         <View
           className="px-4 pt-1 bg-bg-secondary"
           style={{
-            paddingBottom: Math.max(insets.bottom - 8, 4),
+            // Holgura acotada (8–12px) para pegar la card al fondo de forma
+            // consistente, sin el espacio extra del safe-area en algunos devices.
+            paddingBottom: Math.min(Math.max(insets.bottom, 8), 12),
             borderTopWidth: 1,
             borderTopColor: 'rgba(0,0,0,0.06)',
           }}
