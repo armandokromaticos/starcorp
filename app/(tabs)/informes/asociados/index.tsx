@@ -20,6 +20,7 @@ import { MlReportListSkeleton } from '@/src/components/molecules/ml-report-list-
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import {
   OrAsociadosTrend,
+  TODOS_ID,
   type TrendSeries,
 } from '@/src/components/organisms/or-asociados-trend';
 import {
@@ -31,7 +32,7 @@ import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, SEGMENT_PALETTE, OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
+import { gradients, OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
 import { useAsociadosTrend } from '@/src/hooks/queries/use-asociados-trend';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
@@ -113,6 +114,13 @@ export default function AsociadosScreen() {
     [sortedByCount],
   );
 
+  // Rank por cliente (posición en el orden mayor→menor) para reusar las reglas
+  // de agrupamiento del donut también en la tendencia.
+  const rankByClientId = useMemo(
+    () => new Map(sortedByCount.map((r, i) => [r.client.id, i])),
+    [sortedByCount],
+  );
+
   const donutData = useMemo(() => {
     if (!sortedByCount.length) return [];
     if (sortedByCount.length <= MAX_DONUT_SLICES) {
@@ -167,22 +175,50 @@ export default function AsociadosScreen() {
     [visibleClients],
   );
 
-  // Series de tendencia: reusa el color del cliente (match por id) y respeta
-  // el filtro por cliente si hay alguno seleccionado.
+  // Series de tendencia con las mismas reglas de color del donut: top-7
+  // clientes con colores únicos (0–6) y el resto agrupado en "Varios"
+  // (remolacha), para no repetir colores cuando se agota la paleta. Respeta el
+  // filtro por cliente si hay alguno seleccionado.
   const trendSeries = useMemo<TrendSeries[]>(() => {
     if (!trend) return [];
     const ids = effectiveFilters.clientIds;
-    return trend.series
-      .filter((s) => ids.length === 0 || ids.includes(s.id))
-      .map((s, i) => ({
-        id: s.id,
-        name: s.name,
-        color:
-          colorByClientId.get(s.id) ??
-          SEGMENT_PALETTE[i % SEGMENT_PALETTE.length],
-        counts: s.counts,
-      }));
-  }, [trend, colorByClientId, effectiveFilters.clientIds]);
+    const filtered = trend.series.filter(
+      (s) => ids.length === 0 || ids.includes(s.id),
+    );
+    const n = trend.months.length;
+    const named: TrendSeries[] = [];
+    const tail: typeof filtered = [];
+    for (const s of filtered) {
+      const rank = rankByClientId.get(s.id);
+      if (rank != null && rank < MAX_DONUT_SLICES) {
+        named.push({
+          id: s.id,
+          name: s.name,
+          color: donutColorAt(rank),
+          counts: s.counts,
+        });
+      } else {
+        tail.push(s);
+      }
+    }
+    named.sort(
+      (a, b) =>
+        (rankByClientId.get(a.id) ?? 0) - (rankByClientId.get(b.id) ?? 0),
+    );
+    if (tail.length > 0) {
+      const counts = new Array(n).fill(0);
+      for (const s of tail) {
+        for (let i = 0; i < n; i++) counts[i] += s.counts[i] ?? 0;
+      }
+      named.push({
+        id: VARIOS_ID,
+        name: 'Varios',
+        color: OTROS_SEGMENT_COLOR,
+        counts,
+      });
+    }
+    return named;
+  }, [trend, rankByClientId, effectiveFilters.clientIds]);
 
   // Variación % del total de asociados activos: último mes vs mes anterior
   // (suma de counts de todas las series en cada mes). null si no hay base.
@@ -342,9 +378,9 @@ export default function AsociadosScreen() {
             <OrAsociadosTrend
               months={trend?.months ?? []}
               series={trendSeries}
-              selectedId={selectedSliceId ?? VARIOS_ID}
+              selectedId={selectedSliceId ?? TODOS_ID}
               onSelectChange={(id) =>
-                setSelectedSliceId(id === VARIOS_ID ? null : id)
+                setSelectedSliceId(id === TODOS_ID ? null : id)
               }
             />
           )}
@@ -408,7 +444,9 @@ export default function AsociadosScreen() {
 
       <View
         className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
-        style={{ paddingBottom: Math.max(insets.bottom - 8, 4) }}
+        // Holgura acotada (8–12px) para pegar la card al fondo de forma
+        // consistente, sin el espacio extra del safe-area en algunos devices.
+        style={{ paddingBottom: Math.min(Math.max(insets.bottom, 8), 12) }}
       >
         <MlSimpleTotalFooter value={total} />
       </View>
