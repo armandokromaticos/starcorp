@@ -24,6 +24,8 @@ export const tokens = {
       secondary: '#4A5568',
       tertiary: '#8892A4',
       inverse: '#FFFFFF',
+      // Gris azulado para títulos/labels secundarios dentro de tarjetas.
+      label: '#464A6B',
     },
     // Accent — Naranja ámbar del mockup
     accent: {

@@ -24,7 +24,7 @@ import {
   type TimeseriesBucket,
 } from '@/src/hooks/queries/use-dashboard-timeseries';
 import type { PeriodKey } from '@/src/types/domain.types';
-import { formatAxisDate, pickEvenly } from '@/src/utils/date';
+import { formatAxisDate, pickEvenly, shiftIsoDate } from '@/src/utils/date';
 
 interface OrRevenueChartCardProps {
   onPress?: () => void;
@@ -120,8 +120,17 @@ const ConsolidadoChartCard = memo<{
     () => buckets.map((b) => prevField(b, categoryId)),
     [buckets, categoryId],
   );
+  // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
+  // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
+  // derecho del eje siempre muestra el último día cerrado (ej. 31-may para
+  // 1m/3m/12m) en vez del inicio del último bucket (28-may, 8-may, …).
   const xLabels = useMemo(
-    () => buckets.map((b) => formatAxisDate(b.start)),
+    () =>
+      buckets.map((b, i) =>
+        i === buckets.length - 1
+          ? formatAxisDate(shiftIsoDate(b.end, -1))
+          : formatAxisDate(b.start),
+      ),
     [buckets],
   );
 
