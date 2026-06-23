@@ -26,6 +26,7 @@ import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, TextInput, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { formatAxisDate, PERIOD_SHORT_LABELS } from "@/src/utils/date";
+import { formatCurrency } from "@/src/utils/currency";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -155,7 +156,13 @@ export default function UtilidadConsolidadaScreen() {
                 </AtTypography>
               </View>
             ) : (
-              <OrAreaChart series={series} height={160} xLabels={xLabels} />
+              <OrAreaChart
+                series={series}
+                height={160}
+                xLabels={xLabels}
+                interactive
+                formatValue={(v) => formatCurrency(v, { compact: true })}
+              />
             )}
           </View>
         ) : null}

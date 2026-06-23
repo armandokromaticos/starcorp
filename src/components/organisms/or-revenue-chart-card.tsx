@@ -15,6 +15,8 @@ import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { Skeleton } from '@/src/components/atoms/skeleton';
 import { AreaChart } from '@/src/components/charts/area-chart';
+import { useChartActivePoint } from '@/src/components/charts/use-chart-active-point';
+import { MlChartTooltip } from '@/src/components/molecules/ml-chart-tooltip';
 import {
   useDashboardSummary,
   type DashboardSummaryPeriod,
@@ -240,6 +242,31 @@ const ConsolidadoChart = memo<{
   const hasData = corriente.some((v) => v !== 0) || historico.some((v) => v !== 0);
   const showXAxis = hasData && xLabels.length >= 2;
 
+  const pointCount = corriente.length;
+  const { activeIndex, handlers } = useChartActivePoint(pointCount, chartWidth);
+  const showTooltip = hasData && activeIndex != null && activeIndex < pointCount;
+  const activeX =
+    activeIndex != null && pointCount > 1
+      ? (activeIndex / (pointCount - 1)) * chartWidth
+      : 0;
+  const tooltipLines = useMemo(() => {
+    if (activeIndex == null) return [];
+    const lines: { color: string; label: string; value: string }[] = [];
+    if (showCorriente)
+      lines.push({
+        color: '#E8952E',
+        label: 'Corriente',
+        value: formatAxisNumber(corriente[activeIndex] ?? 0),
+      });
+    if (showHistorico)
+      lines.push({
+        color: '#2D4BA0',
+        label: 'Histórico',
+        value: formatAxisNumber(historico[activeIndex] ?? 0),
+      });
+    return lines;
+  }, [activeIndex, showCorriente, showHistorico, corriente, historico]);
+
   return (
     <View
       style={{
@@ -316,6 +343,7 @@ const ConsolidadoChart = memo<{
                 gradientId="grad-corriente"
                 yMin={yMin}
                 yMax={yMax}
+                activeIndex={activeIndex}
                 fillGradient={{
                   stops: [
                     { offset: 0, color: '#F2A24A', opacity: 0.85 },
@@ -339,6 +367,7 @@ const ConsolidadoChart = memo<{
                 gradientId="grad-historico"
                 yMin={yMin}
                 yMax={yMax}
+                activeIndex={activeIndex}
                 fillGradient={{
                   stops: [
                     { offset: 0, color: '#5B82E6', opacity: 0.35 },
@@ -347,6 +376,28 @@ const ConsolidadoChart = memo<{
                 }}
               />
             </View>
+          )}
+
+          {hasData && pointCount >= 2 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              {...handlers}
+            />
+          )}
+
+          {showTooltip && (
+            <MlChartTooltip
+              x={activeX}
+              plotWidth={chartWidth}
+              title={xLabels[activeIndex!] ?? ''}
+              lines={tooltipLines}
+            />
           )}
         </View>
 
