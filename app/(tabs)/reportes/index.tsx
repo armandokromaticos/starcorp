@@ -90,7 +90,7 @@ export default function ReportesScreen() {
           {selectedDept && selectedDept.tareas.length > 0 ? (
             <OrTareasAccordionList
               tareas={selectedDept.tareas}
-              onAvancePress={(tareaId) =>
+              onTareaPress={(tareaId) =>
                 router.push(`/(tabs)/reportes/${tareaId}` as never)
               }
             />
