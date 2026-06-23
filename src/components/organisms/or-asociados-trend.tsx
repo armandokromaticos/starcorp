@@ -14,6 +14,8 @@ import { Pressable, ScrollView, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { AreaChart } from '@/src/components/charts/area-chart';
+import { useChartActivePoint } from '@/src/components/charts/use-chart-active-point';
+import { MlChartTooltip } from '@/src/components/molecules/ml-chart-tooltip';
 
 export interface TrendSeries {
   id: string;
@@ -107,6 +109,13 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
 
     const hasData = months.length >= 2 && (selected?.counts.length ?? 0) >= 2;
 
+    const pointCount = selected?.counts.length ?? 0;
+    const { activeIndex, handlers } = useChartActivePoint(pointCount, plotWidth);
+    const activeX =
+      activeIndex != null && pointCount > 1
+        ? (activeIndex / (pointCount - 1)) * plotWidth
+        : 0;
+
     return (
       <View
         className="bg-bg-card rounded-lg px-3 py-4 gap-3"
@@ -195,6 +204,38 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
                     yMin={0}
                     yMax={yMax}
                     gradientId={`trend-${selected.id}`}
+                    showPoints
+                    activeIndex={activeIndex}
+                  />
+                )}
+
+                {/* Capa interactiva: tap/scrub para ver fecha y valor */}
+                {plotWidth > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                    }}
+                    {...handlers}
+                  />
+                )}
+
+                {activeIndex != null && activeIndex < pointCount && (
+                  <MlChartTooltip
+                    x={activeX}
+                    plotWidth={plotWidth}
+                    title={`${monthLabel(months[activeIndex])} ${
+                      months[activeIndex]?.split('-')[0] ?? ''
+                    }`}
+                    lines={[
+                      {
+                        color: selected.color,
+                        value: `${selected.counts[activeIndex] ?? 0} asociados`,
+                      },
+                    ]}
                   />
                 )}
               </View>
