@@ -8,14 +8,16 @@
  *
  * Mock path: getBancosMock() del mock existente.
  *
- * El delta % no viene de QB en una sola query — para tener histórico
- * habría que pedir snapshots previos. Por ahora se deja en 0; cuando
- * tengamos un job que persista snapshots diarios en Supabase, lo
- * enriquecemos comparando con el último snapshot guardado.
+ * El delta % compara el saldo en vivo contra el snapshot diario más
+ * reciente anterior a hoy (tabla bank_balance_snapshots, poblada por el
+ * edge function qb-snapshot-bank-balances vía cron). Se lee con el RPC
+ * get_bank_balance_previous(); si una empresa no tiene snapshot previo
+ * (primer día conectada) el delta queda en 0.
  */
 
 import { withMock } from '@/src/services/mock/mock-adapter';
 import { getBancosMock } from '@/src/services/mock/bancos.mock';
+import { supabase } from '@/src/config/supabase';
 import {
   qbQuery,
   qbStatus,
@@ -89,6 +91,28 @@ function normalizeAccounts(
     gradient: CHART_GRADIENTS[idx % CHART_GRADIENTS.length],
     balance: typeof acc.CurrentBalance === 'number' ? acc.CurrentBalance : 0,
   }));
+}
+
+interface PreviousBalanceRow {
+  realm_id: string;
+  previous_total: number | string;
+  snapshot_date: string;
+}
+
+/** deltaPct entre el saldo en vivo y el snapshot previo; 0 si no hay base. */
+function computeDeltaPct(current: number | null, previous: number | undefined): number {
+  if (current == null || !previous) return 0;
+  return ((current - previous) / previous) * 100;
+}
+
+async function fetchPreviousBalances(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('get_bank_balance_previous');
+  if (error) {
+    console.warn('[bancos] get_bank_balance_previous failed', error);
+    return new Map();
+  }
+  const rows = (data as PreviousBalanceRow[] | null) ?? [];
+  return new Map(rows.map((r) => [r.realm_id, Number(r.previous_total)]));
 }
 
 async function fetchEmpresa(
@@ -171,10 +195,22 @@ async function fetchFromQB(): Promise<BancosSnapshot> {
     };
   }
 
-  // Una invocación por realm en paralelo (cada fn corre con su propio CPU).
-  const empresas = await Promise.all(companies.map(fetchEmpresa));
+  // Cada empresa (una invocación por realm, en paralelo) y el snapshot
+  // previo (un solo RPC) corren en paralelo — son independientes.
+  const [rawEmpresas, previousByRealm] = await Promise.all([
+    Promise.all(companies.map(fetchEmpresa)),
+    fetchPreviousBalances(),
+  ]);
+
+  // Promise.all preserva el orden de `companies`, así que hacemos zip por
+  // índice para conocer el realmId de cada empresa sin recalcular el slug.
+  const empresas = rawEmpresas.map((e, i) => ({
+    ...e,
+    deltaPct: computeDeltaPct(e.balance, previousByRealm.get(companies[i].realmId)),
+  }));
 
   const totalizado = empresas.reduce((s, e) => s + (e.balance ?? 0), 0);
+  const totalPrevious = [...previousByRealm.values()].reduce((s, v) => s + v, 0);
   const todayIso = new Date().toISOString().slice(0, 10);
 
   // Fecha de corte = última actualización de cuentas en QB (máx. entre
@@ -187,7 +223,7 @@ async function fetchFromQB(): Promise<BancosSnapshot> {
 
   return {
     totalizado,
-    deltaPct: 0,
+    deltaPct: computeDeltaPct(totalizado, totalPrevious),
     updatedAt: latestAccountUpdate?.slice(0, 10) ?? todayIso,
     empresas,
   };
