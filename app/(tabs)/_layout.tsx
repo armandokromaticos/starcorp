@@ -120,6 +120,7 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="empresas" options={{ href: null }} />
       <Tabs.Screen name="egresos" options={{ href: null }} />
       <Tabs.Screen name="ingresos" options={{ href: null }} />
       <Tabs.Screen name="costos" options={{ href: null }} />

@@ -17,7 +17,8 @@
       "policy": "appVersion"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kromaticos.starcorp"
     },
     "android": {
       "adaptiveIcon": {

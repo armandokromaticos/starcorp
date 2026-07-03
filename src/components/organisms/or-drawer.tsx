@@ -62,6 +62,7 @@ const ROUTE_MAP: Record<string, string> = {
   clientes: "/(tabs)/clientes",
   informes: "/(tabs)/informes",
   reportes: "/(tabs)/reportes",
+  empresas: "/(tabs)/empresas",
   qb: "/connect",
 };
 

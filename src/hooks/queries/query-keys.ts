@@ -55,6 +55,8 @@ export const queryKeys = {
   segurosSnapshot: () => ['seguros', 'snapshot'] as const,
   pagosSnapshot: () => ['pagos', 'snapshot'] as const,
   carteraSnapshot: () => ['cartera', 'snapshot'] as const,
+  otrasEmpresas: () => ['otras-empresas', 'list'] as const,
+  otrasEmpresaDetail: (id: string) => ['otras-empresas', id, 'detail'] as const,
   // Prefix for bulk invalidation
   all: ['finance'] as const,
 } as const;
