@@ -13,6 +13,7 @@ import { AtDivider } from '@/src/components/atoms/at-divider';
 import {
   diffInDays,
   formatVigenciaDate,
+  isCancelada,
   type PolizaPropiedad,
 } from '@/src/types/seguros.types';
 
@@ -32,9 +33,11 @@ function formatVencimiento(days: number): string {
 export const MlPropiedadDetailCard = memo<MlPropiedadDetailCardProps>(
   ({ poliza, todayIso, highlighted = false }) => {
     const days = diffInDays(poliza.vigenciaFin, todayIso);
+    const cancelada = isCancelada(poliza);
     const vencida = days < 0;
     const venceProximo = days >= 0 && days <= 60;
-    const alert = vencida || venceProximo;
+    // Una póliza cancelada no alerta por vencimiento.
+    const alert = !cancelada && (vencida || venceProximo);
     const color = vencida ? '#DC2626' : '#D97706';
 
     return (
@@ -56,6 +59,16 @@ export const MlPropiedadDetailCard = memo<MlPropiedadDetailCardProps>(
           <AtTypography variant="bodyBold" color="#1A1F36">
             {poliza.nombre}
           </AtTypography>
+          {cancelada && (
+            <View
+              className="self-start mt-1 rounded-full px-2 py-0.5"
+              style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}
+            >
+              <AtTypography variant="caption" color="#4A5568">
+                Cancelada
+              </AtTypography>
+            </View>
+          )}
         </View>
 
         <AtDivider />

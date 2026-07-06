@@ -25,6 +25,7 @@ import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
   diffInDays,
   formatVigenciaDate,
+  isCancelada,
   polizaStatus,
   type PolizaCompania,
   type PolizaStatus,
@@ -81,8 +82,10 @@ export default function SegurosScreen() {
     };
   }, [data]);
 
+  // Las pólizas CANCELADA (columna Estado de Notion) no aparecen en la
+  // vista principal — quedan sólo en el histórico.
   const allPolizasCompania = useMemo<PolizaCompania[]>(
-    () => empresas.flatMap((e) => e.polizas),
+    () => empresas.flatMap((e) => e.polizas).filter((p) => !isCancelada(p)),
     [empresas],
   );
 
@@ -103,20 +106,20 @@ export default function SegurosScreen() {
   );
 
   const vehiculosPorVencer = useMemo(
-    () => vehiculos.filter((v) => polizaStatus(v.vigenciaFin, todayIso) === 'por_vencer'),
+    () => vehiculos.filter((v) => !isCancelada(v) && polizaStatus(v.vigenciaFin, todayIso) === 'por_vencer'),
     [vehiculos, todayIso],
   );
   const vehiculosVencidos = useMemo(
-    () => vehiculos.filter((v) => polizaStatus(v.vigenciaFin, todayIso) === 'vencida'),
+    () => vehiculos.filter((v) => !isCancelada(v) && polizaStatus(v.vigenciaFin, todayIso) === 'vencida'),
     [vehiculos, todayIso],
   );
 
   const propiedadesPorVencer = useMemo(
-    () => propiedades.filter((p) => polizaStatus(p.vigenciaFin, todayIso) === 'por_vencer'),
+    () => propiedades.filter((p) => !isCancelada(p) && polizaStatus(p.vigenciaFin, todayIso) === 'por_vencer'),
     [propiedades, todayIso],
   );
   const propiedadesVencidas = useMemo(
-    () => propiedades.filter((p) => polizaStatus(p.vigenciaFin, todayIso) === 'vencida'),
+    () => propiedades.filter((p) => !isCancelada(p) && polizaStatus(p.vigenciaFin, todayIso) === 'vencida'),
     [propiedades, todayIso],
   );
 

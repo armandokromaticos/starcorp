@@ -35,6 +35,7 @@ import {
 } from '@/src/services/notion/normalize';
 import type {
   PolizaCompania,
+  PolizaEstadoNotion,
   PolizaPropiedad,
   PolizaVehiculo,
   SeguroEmpresa,
@@ -87,6 +88,7 @@ const COL_VIGENCIA_INICIO = ['Inicio Vigencia'];
 const COL_VIGENCIA_FIN = ['Fin Vigencia'];
 const COL_COSTO = ['Costo Total'];
 const COL_TIPO = ['Tipo de Seguro'];
+const COL_ESTADO = ['Estado'];
 const COL_LLC = ['LLC'];
 // Fallback opcionales si el usuario agrega rollups/columnas extra
 const COL_EMPRESA_NOMBRE = ['Empresa', 'LLC nombre', 'Nombre LLC'];
@@ -158,6 +160,21 @@ function parseLooseDate(input: unknown): string {
 
 function toDate(v: unknown): string {
   return parseLooseDate(v);
+}
+
+/** Normaliza la columna "Estado" de Notion (ACTIVA / VENCIDA / CANCELADA). */
+function parseEstado(v: unknown): PolizaEstadoNotion {
+  if (typeof v !== 'string') return null;
+  const t = v
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  if (!t) return null;
+  if (t.startsWith('cancel')) return 'cancelada';
+  if (t.startsWith('venc')) return 'vencida';
+  if (t.startsWith('activ')) return 'activa';
+  return null;
 }
 
 /** Acepta "5091,00 US$", "5,091.00 USD", "$1.000.000", number. */
@@ -264,6 +281,7 @@ function buildPolizaCompania(row: NormalizedRow): PolizaCompania {
       return toNum(v);
     })(),
     costo: toNum(pickField(row, COL_COSTO)),
+    estado: parseEstado(pickField(row, COL_ESTADO)),
   };
 }
 
@@ -273,6 +291,7 @@ function buildPolizaVehiculo(row: NormalizedRow): PolizaVehiculo {
     nombre: toStr(pickField(row, COL_NOMBRE)),
     asignacion: toStr(pickField(row, COL_ASIGNACION)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
+    estado: parseEstado(pickField(row, COL_ESTADO)),
   };
 }
 
@@ -281,6 +300,7 @@ function buildPolizaPropiedad(row: NormalizedRow): PolizaPropiedad {
     id: row.id,
     nombre: toStr(pickField(row, COL_NOMBRE)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
+    estado: parseEstado(pickField(row, COL_ESTADO)),
   };
 }
 

@@ -1,5 +1,5 @@
 /**
- * Lista completa (histórico) de pólizas de Vehículos — sólo vencidas.
+ * Lista completa (histórico) de pólizas de Vehículos — vencidas y canceladas.
  *
  * Al navegar con `polizaId` (desde el informe), hace scroll y resalta esa
  * póliza, igual que el detalle de Compañías.
@@ -18,7 +18,7 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import { polizaStatus } from '@/src/types/seguros.types';
+import { isCancelada, polizaStatus } from '@/src/types/seguros.types';
 
 export default function SegurosVehiculosScreen() {
   const insets = useSafeAreaInsets();
@@ -30,11 +30,13 @@ export default function SegurosVehiculosScreen() {
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const todayIso = data?.todayIso ?? '';
-  // Sólo pólizas vencidas (de años pasados).
+  // Pólizas vencidas (de años pasados) y canceladas (Estado de Notion).
   const vehiculosFiltrados = useMemo(
     () =>
       (data?.vehiculos ?? []).filter(
-        (p) => polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
+        (p) =>
+          isCancelada(p) ||
+          polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
       ),
     [data, todayIso],
   );
@@ -94,7 +96,7 @@ export default function SegurosVehiculosScreen() {
         <View className="gap-3 px-4" onLayout={onListLayout}>
           {vehiculosFiltrados.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas de vehículos vencidas.
+              Sin pólizas de vehículos vencidas ni canceladas.
             </AtTypography>
           )}
           {vehiculosFiltrados.map((p) => (

@@ -8,7 +8,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "starcorp",
     "userInterfaceStyle": "automatic",
-
     "updates": {
       "url": "https://u.expo.dev/2c51a567-7b48-4e86-b073-71c91b063566",
       "enabled": true
@@ -18,7 +17,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kromaticos.starcorp"
+      "bundleIdentifier": "com.kromaticos.starcorp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +29,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-
       "predictiveBackGestureEnabled": false
     },
     "web": {

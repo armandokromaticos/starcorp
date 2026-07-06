@@ -29,7 +29,7 @@ import {
   AGING_BUCKETS,
   type AgingBucket,
 } from '@/src/types/cartera.types';
-import { polizaStatus } from '@/src/types/seguros.types';
+import { isCancelada, polizaStatus } from '@/src/types/seguros.types';
 import {
   MONTO_BUCKET_COLOR,
   type MontoBucket,
@@ -237,12 +237,17 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
     const segurosAgg = useMemo(() => {
       if (!segurosData) return null;
       const today = segurosData.todayIso;
+      // Las CANCELADA (Estado de Notion) no cuentan — viven en el histórico.
       const vigenciaFins: string[] = [
         ...segurosData.empresas.flatMap((e) =>
-          e.polizas.map((p) => p.vigenciaFin),
+          e.polizas.filter((p) => !isCancelada(p)).map((p) => p.vigenciaFin),
         ),
-        ...segurosData.vehiculos.map((v) => v.vigenciaFin),
-        ...segurosData.propiedades.map((p) => p.vigenciaFin),
+        ...segurosData.vehiculos
+          .filter((v) => !isCancelada(v))
+          .map((v) => v.vigenciaFin),
+        ...segurosData.propiedades
+          .filter((p) => !isCancelada(p))
+          .map((p) => p.vigenciaFin),
       ];
       let vencidas = 0;
       let porVencer = 0;
