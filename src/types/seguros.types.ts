@@ -10,6 +10,18 @@
 export type PolizaStatus = 'activa' | 'por_vencer' | 'vencida';
 
 /**
+ * Estado declarado en la columna "Estado" de Notion (ACTIVA / VENCIDA /
+ * CANCELADA). Independiente del estado derivado por fecha: sólo lo usamos
+ * para sacar las CANCELADA de la vista principal y dejarlas en el
+ * histórico. `null` = columna vacía o valor no reconocido.
+ */
+export type PolizaEstadoNotion = 'activa' | 'vencida' | 'cancelada' | null;
+
+export function isCancelada(p: { estado?: PolizaEstadoNotion }): boolean {
+  return p.estado === 'cancelada';
+}
+
+/**
  * Opciones del filtro por chips de estado de póliza (Vigente / Por vencer /
  * Vencido). Compartido por el detalle de compañía y el histórico para
  * unificar el diseño. Orden = orden de los chips.
@@ -36,6 +48,7 @@ export interface PolizaCompania {
   cobertura: number;
   payroll: number | null;
   costo: number;
+  estado?: PolizaEstadoNotion;
 }
 
 export interface PolizaVehiculo {
@@ -43,12 +56,14 @@ export interface PolizaVehiculo {
   nombre: string;
   asignacion: string;
   vigenciaFin: string;
+  estado?: PolizaEstadoNotion;
 }
 
 export interface PolizaPropiedad {
   id: string;
   nombre: string;
   vigenciaFin: string;
+  estado?: PolizaEstadoNotion;
 }
 
 export interface SeguroEmpresa {

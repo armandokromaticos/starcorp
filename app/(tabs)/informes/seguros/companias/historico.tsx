@@ -17,7 +17,7 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import { polizaStatus } from '@/src/types/seguros.types';
+import { isCancelada, polizaStatus } from '@/src/types/seguros.types';
 
 export default function SegurosHistoricoScreen() {
   const insets = useSafeAreaInsets();
@@ -31,7 +31,8 @@ export default function SegurosHistoricoScreen() {
   // Por defecto la primera empresa queda activa.
   const effectiveActiveId = activeEmpresaId ?? data?.empresas[0]?.id ?? null;
 
-  // El histórico sólo muestra pólizas vencidas (de años pasados).
+  // El histórico muestra pólizas vencidas (de años pasados) y las
+  // canceladas (columna Estado de Notion), que no aparecen en el informe.
   const polizas = useMemo(() => {
     if (!data) return [];
     const todayIso = data.todayIso;
@@ -39,7 +40,8 @@ export default function SegurosHistoricoScreen() {
     return all.filter(
       (p) =>
         (!effectiveActiveId || p.empresaId === effectiveActiveId) &&
-        polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
+        (isCancelada(p) ||
+          polizaStatus(p.vigenciaFin, todayIso) === 'vencida'),
     );
   }, [data, effectiveActiveId]);
 
@@ -89,7 +91,7 @@ export default function SegurosHistoricoScreen() {
         <View className="gap-3 px-4">
           {polizas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas vencidas.
+              Sin pólizas vencidas ni canceladas.
             </AtTypography>
           )}
           {polizas.map((p) => (
