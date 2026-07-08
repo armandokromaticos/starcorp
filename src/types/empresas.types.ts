@@ -49,6 +49,9 @@ export interface EmpresaFinancials {
 export interface EmpresaDetail {
   id: string;
   name: string;
+  /** Período resuelto por el backend (ej. "último mes con datos"); el chip
+   *  de la UI lo usa cuando existe. Mock: undefined. */
+  period?: { year: number; month: number } | null;
   ingresos: EmpresaFinancials;
   gastos: EmpresaFinancials;
 }

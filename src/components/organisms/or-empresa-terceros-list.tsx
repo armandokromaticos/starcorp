@@ -66,17 +66,19 @@ export const OrEmpresaTercerosList = memo<OrEmpresaTercerosListProps>(
           </AtTypography>
         </View>
 
-        {/* Filas */}
-        <View className="gap-2">
-          {filtered.map((tercero) => (
+        {/* Filas — zebra: alternan fondo transparente y card blanca */}
+        <View>
+          {filtered.map((tercero, idx) => (
             <Pressable
               key={tercero.id}
               onPress={() => onTerceroPress?.(tercero.id)}
               disabled={!onTerceroPress}
-              className="flex-row items-center gap-3 bg-bg-card px-3 py-3 rounded-lg"
+              className={`flex-row items-center gap-3 px-3 py-3 rounded-lg ${
+                idx % 2 === 1 ? 'bg-bg-card' : ''
+              }`}
               style={{
                 borderCurve: 'continuous',
-                borderWidth: 1,
+                borderWidth: idx % 2 === 1 ? 1 : 0,
                 borderColor: 'rgba(0,0,0,0.05)',
               }}
             >

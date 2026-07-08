@@ -80,9 +80,17 @@ function latestUpdatedTime(raw: QBAccountRaw[]): string | null {
 
 function normalizeAccounts(
   empresaId: string,
+  realmId: string,
   raw: QBAccountRaw[],
+  exclusions: Set<string>,
 ): BancoCuenta[] {
-  const active = raw.filter((a) => a.Active !== false);
+  // Además de las inactivas se descartan las cuentas marcadas en
+  // bank_account_exclusions (tipo 'Bank' en QB pero no bancos reales:
+  // anticipos a empleados, cajas menores, cuentas puente). El filtro va
+  // antes del map para que los colores del chart no salten índices.
+  const active = raw.filter(
+    (a) => a.Active !== false && !exclusions.has(`${realmId}:${a.Id}`),
+  );
   return active.map((acc, idx) => ({
     id: `${empresaId}-acc-${acc.Id}`,
     name: acc.Name,
@@ -115,8 +123,23 @@ async function fetchPreviousBalances(): Promise<Map<string, number>> {
   return new Map(rows.map((r) => [r.realm_id, Number(r.previous_total)]));
 }
 
+/** Cuentas excluidas del informe (bank_account_exclusions), como Set de
+ * "realmId:accountId". Si la lectura falla el informe sigue sin filtro. */
+async function fetchExclusions(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('bank_account_exclusions')
+    .select('realm_id, account_id');
+  if (error) {
+    console.warn('[bancos] bank_account_exclusions failed', error);
+    return new Set();
+  }
+  const rows = (data as { realm_id: string; account_id: string }[] | null) ?? [];
+  return new Set(rows.map((r) => `${r.realm_id}:${r.account_id}`));
+}
+
 async function fetchEmpresa(
   company: QBConnectedCompany,
+  exclusions: Set<string>,
 ): Promise<BancoEmpresa> {
   const empresaId = slugify(
     company.name ?? `empresa-${company.realmId.slice(-4)}`,
@@ -143,7 +166,7 @@ async function fetchEmpresa(
       company.realmId,
     );
     const raw = resp.QueryResponse?.Account ?? [];
-    const cuentas = normalizeAccounts(empresaId, raw);
+    const cuentas = normalizeAccounts(empresaId, company.realmId, raw, exclusions);
     const balance = cuentas.length
       ? cuentas.reduce((s, c) => s + c.balance, 0)
       : null;
@@ -195,12 +218,18 @@ async function fetchFromQB(): Promise<BancosSnapshot> {
     };
   }
 
-  // Cada empresa (una invocación por realm, en paralelo) y el snapshot
-  // previo (un solo RPC) corren en paralelo — son independientes.
-  const [rawEmpresas, previousByRealm] = await Promise.all([
-    Promise.all(companies.map(fetchEmpresa)),
+  // Exclusiones y snapshot previo son dos lecturas rápidas a Supabase y
+  // corren en paralelo; las exclusiones tienen que estar antes de armar
+  // las cuentas, así que los queries a QB (lo lento) van después.
+  const [exclusions, previousByRealm] = await Promise.all([
+    fetchExclusions(),
     fetchPreviousBalances(),
   ]);
+
+  // Cada empresa es una invocación independiente por realm, en paralelo.
+  const rawEmpresas = await Promise.all(
+    companies.map((company) => fetchEmpresa(company, exclusions)),
+  );
 
   // Promise.all preserva el orden de `companies`, así que hacemos zip por
   // índice para conocer el realmId de cada empresa sin recalcular el slug.

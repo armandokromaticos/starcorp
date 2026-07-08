@@ -56,7 +56,16 @@ export const queryKeys = {
   pagosSnapshot: () => ['pagos', 'snapshot'] as const,
   carteraSnapshot: () => ['cartera', 'snapshot'] as const,
   otrasEmpresas: () => ['otras-empresas', 'list'] as const,
-  otrasEmpresaDetail: (id: string) => ['otras-empresas', id, 'detail'] as const,
+  otrasEmpresaDetail: (id: string, period: string) =>
+    ['otras-empresas', id, 'detail', period] as const,
+  vagResumen: () => ['vag', 'resumen'] as const,
+  vagActivos: () => ['vag', 'activos'] as const,
+  vagMovimientos: () => ['vag', 'movimientos'] as const,
+  vagCuentas: (tipo: string) => ['vag', 'cuentas', tipo] as const,
+  repoApartados: () => ['repositorio', 'apartados'] as const,
+  repoApartado: (id: string) => ['repositorio', 'apartados', id] as const,
+  repoArchivos: (apartadoId: string) =>
+    ['repositorio', 'archivos', apartadoId] as const,
   // Prefix for bulk invalidation
   all: ['finance'] as const,
 } as const;

@@ -2,7 +2,7 @@
  * Otras compañías — lista de compañías.
  *
  * Cada compañía con métrica (BBM, VAG) navega a su detalle Ingresos/Gastos.
- * "Repositorio Alejandro" (sin métrica) se muestra pero aún no navega.
+ * "Repositorio Alejandro" (sin métrica) navega al repositorio documental.
  */
 
 import React, { useState } from 'react';

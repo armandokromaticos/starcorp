@@ -2,6 +2,8 @@
 // so the Informe Bancos can compute a real deltaPct (QB's Account query
 // only exposes CurrentBalance — no history). One row per active Bank
 // account per realm per day, upserted so re-runs the same day are safe.
+// Accounts listed in bank_account_exclusions (QB type 'Bank' but not real
+// banks: employee advances, petty cash, clearing) are skipped.
 
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -106,6 +108,7 @@ async function fetchRealmBalances(
   clientId: string,
   clientSecret: string,
   snapshotDate: string,
+  exclusions: Set<string>,
 ): Promise<{ realmId: string; rows: number } | null> {
   if (new Date(row.refresh_expires_at).getTime() < Date.now()) {
     // Reauth required for this realm — skip, the rest still snapshots.
@@ -131,7 +134,8 @@ async function fetchRealmBalances(
     QueryResponse?: { Account?: QBAccountRaw[] };
   };
   const accounts = (json.QueryResponse?.Account ?? [])
-    .filter((a) => a.Active !== false);
+    .filter((a) => a.Active !== false)
+    .filter((a) => !exclusions.has(`${row.realm_id}:${a.Id}`));
 
   if (accounts.length === 0) return { realmId: row.realm_id, rows: 0 };
 
@@ -229,6 +233,14 @@ Deno.serve(async (req) => {
       : "https://sandbox-quickbooks.api.intuit.com";
     const snapshotDate = new Date().toISOString().slice(0, 10);
 
+    const { data: exclRows, error: exclErr } = await admin
+      .from("bank_account_exclusions")
+      .select("realm_id, account_id");
+    if (exclErr) throw new Error(`load exclusions: ${exclErr.message}`);
+    const exclusions = new Set(
+      (exclRows ?? []).map((r) => `${r.realm_id}:${r.account_id}`),
+    );
+
     const results = await Promise.all(
       (tokenRows as TokenRow[] ?? []).map((row) =>
         fetchRealmBalances(
@@ -238,6 +250,7 @@ Deno.serve(async (req) => {
           kv.QB_CLIENT_ID,
           kv.QB_CLIENT_SECRET,
           snapshotDate,
+          exclusions,
         ).catch((e) => {
           console.error(`[qb-snapshot-bank-balances] realm ${row.realm_id}`, e);
           return null;

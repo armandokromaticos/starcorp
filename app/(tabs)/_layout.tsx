@@ -79,20 +79,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="clientes"
-        options={{
-          title: "Clientes",
-          tabBarIcon: ({ focused, size }) => (
-            <AtGradientIcon
-              name="people"
-              variant="ionicons"
-              size={size}
-              gradient={focused ? "brandOrange" : "brandNavy"}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="informes"
         options={{
           title: "Informes",
@@ -120,7 +106,21 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="empresas" options={{ href: null }} />
+      <Tabs.Screen
+        name="empresas"
+        options={{
+          title: "Otras Compañías",
+          tabBarIcon: ({ focused, size }) => (
+            <AtGradientIcon
+              name="briefcase"
+              variant="ionicons"
+              size={size}
+              gradient={focused ? "brandOrange" : "brandNavy"}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen name="clientes" options={{ href: null }} />
       <Tabs.Screen name="egresos" options={{ href: null }} />
       <Tabs.Screen name="ingresos" options={{ href: null }} />
       <Tabs.Screen name="costos" options={{ href: null }} />
