@@ -23,7 +23,9 @@ import { OrTopClientsSection } from "@/src/components/organisms/or-top-clients-s
 import { TmDashboard } from "@/src/components/templates/tm-dashboard";
 import { useCompanySummaries } from "@/src/hooks/queries/use-company-summaries";
 import { useFiltersStore } from "@/src/stores/filters.store";
+import { useAuthStore } from "@/src/stores/auth.store";
 import { useGlobalSearchStore } from "@/src/stores/global-search.store";
+import { hasPermission } from "@/src/types/auth.types";
 import { useQBStore } from "@/src/stores/qb.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
@@ -52,6 +54,14 @@ const INFORME_ROUTES: Record<string, string> = {
   seguro: "/informes/seguros",
   pagos: "/informes/pagos",
   presupuesto: "/informes/presupuesto",
+};
+
+// Permiso fino que habilita cada categoría del consolidado.
+const CATEGORY_PERMISSION: Record<string, string> = {
+  ingresos: "consolidado.ingresos",
+  costos: "consolidado.costos",
+  gastos: "consolidado.gastos",
+  utilidad: "consolidado.utilidades",
 };
 
 const CATEGORIES: CategoryItem[] = [
@@ -84,6 +94,7 @@ const CATEGORIES: CategoryItem[] = [
 export default function HomeScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("ingresos");
+  const user = useAuthStore((s) => s.user);
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
   const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
@@ -104,8 +115,19 @@ export default function HomeScreen() {
     [setActiveRealmId],
   );
 
+  // Render parcial: cada sección del dashboard exige su permiso
+  // (super_admin ve todo — ver hasPermission).
+  const can = useCallback(
+    (key: string) => hasPermission(user, key),
+    [user],
+  );
+  const allowedCategories = CATEGORIES.filter((c) =>
+    can(CATEGORY_PERMISSION[c.id]),
+  );
   const activeCategory =
-    CATEGORIES.find((c) => c.id === selectedCategory) ?? CATEGORIES[0];
+    allowedCategories.find((c) => c.id === selectedCategory) ??
+    allowedCategories[0] ??
+    null;
 
   return (
     <TmDashboard stickyHeaderIndices={[0]}>
@@ -125,63 +147,73 @@ export default function HomeScreen() {
       </View>
 
       {/* Greeting */}
-      <OrGreetingHeader name="Alejandro" />
+      <OrGreetingHeader name={user?.firstName || user?.name || ""} />
 
-      {/* Section: Empresas (Consolidado) */}
-      <View className="gap-3">
-        <View className="flex-row justify-between items-center px-4">
-          <AtTypography variant="h2">Empresas</AtTypography>
-          <AtStatusBadge
-            label={PERIOD_LABELS[activePeriodKey]}
-            variant="gradient"
-            size="md"
+      {/* Section: Empresas (Consolidado) — solo con alguna categoría permitida */}
+      {activeCategory ? (
+        <View className="gap-3">
+          <View className="flex-row justify-between items-center px-4">
+            <AtTypography variant="h2">Empresas</AtTypography>
+            <AtStatusBadge
+              label={PERIOD_LABELS[activePeriodKey]}
+              variant="gradient"
+              size="md"
+            />
+          </View>
+          <OrRevenueChartCard
+            categoryId={activeCategory.id}
+            label={activeCategory.label}
+            period={activePeriodKey}
           />
         </View>
-        <OrRevenueChartCard
-          categoryId={activeCategory.id}
-          label={activeCategory.label}
-          period={activePeriodKey}
-        />
-      </View>
+      ) : null}
 
-      {/* Category carousel */}
-      <OrCategoryCarousel
-        categories={CATEGORIES}
-        selectedId={selectedCategory}
-        onSelect={setSelectedCategory}
-        onActionPress={(id) =>
-          router.push(`/${id}` as Parameters<typeof router.push>[0])
-        }
-      />
+      {/* Category carousel — solo categorías permitidas */}
+      {activeCategory ? (
+        <OrCategoryCarousel
+          categories={allowedCategories}
+          selectedId={activeCategory.id}
+          onSelect={setSelectedCategory}
+          onActionPress={(id) =>
+            router.push(`/${id}` as Parameters<typeof router.push>[0])
+          }
+        />
+      ) : null}
 
       {/* Top clients */}
-      <OrTopClientsSection
-        periodLabel={PERIOD_LABELS[activePeriodKey]}
-        onViewClients={() => router.push("/clientes")}
-      />
+      {can("clientes.ver") ? (
+        <OrTopClientsSection
+          periodLabel={PERIOD_LABELS[activePeriodKey]}
+          onViewClients={() => router.push("/clientes")}
+        />
+      ) : null}
 
       {/* Financiero (empresas carousel) */}
-      <OrFinancieroSection
-        periodLabel={PERIOD_LABELS[activePeriodKey]}
-        companies={companies}
-        onCompanyPress={handleCompanyPress}
-        onViewAll={() => router.push("/financiero")}
-      />
+      {can("financiero.ver") ? (
+        <OrFinancieroSection
+          periodLabel={PERIOD_LABELS[activePeriodKey]}
+          companies={companies}
+          onCompanyPress={handleCompanyPress}
+          onViewAll={() => router.push("/financiero")}
+        />
+      ) : null}
 
       {/* Informes (reports) */}
-      <OrInformesSection
-        periodLabel={PERIOD_LABELS[activePeriodKey]}
-        onViewAll={(id) =>
-          router.push(
-            (INFORME_ROUTES[id] ?? "/informes") as Parameters<
-              typeof router.push
-            >[0],
-          )
-        }
-      />
+      {can("informes.ver") ? (
+        <OrInformesSection
+          periodLabel={PERIOD_LABELS[activePeriodKey]}
+          onViewAll={(id) =>
+            router.push(
+              (INFORME_ROUTES[id] ?? "/informes") as Parameters<
+                typeof router.push
+              >[0],
+            )
+          }
+        />
+      ) : null}
 
       {/* Reportes más recientes */}
-      <OrRecentReportsSection />
+      {can("reportes.ver") ? <OrRecentReportsSection /> : null}
 
       {/* Drawer */}
       <OrDrawer

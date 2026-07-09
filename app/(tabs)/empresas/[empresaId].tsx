@@ -36,6 +36,7 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+/** Fallback cuando el backend no devuelve período (compañías mock). */
 function periodLabel(f: EmpresaFilters): string {
   const year = f.year === 'corriente' ? '2026' : f.year;
   // 'ultimo' = último mes cerrado (mock: Abril 2026).
@@ -59,10 +60,17 @@ export default function EmpresaDetailScreen() {
   const [filters, setFilters] = useState<EmpresaFilters>(DEFAULT_EMPRESA_FILTERS);
   const [filtersVisible, setFiltersVisible] = useState(false);
 
-  const { data: detail, isLoading } = useEmpresaDetail(empresaId ?? '');
+  const { data: detail, isLoading } = useEmpresaDetail(empresaId ?? '', filters);
 
   const financials = detail ? detail[tipo] : null;
-  const periodText = useMemo(() => periodLabel(filters), [filters]);
+  // BBM (real) devuelve el período resuelto por el RPC ("último mes con
+  // datos"); el chip lo muestra tal cual. Mock cae al label derivado.
+  const periodText = useMemo(() => {
+    if (detail?.period) {
+      return `${MONTHS[detail.period.month - 1] ?? ''} ${detail.period.year}`;
+    }
+    return periodLabel(filters);
+  }, [detail?.period, filters]);
   const tipoLabel = tipo === 'ingresos' ? 'Ingresos' : 'Gastos';
 
   return (

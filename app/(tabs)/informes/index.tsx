@@ -11,6 +11,8 @@ import { View } from '@/src/tw';
 import { MlReportCard } from '@/src/components/molecules/ml-report-card';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { TmInformes } from '@/src/components/templates/tm-informes';
+import { useAuthStore } from '@/src/stores/auth.store';
+import { hasPermission } from '@/src/types/auth.types';
 import type { MaterialIcons } from '@expo/vector-icons';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -30,14 +32,30 @@ const REPORTS: ReportItem[] = [
   { id: 'pagos', title: 'Informe Pagos', iconName: 'payment' },
 ];
 
+// Permiso fino que habilita cada informe (el id 'seguro' mapea a
+// informes.seguros del catálogo).
+const REPORT_PERMISSION: Record<string, string> = {
+  cartera: 'informes.cartera',
+  asociados: 'informes.asociados',
+  bancos: 'informes.bancos',
+  presupuesto: 'informes.presupuesto',
+  seguro: 'informes.seguros',
+  pagos: 'informes.pagos',
+};
+
 export default function InformesScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+
+  const allowedReports = REPORTS.filter((r) =>
+    hasPermission(user, REPORT_PERMISSION[r.id]),
+  );
 
   return (
     <TmInformes onMenuPress={() => setDrawerVisible(true)}>
       <View className="flex-row flex-wrap gap-3 px-4">
-        {REPORTS.map((report) => (
+        {allowedReports.map((report) => (
           <View key={report.id} style={{ width: '48%' }}>
             <MlReportCard
               title={report.title}

@@ -80,7 +80,8 @@ function buildDetail(id: string, name: string): EmpresaDetail {
 const LIST: EmpresaListItem[] = [
   { id: 'bbm', name: 'BBM', ingresos: 77630, deltaPercent: 1.87, hasDetail: true },
   { id: 'vag', name: 'VAG', ingresos: 77630, deltaPercent: 1.87, hasDetail: true },
-  { id: 'repositorio-alejandro', name: 'Repositorio Alejandro', ingresos: null, deltaPercent: null, hasDetail: false },
+  // Sin métricas, pero navega a su ruta estática /empresas/repositorio-alejandro.
+  { id: 'repositorio-alejandro', name: 'Repositorio Alejandro', ingresos: null, deltaPercent: null, hasDetail: true },
 ];
 
 const DETAILS: Record<string, EmpresaDetail> = {

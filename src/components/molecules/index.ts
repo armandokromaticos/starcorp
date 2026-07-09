@@ -12,6 +12,15 @@ export { MlCompanyCard } from './ml-company-card';
 export { MlReportRow } from './ml-report-row';
 export { MlPeriodDropdown } from './ml-period-dropdown';
 
+// ── Auth ──
+export { MlGradientButton } from './ml-gradient-button';
+export { MlPasswordInput } from './ml-password-input';
+export { MlOtpInput } from './ml-otp-input';
+export { MlPasswordStrength, isPasswordValid } from './ml-password-strength';
+export { MlBackHeader } from './ml-back-header';
+export { MlLabeledInput } from './ml-labeled-input';
+export { MlRoleChip } from './ml-role-chip';
+
 // ── Legacy (kept for backward compatibility during migration) ──
 export { TimeFilterBar } from './time-filter-bar';
 export { SearchBar } from './search-bar';

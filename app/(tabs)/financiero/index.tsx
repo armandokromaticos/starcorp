@@ -24,7 +24,9 @@ import { useCompanies, useQbStatus } from "@/src/hooks/queries/use-companies";
 import { useCompanyMetrics } from "@/src/hooks/queries/use-company-metrics";
 import { queryKeys } from "@/src/hooks/queries/query-keys";
 import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
+import { useAuthStore } from "@/src/stores/auth.store";
 import { useQBStore } from "@/src/stores/qb.store";
+import { hasPermission } from "@/src/types/auth.types";
 import { Pressable, ScrollView, View } from "@/src/tw";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -38,6 +40,7 @@ export default function FinancieroScreen() {
   const activeRealmId = useQBStore((s) => s.activeRealmId);
   const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
   const { data: companies = [] } = useCompanies();
   const { data: qbStatus } = useQbStatus();
@@ -65,9 +68,10 @@ export default function FinancieroScreen() {
     }
   }
 
+  // Render parcial: cada card exige su permiso fino (super_admin ve todo).
   const primaryMetrics: FinancialMetric[] = useMemo(() => {
     if (!metrics) return [];
-    return [
+    const cards: FinancialMetric[] = [
       {
         id: "ingresos",
         label: "Ingresos",
@@ -90,10 +94,11 @@ export default function FinancieroScreen() {
         icon: "payments",
       },
     ];
-  }, [metrics]);
+    return cards.filter((c) => hasPermission(user, `financiero.${c.id}`));
+  }, [metrics, user]);
 
   const secondaryMetrics: FinancialMetric[] = useMemo(() => {
-    if (!metrics) return [];
+    if (!metrics || !hasPermission(user, "financiero.utilidades")) return [];
     return [
       {
         id: "utilidad-bruta",
@@ -112,7 +117,7 @@ export default function FinancieroScreen() {
         iconColor: "#3A5BC4",
       },
     ];
-  }, [metrics]);
+  }, [metrics, user]);
 
   const handleMetricPress = (id: string) => {
     if (id === "ingresos") router.push("/financiero/ingresos");
@@ -230,11 +235,15 @@ export default function FinancieroScreen() {
         </View>
       ) : (
         <>
-          <OrPrimaryMetrics
-            metrics={primaryMetrics}
-            onMetricPress={handleMetricPress}
-          />
-          <OrSecondaryMetrics metrics={secondaryMetrics} />
+          {primaryMetrics.length > 0 ? (
+            <OrPrimaryMetrics
+              metrics={primaryMetrics}
+              onMetricPress={handleMetricPress}
+            />
+          ) : null}
+          {secondaryMetrics.length > 0 ? (
+            <OrSecondaryMetrics metrics={secondaryMetrics} />
+          ) : null}
         </>
       )}
 
