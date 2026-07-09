@@ -6,6 +6,7 @@
  */
 
 import React, { memo } from 'react';
+import type { TextInputProps } from 'react-native';
 import { TextInput, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 
@@ -15,10 +16,26 @@ interface MlLabeledInputProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   required?: boolean;
+  error?: string | null;
+  keyboardType?: TextInputProps['keyboardType'];
+  autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
+  textContentType?: TextInputProps['textContentType'];
 }
 
 export const MlLabeledInput = memo<MlLabeledInputProps>(
-  ({ label, value, onChangeText, placeholder, required }) => {
+  ({
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    required,
+    error,
+    keyboardType,
+    autoCapitalize,
+    autoComplete,
+    textContentType,
+  }) => {
     return (
       <View className="gap-2">
         <AtTypography variant="captionBold" color="#1A1F36">
@@ -32,7 +49,7 @@ export const MlLabeledInput = memo<MlLabeledInputProps>(
             borderCurve: 'continuous',
             paddingVertical: 12,
             borderWidth: 1,
-            borderColor: 'rgba(0, 0, 0, 0.12)',
+            borderColor: error ? '#E53E3E' : 'rgba(0, 0, 0, 0.12)',
           }}
         >
           <TextInput
@@ -40,10 +57,19 @@ export const MlLabeledInput = memo<MlLabeledInputProps>(
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor="#8892A4"
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            autoComplete={autoComplete}
+            textContentType={textContentType}
             className="p-0"
             style={{ fontFamily: 'Roboto_400Regular', fontSize: 14, color: '#1A1F36' }}
           />
         </View>
+        {error ? (
+          <AtTypography variant="caption" color="#E53E3E">
+            {error}
+          </AtTypography>
+        ) : null}
       </View>
     );
   },

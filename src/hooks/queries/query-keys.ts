@@ -66,6 +66,7 @@ export const queryKeys = {
   repoApartado: (id: string) => ['repositorio', 'apartados', id] as const,
   repoArchivos: (apartadoId: string) =>
     ['repositorio', 'archivos', apartadoId] as const,
+  usuarios: () => ['usuarios', 'list'] as const,
   // Prefix for bulk invalidation
   all: ['finance'] as const,
 } as const;

@@ -15,16 +15,30 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { OrEmpresaCard } from '@/src/components/organisms/or-empresa-card';
 import { TmDashboard } from '@/src/components/templates/tm-dashboard';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
+import { useAuthStore } from '@/src/stores/auth.store';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import { useEmpresas } from '@/src/hooks/queries/use-empresas';
+import { hasPermission } from '@/src/types/auth.types';
+
+// Ítems de la lista con permiso fino propio; el resto de compañías
+// queda cubierto por el permiso base empresas.ver (gate de la sección).
+const EMPRESA_PERMISSION: Record<string, string> = {
+  bbm: 'empresas.bbm',
+  vag: 'empresas.vag',
+  'repositorio-alejandro': 'empresas.repositorio',
+};
 
 export default function EmpresasScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
 
   const { data, isLoading, isError, refetch, isRefetching } = useEmpresas();
-  const empresas = data ?? [];
+  const empresas = (data ?? []).filter((e) => {
+    const permission = EMPRESA_PERMISSION[e.id];
+    return permission ? hasPermission(user, permission) : true;
+  });
 
   return (
     <TmDashboard>

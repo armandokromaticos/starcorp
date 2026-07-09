@@ -18,6 +18,8 @@ import { BarChart } from '@/src/components/charts/bar-chart';
 import { DonutChart } from '@/src/components/charts/donut-chart';
 import { GaugeChart } from '@/src/components/charts/gauge-chart';
 import { MlReportCategoryRow } from '@/src/components/molecules/ml-report-category-row';
+import { useAuthStore } from '@/src/stores/auth.store';
+import { hasPermission } from '@/src/types/auth.types';
 import { useCartera } from '@/src/hooks/queries/use-cartera';
 import { useAsociados } from '@/src/hooks/queries/use-asociados';
 import { useAsociadosTrend } from '@/src/hooks/queries/use-asociados-trend';
@@ -76,6 +78,17 @@ const REPORT_CATEGORIES: ReportCategory[] = [
   { id: 'seguro', label: 'Seguros', icon: 'verified-user', color: '#78A63A', currency: 'USD' },
   { id: 'pagos', label: 'Pagos', icon: 'payments', color: '#3D6F4E', currency: 'USD' },
 ];
+
+// Permiso fino que habilita cada categoría (mismo mapeo que la pantalla
+// de Informes; el id 'seguro' corresponde a informes.seguros).
+const CATEGORY_PERMISSION: Record<string, string> = {
+  cartera: 'informes.cartera',
+  asociados: 'informes.asociados',
+  bancos: 'informes.bancos',
+  presupuesto: 'informes.presupuesto',
+  seguro: 'informes.seguros',
+  pagos: 'informes.pagos',
+};
 
 const MONTHS_ES_3 = [
   'Ene',
@@ -310,12 +323,23 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
       return { ejecutado, proyectado, fraction };
     }, [presupuestoData]);
 
-    const selected = useMemo(
+    // Render parcial: solo las categorías con permiso fino concedido
+    // (super_admin ve todas). Sin ninguna permitida, la card no se pinta.
+    const user = useAuthStore((s) => s.user);
+    const categories = useMemo(
       () =>
-        REPORT_CATEGORIES.find((r) => r.id === selectedId) ??
-        REPORT_CATEGORIES[0],
-      [selectedId],
+        REPORT_CATEGORIES.filter((r) =>
+          hasPermission(user, CATEGORY_PERMISSION[r.id]),
+        ),
+      [user],
     );
+
+    const selected = useMemo(
+      () => categories.find((r) => r.id === selectedId) ?? categories[0] ?? null,
+      [categories, selectedId],
+    );
+
+    if (!selected) return null;
 
     const isCartera = selected.id === 'cartera' && carteraAgg !== null;
     const isAsociados = selected.id === 'asociados' && asociadosAgg !== null;
@@ -366,7 +390,7 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
         >
           <View className="flex-row gap-3">
             <View className="gap-1" style={{ minWidth: 84 }}>
-              {REPORT_CATEGORIES.map((r) => (
+              {categories.map((r) => (
                 <MlReportCategoryRow
                   key={r.id}
                   label={r.label}

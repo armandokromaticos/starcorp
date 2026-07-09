@@ -1,13 +1,17 @@
 /**
  * Molecule: MlSearchBar
  *
- * Search input with hamburger menu icon and search icon.
+ * Search input with hamburger menu icon, search icon and the session
+ * user's avatar on the right (taps through to the profile screen).
  * Migrated to NativeWind + AtIcon.
  */
 
+import { AtAvatar } from "@/src/components/atoms/at-avatar";
 import { AtIcon } from "@/src/components/atoms/at-icon";
 import { AtTypography } from "@/src/components/atoms/at-typography";
+import { useAuthStore } from "@/src/stores/auth.store";
 import { Pressable, TextInput, View } from "@/src/tw";
+import { useRouter } from "expo-router";
 import React, { memo, useState } from "react";
 
 interface MlSearchBarProps {
@@ -18,6 +22,8 @@ interface MlSearchBarProps {
   // placeholder that fires `onPress`. Use this when the actual search UI
   // lives in a modal/portal and the bar is just an entry point.
   onPress?: () => void;
+  /** Oculta el avatar de perfil (visible por defecto). */
+  hideAvatar?: boolean;
 }
 
 export const MlSearchBar = memo<MlSearchBarProps>(
@@ -26,8 +32,11 @@ export const MlSearchBar = memo<MlSearchBarProps>(
     onSearch,
     onMenuPress,
     onPress,
+    hideAvatar,
   }) => {
     const [text, setText] = useState("");
+    const router = useRouter();
+    const user = useAuthStore((s) => s.user);
     const isTrigger = typeof onPress === "function";
 
     return (
@@ -77,6 +86,17 @@ export const MlSearchBar = memo<MlSearchBarProps>(
               style={{ fontFamily: "Roboto_400Regular" }}
             />
           </View>
+        )}
+
+        {!hideAvatar && (
+          <Pressable
+            onPress={() => router.navigate("/(tabs)/perfil" as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Mi perfil"
+            hitSlop={8}
+          >
+            <AtAvatar size={40} uri={user?.avatarUrl} name={user?.name} />
+          </Pressable>
         )}
       </View>
     );
