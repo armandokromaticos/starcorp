@@ -49,7 +49,7 @@ export default function CrearUsuarioScreen() {
             'Usuario creado',
             result.emailSent
               ? `Enviamos la invitación a ${email.trim()} con su contraseña temporal.`
-              : `El correo de invitación no está configurado. Comparte esta contraseña temporal con el usuario:\n\n${result.tempPassword}`,
+              : `No se pudo enviar el correo de invitación${result.emailError ? ` (${result.emailError})` : ''}. Comparte esta contraseña temporal con el usuario:\n\n${result.tempPassword}`,
           );
         },
       },

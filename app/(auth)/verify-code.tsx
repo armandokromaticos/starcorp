@@ -1,5 +1,5 @@
 /**
- * Olvidaste la contraseña — paso 2: verifica el código OTP de 6 dígitos
+ * Olvidaste la contraseña — paso 2: verifica el código OTP de 8 dígitos
  * enviado al correo (Supabase verifyOtp type 'recovery'). Al verificar,
  * Supabase crea la sesión de recovery y se navega a reestablecer.
  */
@@ -20,7 +20,7 @@ import {
   useVerifyResetCode,
 } from '@/src/hooks/mutations/use-auth';
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 
 export default function VerifyCodeScreen() {
   const router = useRouter();

@@ -1,10 +1,10 @@
 /**
  * Molecule: MlOtpInput
  *
- * Input de código de verificación (6 dígitos) del flujo de recuperación
+ * Input de código de verificación (8 dígitos) del flujo de recuperación
  * de contraseña. Un solo TextInput invisible captura el teclado; las
  * cajas visibles se pintan a partir del valor. Soporta autofill del
- * código (one-time-code) y pegar los 6 dígitos completos.
+ * código (one-time-code) y pegar los 8 dígitos completos.
  */
 
 import React, { memo, useRef } from 'react';
@@ -12,7 +12,7 @@ import { TextInput as RNTextInput } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 
 interface MlOtpInputProps {
   value: string;
@@ -36,14 +36,14 @@ export const MlOtpInput = memo<MlOtpInputProps>(
         accessibilityLabel="Código de verificación"
         disabled={disabled}
       >
-        <View className="flex-row justify-center" style={{ gap: 10 }}>
+        <View className="flex-row justify-center" style={{ gap: 6 }}>
           {Array.from({ length: CODE_LENGTH }, (_, i) => (
             <View
               key={i}
               className="bg-bg-card items-center justify-center"
               style={{
-                width: 46,
-                height: 54,
+                width: 34,
+                height: 48,
                 borderRadius: 10,
                 borderCurve: 'continuous',
                 borderWidth: 1,

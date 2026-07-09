@@ -32,4 +32,6 @@ export interface CreateUserResult {
   tempPassword: string;
   /** true si la invitación por correo salió (requiere RESEND_API_KEY). */
   emailSent: boolean;
+  /** Razón del fallo de envío cuando emailSent es false. */
+  emailError: string | null;
 }
