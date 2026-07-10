@@ -3,7 +3,9 @@
  *
  * La compañía VAG (sección "Otras compañías") tiene su propio hub con 4
  * vistas: Activos, Movimientos, Cuentas por cobrar y Cuentas por pagar.
- * Datos mock por ahora (ver `src/services/mock/vag.mock.ts`).
+ * Fuente real: RPCs get_vag_* sobre vag_entries (sync diario de la tabla
+ * AuxiliarVAG de Power BI). Los campos sin fuente contable (avalúo,
+ * seguro, ciudad…) son null y la UI muestra '--'.
  */
 
 /** Métrica de una card del hub. */
@@ -46,17 +48,17 @@ export interface VagActivo {
   tipo: string;
   fechaAdquisicion: string;
   valorAdquisicion: number;
-  valorEstimado: number;
+  valorEstimado: number | null;
   valorContable: number;
-  avaluoCatastral: number;
-  valorPredial: number;
-  valorSeguro: number;
-  vigencia: string;
-  aseguradora: string;
-  ciudad: string;
+  avaluoCatastral: number | null;
+  valorPredial: number | null;
+  valorSeguro: number | null;
+  vigencia: string | null;
+  aseguradora: string | null;
+  ciudad: string | null;
   direccion: string | null;
-  numeroMatricula: string;
-  fichaCatastral: { numero: string };
+  numeroMatricula: string | null;
+  fichaCatastral: { numero: string } | null;
   gruposMovimientos: VagActivoGrupo[];
 }
 
@@ -84,13 +86,41 @@ export interface VagCuentaMovimiento {
 /** Una cuenta por cobrar o por pagar (fila expandible). */
 export interface VagCuenta {
   id: string;
+  /** Tercero (nombre del deudor/acreedor). */
   nombre: string;
   saldo: number;
-  activo: string;
-  direccion: string;
+  /** Nombre de la cuenta contable (ej. "PROVEEDORES"). */
+  cuenta: string;
+  direccion: string | null;
   /** Solo cuentas por pagar. */
   servicio?: string;
   movimientos: VagCuentaMovimiento[];
 }
 
 export type VagCuentaTipo = 'cobrar' | 'pagar';
+
+/** Documento adjunto de un activo (ficha catastral / escritura…).
+ * Uno por activo; re-subir reemplaza. */
+export interface VagActivoDoc {
+  activoId: string;
+  archivoOriginal: string | null;
+  storagePath: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  updatedAt: string;
+}
+
+/** Input del picker para subir/reemplazar el documento de un activo. */
+export interface VagDocUploadInput {
+  activoId: string;
+  /** Nombre del activo — nombre visible del archivo en el Repositorio. */
+  activoNombre: string;
+  fileUri: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  /** En web el picker entrega el File del browser; se sube directo. */
+  webFile?: Blob;
+  /** Path del documento anterior; se borra tras reemplazarlo. */
+  previousStoragePath?: string | null;
+}

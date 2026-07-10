@@ -86,6 +86,7 @@ export default function EmpresasScreen() {
               name={empresa.name}
               ingresos={empresa.ingresos}
               deltaPercent={empresa.deltaPercent}
+              metricLabel={empresa.metricLabel}
               onPress={
                 empresa.hasDetail
                   ? () =>

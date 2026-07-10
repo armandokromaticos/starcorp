@@ -26,9 +26,9 @@ export const OrVagCuentaRow = memo<OrVagCuentaRowProps>(
     const [expanded, setExpanded] = useState(initiallyExpanded);
 
     const pairs: DetailGridPair[] = [
-      { label: 'Activo', value: cuenta.activo },
+      { label: 'Cuenta', value: cuenta.cuenta },
       ...(cuenta.servicio ? [{ label: 'Servicio', value: cuenta.servicio }] : []),
-      { label: 'Dirección', value: cuenta.direccion },
+      { label: 'Dirección', value: cuenta.direccion ?? '--' },
     ];
 
     return (

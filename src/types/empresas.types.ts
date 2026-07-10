@@ -11,10 +11,13 @@
 export interface EmpresaListItem {
   id: string;
   name: string;
-  /** Ingreso del periodo. `null` = sin métrica (ej. "Repositorio Alejandro"). */
+  /** Métrica del periodo. `null` = sin métrica (ej. "Repositorio Alejandro"). */
   ingresos: number | null;
   /** Variación % vs periodo previo. `null` = no aplica. */
   deltaPercent: number | null;
+  /** Etiqueta de la métrica en la card (default "Ingresos"; VAG muestra
+   * "Movimientos" porque su fuente curada solo trae gastos). */
+  metricLabel?: string;
   /** Si tiene vista de detalle navegable (Ingresos/Gastos). */
   hasDetail: boolean;
 }

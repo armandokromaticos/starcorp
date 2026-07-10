@@ -22,7 +22,6 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { OrVagCuentaRow } from '@/src/components/organisms/or-vag-cuenta-row';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import { useVagCuentas } from '@/src/hooks/queries/use-vag';
-import { VAG_TOTAL_CONSOLIDADOR } from '@/src/services/mock/vag.mock';
 import { formatNumber } from '@/src/utils/number';
 import type { VagCuentaTipo } from '@/src/types/vag.types';
 
@@ -47,9 +46,15 @@ export function TmVagCuentas({ tipo }: TmVagCuentasProps) {
     return list.filter(
       (c) =>
         c.nombre.toLowerCase().includes(q) ||
-        c.activo.toLowerCase().includes(q),
+        c.cuenta.toLowerCase().includes(q),
     );
   }, [cuentas, searchText]);
+
+  // Total consolidador = suma de saldos de las cuentas visibles.
+  const total = useMemo(
+    () => filtered.reduce((s, c) => s + c.saldo, 0),
+    [filtered],
+  );
 
   const crumb = tipo === 'cobrar' ? 'Ctas. por cobrar' : 'Ctas. por pagar';
   const columnLabel = tipo === 'cobrar' ? 'Cuenta por cobrar' : 'Cuenta por pagar';
@@ -131,7 +136,7 @@ export function TmVagCuentas({ tipo }: TmVagCuentasProps) {
       <View className="px-4 pt-2 bg-bg-secondary" style={{ paddingBottom: 8 }}>
         <MlSimpleTotalFooter
           label="Total consolidador"
-          value={`$ ${formatNumber(VAG_TOTAL_CONSOLIDADOR, 2)}`}
+          value={`$ ${formatNumber(total, 2)}`}
         />
       </View>
 

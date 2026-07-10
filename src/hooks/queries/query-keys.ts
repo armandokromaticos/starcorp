@@ -62,6 +62,7 @@ export const queryKeys = {
   vagActivos: () => ['vag', 'activos'] as const,
   vagMovimientos: () => ['vag', 'movimientos'] as const,
   vagCuentas: (tipo: string) => ['vag', 'cuentas', tipo] as const,
+  vagActivoDocs: () => ['vag', 'activo-docs'] as const,
   repoApartados: () => ['repositorio', 'apartados'] as const,
   repoApartado: (id: string) => ['repositorio', 'apartados', id] as const,
   repoArchivos: (apartadoId: string) =>

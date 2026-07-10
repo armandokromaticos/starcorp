@@ -14,12 +14,21 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { MlDetailGrid } from '@/src/components/molecules/ml-detail-grid';
 import { formatCurrency } from '@/src/utils/currency';
-import type { VagActivo, VagActivoGrupo } from '@/src/types/vag.types';
+import type {
+  VagActivo,
+  VagActivoDoc,
+  VagActivoGrupo,
+} from '@/src/types/vag.types';
 
 interface OrVagActivoCardProps {
   activo: VagActivo;
+  /** Documento adjunto del activo (null/undefined = sin documento). */
+  doc?: VagActivoDoc | null;
+  /** Subida en curso para ESTE activo (deshabilita las acciones). */
+  uploading?: boolean;
   onMovimientoPress?: (movimientoId: string) => void;
-  onVerDocumento?: (activo: VagActivo) => void;
+  onVerDocumento?: (doc: VagActivoDoc) => void;
+  onSubirDocumento?: (activo: VagActivo) => void;
   initiallyExpanded?: boolean;
 }
 
@@ -98,22 +107,32 @@ function GrupoBlock({
 }
 
 export const OrVagActivoCard = memo<OrVagActivoCardProps>(
-  ({ activo, onMovimientoPress, onVerDocumento, initiallyExpanded = false }) => {
+  ({
+    activo,
+    doc,
+    uploading = false,
+    onMovimientoPress,
+    onVerDocumento,
+    onSubirDocumento,
+    initiallyExpanded = false,
+  }) => {
     const [expanded, setExpanded] = useState(initiallyExpanded);
 
+    // Campos sin fuente contable llegan null → '--'.
+    const money = (v: number | null) => (v == null ? '--' : formatCurrency(v));
     const pairs = [
-      { label: 'Valor de adquisición', value: formatCurrency(activo.valorAdquisicion) },
-      { label: 'Valor estimado', value: formatCurrency(activo.valorEstimado) },
-      { label: 'Valor contable a la fecha', value: formatCurrency(activo.valorContable) },
-      { label: 'Avaluo Catastral', value: formatCurrency(activo.avaluoCatastral) },
-      { label: 'Valor Predial', value: formatCurrency(activo.valorPredial) },
+      { label: 'Valor de adquisición', value: money(activo.valorAdquisicion) },
+      { label: 'Valor estimado', value: money(activo.valorEstimado) },
+      { label: 'Valor contable a la fecha', value: money(activo.valorContable) },
+      { label: 'Avaluo Catastral', value: money(activo.avaluoCatastral) },
+      { label: 'Valor Predial', value: money(activo.valorPredial) },
       { label: 'Tipo de activo', value: activo.tipo },
-      { label: 'Valor de Seguro', value: formatCurrency(activo.valorSeguro) },
-      { label: 'Vigencia', value: activo.vigencia },
-      { label: 'Aseguradora', value: activo.aseguradora },
-      { label: 'Ciudad', value: activo.ciudad },
+      { label: 'Valor de Seguro', value: money(activo.valorSeguro) },
+      { label: 'Vigencia', value: activo.vigencia ?? '--' },
+      { label: 'Aseguradora', value: activo.aseguradora ?? '--' },
+      { label: 'Ciudad', value: activo.ciudad ?? '--' },
       { label: 'Dirección', value: activo.direccion ?? '--' },
-      { label: 'Número de matrícula', value: activo.numeroMatricula },
+      { label: 'Número de matrícula', value: activo.numeroMatricula ?? '--' },
     ];
 
     return (
@@ -174,7 +193,7 @@ export const OrVagActivoCard = memo<OrVagActivoCardProps>(
             {/* Detalle */}
             <MlDetailGrid pairs={pairs} />
 
-            {/* Ficha catastral */}
+            {/* Ficha catastral + documento adjunto */}
             <View
               className="flex-row items-center gap-3 rounded-lg px-3 py-3"
               style={{
@@ -193,21 +212,62 @@ export const OrVagActivoCard = memo<OrVagActivoCardProps>(
                   variant="caption"
                   color="#4A5568"
                   selectable
+                  numberOfLines={1}
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
-                  {activo.fichaCatastral.numero}
+                  {activo.fichaCatastral?.numero ??
+                    doc?.archivoOriginal ??
+                    '--'}
                 </AtTypography>
               </View>
-              <Pressable
-                onPress={() => onVerDocumento?.(activo)}
-                className="flex-row items-center gap-1.5"
-                hitSlop={6}
-              >
-                <AtTypography variant="captionBold" color="#1A3FE8">
-                  Ver documento
-                </AtTypography>
-                <AtIcon name="visibility" size="sm" color="#1A3FE8" />
-              </Pressable>
+              {doc ? (
+                <View className="flex-row items-center gap-3">
+                  <Pressable
+                    onPress={() => onVerDocumento?.(doc)}
+                    disabled={uploading}
+                    className="flex-row items-center gap-1.5"
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ver documento"
+                  >
+                    <AtTypography variant="captionBold" color="#1A3FE8">
+                      Ver documento
+                    </AtTypography>
+                    <AtIcon name="visibility" size="sm" color="#1A3FE8" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onSubirDocumento?.(activo)}
+                    disabled={uploading}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel="Reemplazar documento"
+                  >
+                    <AtIcon
+                      name={uploading ? 'hourglass-empty' : 'file-upload'}
+                      size="sm"
+                      color="#1A3FE8"
+                    />
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => onSubirDocumento?.(activo)}
+                  disabled={uploading}
+                  className="flex-row items-center gap-1.5"
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Subir documento"
+                >
+                  <AtTypography variant="captionBold" color="#1A3FE8">
+                    {uploading ? 'Subiendo…' : 'Subir documento'}
+                  </AtTypography>
+                  <AtIcon
+                    name={uploading ? 'hourglass-empty' : 'file-upload'}
+                    size="sm"
+                    color="#1A3FE8"
+                  />
+                </Pressable>
+              )}
             </View>
 
             {/* Movimientos consolidados */}

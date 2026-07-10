@@ -20,11 +20,13 @@ interface OrEmpresaCardProps {
   name: string;
   ingresos?: number | null;
   deltaPercent?: number | null;
+  /** Etiqueta de la métrica (default "Ingresos"). */
+  metricLabel?: string;
   onPress?: () => void;
 }
 
 export const OrEmpresaCard = memo<OrEmpresaCardProps>(
-  ({ name, ingresos, deltaPercent, onPress }) => {
+  ({ name, ingresos, deltaPercent, metricLabel = 'Ingresos', onPress }) => {
     const hasIngresos = ingresos != null;
 
     return (
@@ -58,7 +60,7 @@ export const OrEmpresaCard = memo<OrEmpresaCardProps>(
 
         {hasIngresos && (
           <AtTypography variant="bodyBold" color="#FFFFFF">
-            Ingresos: {formatMoney2(ingresos!)}
+            {metricLabel}: {formatMoney2(ingresos!)}
           </AtTypography>
         )}
       </Pressable>
