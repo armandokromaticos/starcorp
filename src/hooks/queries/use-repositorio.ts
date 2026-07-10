@@ -88,9 +88,15 @@ export function useUpdateApartado() {
 
 export function useDeleteApartado() {
   const invalidate = useInvalidateRepo();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteApartado(id),
-    onSuccess: (_data, id) => invalidate(id),
+    onSuccess: (_data, id) => {
+      invalidate(id);
+      // Borrar archivos del Repositorio también desengancha documentos de
+      // activos VAG (misma storage_path) → refrescar esa vista.
+      queryClient.invalidateQueries({ queryKey: queryKeys.vagActivoDocs() });
+    },
   });
 }
 
@@ -119,6 +125,7 @@ export function useUpdateArchivo() {
 
 export function useDeleteArchivo() {
   const invalidate = useInvalidateRepo();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       id,
@@ -128,6 +135,11 @@ export function useDeleteArchivo() {
       storagePath: string;
       apartadoId: string;
     }) => deleteArchivo({ id, storagePath }),
-    onSuccess: (_data, { apartadoId }) => invalidate(apartadoId),
+    onSuccess: (_data, { apartadoId }) => {
+      invalidate(apartadoId);
+      // Borrar archivos del Repositorio también desengancha documentos de
+      // activos VAG (misma storage_path) → refrescar esa vista.
+      queryClient.invalidateQueries({ queryKey: queryKeys.vagActivoDocs() });
+    },
   });
 }

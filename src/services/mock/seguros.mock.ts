@@ -50,20 +50,25 @@ const VIGENCIA_OFFSETS_BY_EMPRESA: Record<string, [number, number, number]> = {
   'best-services': [-30, 60, 365],
 };
 
-// Pólizas con Estado=CANCELADA en Notion (empresa → índice de póliza).
-// No aparecen en el informe principal, sólo en el histórico.
-const CANCELADAS_BY_EMPRESA: Record<string, number> = {
-  '5-stars': 2,
-  'clean-with-me': 2,
-};
+// Pólizas con Estado=INACTIVA en Notion (empresa → índice de póliza y
+// Motivo Inactividad). No aparecen en el informe principal, sólo en el
+// histórico.
+const INACTIVAS_BY_EMPRESA: Record<string, { index: number; motivo: string }> =
+  {
+    '5-stars': { index: 2, motivo: 'CANCELADA' },
+    'clean-with-me': { index: 2, motivo: 'FALTA DE PAGO' },
+  };
 
 function buildPolizas(empresa: { id: string; name: string }): PolizaCompania[] {
   const offsets = VIGENCIA_OFFSETS_BY_EMPRESA[empresa.id] ?? [-3, 14, -320];
   return POLIZA_NAMES.map((nombre, i) => {
     const vigenciaFin = addDays(TODAY_ISO, offsets[i]);
     const vigenciaInicio = addDays(vigenciaFin, -365);
+    const inactiva = INACTIVAS_BY_EMPRESA[empresa.id];
     const estado =
-      CANCELADAS_BY_EMPRESA[empresa.id] === i ? ('cancelada' as const) : null;
+      inactiva?.index === i ? ('inactiva' as const) : ('activa' as const);
+    const motivoInactividad =
+      inactiva?.index === i ? inactiva.motivo : null;
     return {
       id: `${empresa.id}-pol-${i + 1}`,
       empresaId: empresa.id,
@@ -78,6 +83,7 @@ function buildPolizas(empresa: { id: string; name: string }): PolizaCompania[] {
       payroll: null,
       costo: 5_895,
       estado,
+      motivoInactividad,
     };
   });
 }
@@ -93,12 +99,12 @@ const VEHICULOS: PolizaVehiculo[] = [
   { id: 'veh-2', nombre: 'Ford Trans 350 Negra', asignacion: 'Camelback', vigenciaFin: addDays(TODAY_ISO, 18) },
   { id: 'veh-3', nombre: 'Ford Trans 350 Negra', asignacion: 'Camelback', vigenciaFin: addDays(TODAY_ISO, -320) },
   { id: 'veh-4', nombre: 'Chevy Express 2500', asignacion: 'Best Beach', vigenciaFin: addDays(TODAY_ISO, 45) },
-  { id: 'veh-5', nombre: 'Toyota Hiace', asignacion: 'Okana Resort', vigenciaFin: addDays(TODAY_ISO, -120), estado: 'cancelada' },
+  { id: 'veh-5', nombre: 'Toyota Hiace', asignacion: 'Okana Resort', vigenciaFin: addDays(TODAY_ISO, -120), estado: 'inactiva', motivoInactividad: 'NO RENOVADA' },
 ];
 
 const PROPIEDADES: PolizaPropiedad[] = [
   { id: 'prop-1', nombre: 'Nitarry', vigenciaFin: addDays(TODAY_ISO, -3) },
-  { id: 'prop-2', nombre: 'Mount Pocono', vigenciaFin: addDays(TODAY_ISO, -320), estado: 'cancelada' },
+  { id: 'prop-2', nombre: 'Mount Pocono', vigenciaFin: addDays(TODAY_ISO, -320), estado: 'inactiva', motivoInactividad: 'VENCIDA' },
   { id: 'prop-3', nombre: 'Camelback', vigenciaFin: addDays(TODAY_ISO, 22) },
   { id: 'prop-4', nombre: 'Great Wolf', vigenciaFin: addDays(TODAY_ISO, 90) },
 ];

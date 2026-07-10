@@ -11,7 +11,9 @@
  *   ≡  Aseguradora           Rich text
  *   ⊙  Broker                Select
  *   #  Costo Total           Number
- *   ⊙  Estado                Select
+ *   ⊙  Estado                Select (ACTIVA / INACTIVA)
+ *   ⊙  Motivo Inactividad    Select (FALTA DE PAGO / AUDITORIA /
+ *                                    NO RENOVADA / VENCIDA / CANCELADA)
  *   📅 Fin Vigencia          Date
  *   📅 Inicio Vigencia       Date
  *   ↗  LLC                   Relation (→ empresa)
@@ -89,6 +91,7 @@ const COL_VIGENCIA_FIN = ['Fin Vigencia'];
 const COL_COSTO = ['Costo Total'];
 const COL_TIPO = ['Tipo de Seguro'];
 const COL_ESTADO = ['Estado'];
+const COL_MOTIVO_INACTIVIDAD = ['Motivo Inactividad', 'Motivo de Inactividad'];
 const COL_LLC = ['LLC'];
 // Fallback opcionales si el usuario agrega rollups/columnas extra
 const COL_EMPRESA_NOMBRE = ['Empresa', 'LLC nombre', 'Nombre LLC'];
@@ -162,7 +165,8 @@ function toDate(v: unknown): string {
   return parseLooseDate(v);
 }
 
-/** Normaliza la columna "Estado" de Notion (ACTIVA / VENCIDA / CANCELADA). */
+/** Normaliza la columna "Estado" de Notion (ACTIVA / INACTIVA). Los
+ * valores legacy (VENCIDA / CANCELADA) se tratan como inactivas. */
 function parseEstado(v: unknown): PolizaEstadoNotion {
   if (typeof v !== 'string') return null;
   const t = v
@@ -171,10 +175,17 @@ function parseEstado(v: unknown): PolizaEstadoNotion {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
   if (!t) return null;
-  if (t.startsWith('cancel')) return 'cancelada';
-  if (t.startsWith('venc')) return 'vencida';
+  if (t.startsWith('inactiv')) return 'inactiva';
+  if (t.startsWith('cancel') || t.startsWith('venc')) return 'inactiva';
   if (t.startsWith('activ')) return 'activa';
   return null;
+}
+
+/** Valor crudo de "Motivo Inactividad" (select en MAYÚSCULAS). */
+function parseMotivoInactividad(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t ? t.toUpperCase() : null;
 }
 
 /** Acepta "5091,00 US$", "5,091.00 USD", "$1.000.000", number. */
@@ -282,6 +293,9 @@ function buildPolizaCompania(row: NormalizedRow): PolizaCompania {
     })(),
     costo: toNum(pickField(row, COL_COSTO)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
+    motivoInactividad: parseMotivoInactividad(
+      pickField(row, COL_MOTIVO_INACTIVIDAD),
+    ),
   };
 }
 
@@ -292,6 +306,9 @@ function buildPolizaVehiculo(row: NormalizedRow): PolizaVehiculo {
     asignacion: toStr(pickField(row, COL_ASIGNACION)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
+    motivoInactividad: parseMotivoInactividad(
+      pickField(row, COL_MOTIVO_INACTIVIDAD),
+    ),
   };
 }
 
@@ -301,6 +318,9 @@ function buildPolizaPropiedad(row: NormalizedRow): PolizaPropiedad {
     nombre: toStr(pickField(row, COL_NOMBRE)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
+    motivoInactividad: parseMotivoInactividad(
+      pickField(row, COL_MOTIVO_INACTIVIDAD),
+    ),
   };
 }
 

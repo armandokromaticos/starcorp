@@ -181,7 +181,7 @@ function buildCuentas(tipo: VagCuentaTipo): VagCuenta[] {
     id: `${tipo}-${i + 1}`,
     nombre: `Nombre cuenta por ${tipo === 'cobrar' ? 'cobrar' : 'pagar'}`,
     saldo: 400000,
-    activo: 'Nombre del activo',
+    cuenta: 'Nombre de la cuenta',
     direccion: 'Nombre de la dirección',
     ...(tipo === 'pagar' ? { servicio: 'Nombre del servicio' } : {}),
     movimientos: [
@@ -195,8 +195,6 @@ const CUENTAS: Record<VagCuentaTipo, VagCuenta[]> = {
   cobrar: buildCuentas('cobrar'),
   pagar: buildCuentas('pagar'),
 };
-
-export const VAG_TOTAL_CONSOLIDADOR = 58584123;
 
 export function getVagResumenMock(): VagResumen {
   return RESUMEN;

@@ -95,6 +95,15 @@ interface BbmRpcSummary {
   delta_pct: number;
 }
 
+/** get_vag_empresa_summary: total de movimientos del último mes (la
+ *  fuente curada de VAG solo trae gastos, no ingresos). */
+interface VagRpcSummary {
+  year: number;
+  month: number;
+  total: number;
+  delta_pct: number;
+}
+
 function pucLabel(cuenta4: string): string {
   return PUC_LABELS[cuenta4] ?? `Cuenta ${cuenta4}`;
 }
@@ -183,21 +192,38 @@ function delay<T>(value: T, ms = 250): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
+/** Métrica + delta reales de una compañía; null si el RPC falla (la
+ *  card de esa compañía conserva los valores base de la lista). */
+async function fetchSummary<T>(rpc: string): Promise<T | null> {
+  try {
+    const { data, error } = await supabase.rpc(rpc);
+    if (error || !data) return null;
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function getEmpresas(): Promise<EmpresaListItem[]> {
   const list = getEmpresasMock();
-  try {
-    const { data, error } = await supabase.rpc('get_bbm_empresa_summary');
-    if (error || !data) return list;
-    const s = data as BbmRpcSummary;
-    return list.map((e) =>
-      e.id === 'bbm'
-        ? { ...e, ingresos: Number(s.ingresos), deltaPercent: Number(s.delta_pct) }
-        : e,
-    );
-  } catch {
-    // Si el summary falla la lista sigue mostrando el resto de compañías.
-    return list;
-  }
+  const [bbm, vag] = await Promise.all([
+    fetchSummary<BbmRpcSummary>('get_bbm_empresa_summary'),
+    fetchSummary<VagRpcSummary>('get_vag_empresa_summary'),
+  ]);
+  return list.map((e) => {
+    if (e.id === 'bbm' && bbm) {
+      return { ...e, ingresos: Number(bbm.ingresos), deltaPercent: Number(bbm.delta_pct) };
+    }
+    if (e.id === 'vag' && vag) {
+      return {
+        ...e,
+        ingresos: Number(vag.total),
+        deltaPercent: Number(vag.delta_pct),
+        metricLabel: 'Movimientos',
+      };
+    }
+    return e;
+  });
 }
 
 export function getEmpresaDetail(

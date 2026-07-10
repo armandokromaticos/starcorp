@@ -105,6 +105,19 @@ export async function updateApartadoNombre(
   if (error) throw new Error(`updateApartadoNombre: ${error.message}`);
 }
 
+/** Los documentos de activos VAG viven en este mismo bucket y quedan
+ *  referenciados desde `vag_activo_docs` (ver vag-docs.service). Al borrar
+ *  un archivo del Repositorio hay que soltar esa referencia para que la
+ *  card del activo vuelva a "Subir documento" en vez de un link roto. */
+async function unlinkVagActivoDocs(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await supabase
+    .from('vag_activo_docs')
+    .delete()
+    .in('storage_path', paths);
+  if (error) throw new Error(`unlinkVagActivoDocs: ${error.message}`);
+}
+
 /** Borra los objetos de Storage del apartado y luego la fila (las filas
  *  de `repo_archivos` caen por cascade). */
 export async function deleteApartado(id: string): Promise<void> {
@@ -119,6 +132,7 @@ export async function deleteApartado(id: string): Promise<void> {
     const { error: rmError } = await supabase.storage.from(BUCKET).remove(paths);
     if (rmError) throw new Error(`deleteApartado storage: ${rmError.message}`);
   }
+  await unlinkVagActivoDocs(paths);
 
   const { error: delError } = await supabase
     .from('repo_apartados')
@@ -201,6 +215,8 @@ export async function deleteArchivo(archivo: {
     .from(BUCKET)
     .remove([archivo.storagePath]);
   if (rmError) throw new Error(`deleteArchivo storage: ${rmError.message}`);
+
+  await unlinkVagActivoDocs([archivo.storagePath]);
 
   const { error } = await supabase
     .from('repo_archivos')

@@ -1,5 +1,5 @@
 /**
- * Lista completa (histórico) de pólizas de Propiedades — vencidas y canceladas.
+ * Lista completa (histórico) de pólizas de Propiedades — Estado=INACTIVA.
  *
  * Al navegar con `polizaId` (desde el informe), hace scroll y resalta esa
  * póliza, igual que el detalle de Compañías.
@@ -18,7 +18,7 @@ import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import { isCancelada, polizaStatus } from '@/src/types/seguros.types';
+import { isInactiva } from '@/src/types/seguros.types';
 
 export default function SegurosPropiedadesScreen() {
   const insets = useSafeAreaInsets();
@@ -30,15 +30,10 @@ export default function SegurosPropiedadesScreen() {
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const todayIso = data?.todayIso ?? '';
-  // Pólizas vencidas (de años pasados) y canceladas (Estado de Notion).
+  // Pólizas con Estado=INACTIVA en Notion (con su Motivo Inactividad).
   const propiedadesFiltradas = useMemo(
-    () =>
-      (data?.propiedades ?? []).filter(
-        (p) =>
-          isCancelada(p) ||
-          polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
-      ),
-    [data, todayIso],
+    () => (data?.propiedades ?? []).filter(isInactiva),
+    [data],
   );
 
   // Scroll automático hasta la póliza objetivo (la elegida en el informe).
@@ -96,7 +91,7 @@ export default function SegurosPropiedadesScreen() {
         <View className="gap-3 px-4" onLayout={onListLayout}>
           {propiedadesFiltradas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              Sin pólizas de propiedades vencidas ni canceladas.
+              Sin pólizas de propiedades inactivas.
             </AtTypography>
           )}
           {propiedadesFiltradas.map((p) => (

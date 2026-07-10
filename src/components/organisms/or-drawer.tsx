@@ -12,7 +12,7 @@ import { AtAvatar } from "@/src/components/atoms/at-avatar";
 import { AtIcon } from "@/src/components/atoms/at-icon";
 import { AtGradientIcon } from "@/src/components/atoms/at-gradient-icon";
 import { AtTypography } from "@/src/components/atoms/at-typography";
-import { Pressable, View } from "@/src/tw";
+import { Pressable, ScrollView, View } from "@/src/tw";
 import type { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { memo, useCallback, useEffect, useState } from "react";
@@ -221,7 +221,13 @@ export const OrDrawer = memo<OrDrawerProps>(
                 </Pressable>
               </View>
 
-              <View className="px-6 gap-7">
+              {/* Con muchas secciones (super admin) el listado no cabe en
+                  pantallas de teléfono: scrollea, y el pie (Mi perfil /
+                  Cerrar sesión) queda fijo abajo. */}
+              <ScrollView
+                className="flex-1"
+                contentContainerClassName="px-6 gap-6 pb-4"
+              >
                 {items.map((item) => {
                   const isActive = item.id === activeSection;
                   return (
@@ -242,19 +248,19 @@ export const OrDrawer = memo<OrDrawerProps>(
                     </Pressable>
                   );
                 })}
-              </View>
+              </ScrollView>
 
               <View
                 className="mx-6"
                 style={{
                   height: 1,
                   backgroundColor: "rgba(0, 0, 0, 0.08)",
-                  marginTop: 24,
+                  marginTop: 12,
                   marginBottom: 20,
                 }}
               />
 
-              <View className="px-6 flex-1">
+              <View className="px-6" style={{ paddingBottom: 20 }}>
                 <Pressable
                   onPress={() => handleItemPress("perfil")}
                   className="flex-row items-center gap-4"

@@ -10,15 +10,25 @@
 export type PolizaStatus = 'activa' | 'por_vencer' | 'vencida';
 
 /**
- * Estado declarado en la columna "Estado" de Notion (ACTIVA / VENCIDA /
- * CANCELADA). Independiente del estado derivado por fecha: sólo lo usamos
- * para sacar las CANCELADA de la vista principal y dejarlas en el
- * histórico. `null` = columna vacía o valor no reconocido.
+ * Estado declarado en la columna "Estado" de Notion (ACTIVA / INACTIVA).
+ * Independiente del estado derivado por fecha: las INACTIVA salen de las
+ * vistas principales y viven sólo en el histórico. El porqué está en la
+ * columna "Motivo Inactividad" (FALTA DE PAGO / AUDITORIA / NO RENOVADA /
+ * VENCIDA / CANCELADA). `null` = columna vacía o valor no reconocido.
  */
-export type PolizaEstadoNotion = 'activa' | 'vencida' | 'cancelada' | null;
+export type PolizaEstadoNotion = 'activa' | 'inactiva' | null;
 
-export function isCancelada(p: { estado?: PolizaEstadoNotion }): boolean {
-  return p.estado === 'cancelada';
+export function isInactiva(p: { estado?: PolizaEstadoNotion }): boolean {
+  return p.estado === 'inactiva';
+}
+
+/** Etiqueta del badge de una póliza inactiva: "Inactiva · MOTIVO". */
+export function inactivaLabel(p: {
+  motivoInactividad?: string | null;
+}): string {
+  return p.motivoInactividad
+    ? `Inactiva · ${p.motivoInactividad}`
+    : 'Inactiva';
 }
 
 /**
@@ -49,6 +59,8 @@ export interface PolizaCompania {
   payroll: number | null;
   costo: number;
   estado?: PolizaEstadoNotion;
+  /** Valor crudo de "Motivo Inactividad" en Notion (en MAYÚSCULAS). */
+  motivoInactividad?: string | null;
 }
 
 export interface PolizaVehiculo {
@@ -57,6 +69,7 @@ export interface PolizaVehiculo {
   asignacion: string;
   vigenciaFin: string;
   estado?: PolizaEstadoNotion;
+  motivoInactividad?: string | null;
 }
 
 export interface PolizaPropiedad {
@@ -64,6 +77,7 @@ export interface PolizaPropiedad {
   nombre: string;
   vigenciaFin: string;
   estado?: PolizaEstadoNotion;
+  motivoInactividad?: string | null;
 }
 
 export interface SeguroEmpresa {
