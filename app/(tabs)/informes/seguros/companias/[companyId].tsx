@@ -18,7 +18,7 @@ import { AtIcon } from '@/src/components/atoms/at-icon';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
-  isCancelada,
+  isInactiva,
   POLIZA_STATUS_FILTERS,
   polizaStatus,
   type PolizaStatus,
@@ -79,12 +79,12 @@ export default function SeguroEmpresaDetailScreen() {
 
   const todayIso = data?.todayIso ?? '';
 
-  // Las CANCELADA no participan de los chips — viven en el histórico.
+  // Las INACTIVA no participan de los chips — viven en el histórico.
   const polizasFiltradas = useMemo(
     () =>
       (empresa?.polizas ?? []).filter(
         (p) =>
-          !isCancelada(p) &&
+          !isInactiva(p) &&
           polizaStatus(p.vigenciaFin, todayIso) === statusFilter,
       ),
     [empresa, todayIso, statusFilter],

@@ -20,7 +20,8 @@ import { formatCurrency } from '@/src/utils/currency';
 import {
   diffInDays,
   formatVigenciaDate,
-  isCancelada,
+  inactivaLabel,
+  isInactiva,
   type PolizaCompania,
 } from '@/src/types/seguros.types';
 
@@ -72,11 +73,11 @@ function formatVencimiento(days: number): string {
 export const MlPolizaDetailCard = memo<MlPolizaDetailCardProps>(
   ({ poliza, todayIso, showEmpresa = false, highlighted = false }) => {
     const days = diffInDays(poliza.vigenciaFin, todayIso);
-    const cancelada = isCancelada(poliza);
+    const inactiva = isInactiva(poliza);
     const vencida = days < 0;
     const venceProximo = days >= 0 && days <= 60;
-    // Una póliza cancelada no alerta por vencimiento.
-    const showVencimientoAlert = !cancelada && (vencida || venceProximo);
+    // Una póliza inactiva no alerta por vencimiento.
+    const showVencimientoAlert = !inactiva && (vencida || venceProximo);
     const vencimientoColor = vencida ? '#DC2626' : '#D97706';
 
     return (
@@ -99,13 +100,13 @@ export const MlPolizaDetailCard = memo<MlPolizaDetailCardProps>(
             <AtTypography variant="bodyBold" color="#1A1F36">
               {poliza.nombre}
             </AtTypography>
-            {cancelada && (
+            {inactiva && (
               <View
                 className="self-start mt-1 rounded-full px-2 py-0.5"
                 style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}
               >
                 <AtTypography variant="caption" color="#4A5568">
-                  Cancelada
+                  {inactivaLabel(poliza)}
                 </AtTypography>
               </View>
             )}
