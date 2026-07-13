@@ -18,16 +18,18 @@ export interface DetailGridPair {
 
 interface MlDetailGridProps {
   pairs: DetailGridPair[];
+  /** Columnas del grid (default 2; los movimientos de VAG usan 3). */
+  columns?: 2 | 3;
 }
 
-export const MlDetailGrid = memo<MlDetailGridProps>(({ pairs }) => {
+export const MlDetailGrid = memo<MlDetailGridProps>(({ pairs, columns = 2 }) => {
   return (
     <View className="flex-row flex-wrap">
       {pairs.map((pair) => (
         <View
           key={pair.label}
           className="gap-0.5 py-1.5 pr-2"
-          style={{ width: pair.fullWidth ? '100%' : '50%' }}
+          style={{ width: pair.fullWidth ? '100%' : columns === 3 ? '33.33%' : '50%' }}
         >
           <AtTypography variant="captionBold" color="#1A1F36">
             {pair.label}

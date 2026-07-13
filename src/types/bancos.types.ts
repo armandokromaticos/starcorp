@@ -1,9 +1,10 @@
 /**
  * Tipos del Informe Bancos.
  *
- * Una empresa = un Realm/Company de QuickBooks. Cada empresa agrupa
- * cuentas tipo Bank con saldo en USD. `balance` puede ser null cuando
- * la empresa aún no tiene cuentas conectadas a QB.
+ * Una empresa = un valor de EMPRESA en la tabla curada BANCOS de Power BI
+ * (staging en Supabase `bancos`, sync diario vía pbi-sync-bancos). Cada
+ * empresa agrupa cuentas bancarias con saldo en USD. `balance` puede ser
+ * null cuando la empresa no tiene cuentas con datos.
  */
 
 export interface BancoCuenta {
@@ -17,6 +18,8 @@ export interface BancoCuenta {
   gradient?: readonly string[];
   /** Saldo en USD. */
   balance: number;
+  /** Origen del saldo en PBI ('CONTROL' | 'SOLO QUICKBOOKS'). */
+  estado?: string;
 }
 
 export interface BancoEmpresa {
@@ -27,8 +30,8 @@ export interface BancoEmpresa {
   /** Variación porcentual vs periodo anterior. */
   deltaPct: number;
   /**
-   * ISO datetime de la última actualización de las cuentas en QB
-   * (máx. MetaData.LastUpdatedTime). null si no hay cuentas conectadas.
+   * Fecha ISO de la última actualización de las cuentas (máx.
+   * FECHA ACTUALIZACION en PBI). null si no hay cuentas con datos.
    */
   lastUpdatedAt: string | null;
   cuentas: BancoCuenta[];

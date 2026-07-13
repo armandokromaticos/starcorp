@@ -39,6 +39,14 @@ export interface EmpresaTercero {
   amount: number;
 }
 
+/** Vínculo categoría↔tercero (monto del tercero dentro de la categoría),
+ *  para el cross-filtrado torta↔lista. Solo BBM real lo trae. */
+export interface EmpresaCategoriaTercero {
+  categoryId: string;
+  terceroId: string;
+  amount: number;
+}
+
 /** Bloque financiero de un tipo (ingresos o gastos). */
 export interface EmpresaFinancials {
   total: number;
@@ -46,6 +54,9 @@ export interface EmpresaFinancials {
   terceros: EmpresaTercero[];
   /** Total mostrado en el footer navy. */
   tercerosTotal: number;
+  /** Desglose categoría×tercero; undefined en las compañías mock (el
+   *  cross-filtrado se degrada a solo resaltar). */
+  links?: EmpresaCategoriaTercero[];
 }
 
 /** Detalle de una compañía. */

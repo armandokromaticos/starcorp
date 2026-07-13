@@ -4,6 +4,11 @@
  * Buscador "Buscar por tercero" + encabezado de columnas
  * (Nombre tercero / Total) + filas (dot de color + nombre a la izquierda,
  * monto a la derecha). Para el detalle de "Otras compañías".
+ *
+ * Con `selectedId`/`onSelectChange` las filas seleccionan un tercero
+ * (cross-filtrado con el donut, como OrTercerosList de financiero): la
+ * lista colapsa a la fila elegida, resaltada en índigo; tap de nuevo
+ * deselecciona.
  */
 
 import React, { memo, useMemo, useState } from 'react';
@@ -16,17 +21,25 @@ import type { EmpresaTercero } from '@/src/types/empresas.types';
 interface OrEmpresaTercerosListProps {
   terceros: EmpresaTercero[];
   onTerceroPress?: (id: string) => void;
+  /** Tercero seleccionado (cross-filtrado con el donut). */
+  selectedId?: string | null;
+  onSelectChange?: (id: string | null) => void;
 }
 
 export const OrEmpresaTercerosList = memo<OrEmpresaTercerosListProps>(
-  ({ terceros, onTerceroPress }) => {
+  ({ terceros, onTerceroPress, selectedId = null, onSelectChange }) => {
     const [searchText, setSearchText] = useState('');
 
+    // La selección tiene prioridad sobre el buscador: colapsa la lista a
+    // la fila elegida (mismo comportamiento que financiero/ingresos).
     const filtered = useMemo(() => {
+      if (selectedId) {
+        return terceros.filter((t) => t.id === selectedId);
+      }
       const q = searchText.trim().toLowerCase();
       if (!q) return terceros;
       return terceros.filter((t) => t.name.toLowerCase().includes(q));
-    }, [terceros, searchText]);
+    }, [terceros, selectedId, searchText]);
 
     return (
       <View className="gap-3 px-4">
@@ -66,20 +79,33 @@ export const OrEmpresaTercerosList = memo<OrEmpresaTercerosListProps>(
           </AtTypography>
         </View>
 
-        {/* Filas — zebra: alternan fondo transparente y card blanca */}
+        {/* Filas — zebra: alternan fondo transparente y card blanca; la
+            fila seleccionada se resalta en índigo (lenguaje de
+            OrTercerosList de financiero) */}
         <View>
-          {filtered.map((tercero, idx) => (
+          {filtered.map((tercero, idx) => {
+            const isSelected = selectedId === tercero.id;
+            return (
             <Pressable
               key={tercero.id}
-              onPress={() => onTerceroPress?.(tercero.id)}
-              disabled={!onTerceroPress}
+              onPress={() => {
+                if (onSelectChange) {
+                  onSelectChange(isSelected ? null : tercero.id);
+                } else {
+                  onTerceroPress?.(tercero.id);
+                }
+              }}
+              disabled={!onSelectChange && !onTerceroPress}
               className={`flex-row items-center gap-3 px-3 py-3 rounded-lg ${
-                idx % 2 === 1 ? 'bg-bg-card' : ''
+                !isSelected && idx % 2 === 1 ? 'bg-bg-card' : ''
               }`}
               style={{
                 borderCurve: 'continuous',
-                borderWidth: idx % 2 === 1 ? 1 : 0,
-                borderColor: 'rgba(0,0,0,0.05)',
+                borderWidth: isSelected ? 1 : idx % 2 === 1 ? 1 : 0,
+                borderColor: isSelected
+                  ? 'rgba(99, 102, 241, 0.45)'
+                  : 'rgba(0,0,0,0.05)',
+                backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.08)' : undefined,
               }}
             >
               <View
@@ -101,13 +127,14 @@ export const OrEmpresaTercerosList = memo<OrEmpresaTercerosListProps>(
               </AtTypography>
               <AtTypography
                 variant="caption"
-                color="#8892A4"
+                color={isSelected ? '#1A1F36' : '#8892A4'}
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {formatMoney2(tercero.amount)}
               </AtTypography>
             </Pressable>
-          ))}
+            );
+          })}
 
           {filtered.length === 0 && (
             <View className="items-center py-8">

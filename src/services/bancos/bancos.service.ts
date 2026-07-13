@@ -1,34 +1,23 @@
 /**
  * Bancos service.
  *
- * Real path: para cada empresa conectada (Realm de QB) consulta
- * SELECT * FROM Account WHERE AccountType='Bank' y agrega los saldos.
- * Las invocaciones por realm corren en paralelo (cada una es una
- * invocación independiente de la edge function, así no acumulan CPU cap).
+ * Real path: lee la tabla `bancos` de Supabase — staging de la tabla
+ * curada BANCOS del dataset PBI Auxiliar (EMPRESA, NUMERO DE CUENTA,
+ * SALDO, ESTADO, BANCO, ID CUENTA, FECHA ACTUALIZACION), sincronizada
+ * a diario por la edge function pbi-sync-bancos. Ya no consulta
+ * QuickBooks en vivo.
  *
  * Mock path: getBancosMock() del mock existente.
  *
- * El delta % compara el saldo en vivo contra el snapshot diario más
- * reciente anterior a hoy (tabla bank_balance_snapshots, poblada por el
- * edge function qb-snapshot-bank-balances vía cron). Se lee con el RPC
- * get_bank_balance_previous(); si una empresa no tiene snapshot previo
- * (primer día conectada) el delta queda en 0.
+ * El delta % compara el saldo actual contra el snapshot diario más
+ * reciente anterior a hoy (tabla bancos_snapshots, poblada por el mismo
+ * sync). Se lee con el RPC get_bancos_previous(); si una empresa no
+ * tiene snapshot previo (primer día en la tabla) el delta queda en 0.
  */
 
 import { withMock } from '@/src/services/mock/mock-adapter';
 import { getBancosMock } from '@/src/services/mock/bancos.mock';
 import { supabase } from '@/src/config/supabase';
-import {
-  qbQuery,
-  qbStatus,
-  QBNotConnectedError,
-  QBReauthRequiredError,
-  type QBConnectedCompany,
-} from '@/src/services/quickbooks/client';
-import type {
-  QBAccountQueryResponse,
-  QBAccountRaw,
-} from '@/src/types/api.types';
 import type {
   BancoCuenta,
   BancoEmpresa,
@@ -36,7 +25,16 @@ import type {
 } from '@/src/types/bancos.types';
 import { CHART_COLORS, CHART_GRADIENTS } from '@/src/theme/chart-palette';
 
-const BANK_ACCOUNT_QUERY = "SELECT * FROM Account WHERE AccountType='Bank'";
+/** Fila de la tabla `bancos` (staging de PBI BANCOS). */
+interface PbiBancoRow {
+  empresa: string;
+  numero_cuenta: string;
+  saldo: number | string;
+  estado: string | null;
+  banco: string | null;
+  id_cuenta: string | null;
+  fecha_actualizacion: string | null;
+}
 
 function slugify(name: string, fallback: string): string {
   if (!name) return fallback;
@@ -50,201 +48,110 @@ function slugify(name: string, fallback: string): string {
   );
 }
 
-/** "Chase Checking - X 9932" → "CK 9932"; fallback a Id. */
-function buildCode(acc: QBAccountRaw): string {
-  const sub = (acc.AccountSubType ?? '').toLowerCase();
-  const prefix = sub.includes('saving') || sub.includes('money')
-    ? 'SW'
-    : sub.includes('credit')
-      ? 'CC'
-      : 'CK';
-  if (acc.AcctNum) {
-    // En QB el AcctNum suele venir parcialmente enmascarado
-    // ("XXXX1234"). Tomamos los últimos 4 dígitos limpios.
-    const digits = acc.AcctNum.replace(/\D/g, '');
-    const last4 = digits.slice(-4);
-    if (last4) return `${prefix} ${last4}`;
-  }
-  return `${prefix} ${acc.Id.slice(-4)}`;
-}
-
-/** Máx. MetaData.LastUpdatedTime (ISO) entre las cuentas; null si no hay. */
-function latestUpdatedTime(raw: QBAccountRaw[]): string | null {
-  let latest: string | null = null;
-  for (const acc of raw) {
-    const t = acc.MetaData?.LastUpdatedTime;
-    if (t && (latest === null || t > latest)) latest = t;
-  }
-  return latest;
-}
-
-function normalizeAccounts(
-  empresaId: string,
-  realmId: string,
-  raw: QBAccountRaw[],
-  exclusions: Set<string>,
-): BancoCuenta[] {
-  // Además de las inactivas se descartan las cuentas marcadas en
-  // bank_account_exclusions (tipo 'Bank' en QB pero no bancos reales:
-  // anticipos a empleados, cajas menores, cuentas puente). El filtro va
-  // antes del map para que los colores del chart no salten índices.
-  const active = raw.filter(
-    (a) => a.Active !== false && !exclusions.has(`${realmId}:${a.Id}`),
-  );
-  return active.map((acc, idx) => ({
-    id: `${empresaId}-acc-${acc.Id}`,
-    name: acc.Name,
-    code: buildCode(acc),
-    color: CHART_COLORS[idx % CHART_COLORS.length],
-    gradient: CHART_GRADIENTS[idx % CHART_GRADIENTS.length],
-    balance: typeof acc.CurrentBalance === 'number' ? acc.CurrentBalance : 0,
-  }));
+/** "CK 6321339230" → "CK 9230"; "SV 8751" → "SV 8751". */
+function buildCode(numeroCuenta: string): string {
+  const m = numeroCuenta.trim().match(/^([A-Za-z]+)\s*(.*)$/);
+  const prefix = m?.[1]?.toUpperCase() ?? 'CK';
+  const digits = (m?.[2] ?? numeroCuenta).replace(/\D/g, '');
+  const last4 = digits.slice(-4);
+  return last4 ? `${prefix} ${last4}` : numeroCuenta;
 }
 
 interface PreviousBalanceRow {
-  realm_id: string;
+  empresa: string;
   previous_total: number | string;
   snapshot_date: string;
 }
 
-/** deltaPct entre el saldo en vivo y el snapshot previo; 0 si no hay base. */
+/** deltaPct entre el saldo actual y el snapshot previo; 0 si no hay base. */
 function computeDeltaPct(current: number | null, previous: number | undefined): number {
   if (current == null || !previous) return 0;
   return ((current - previous) / previous) * 100;
 }
 
 async function fetchPreviousBalances(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.rpc('get_bank_balance_previous');
+  const { data, error } = await supabase.rpc('get_bancos_previous');
   if (error) {
-    console.warn('[bancos] get_bank_balance_previous failed', error);
+    console.warn('[bancos] get_bancos_previous failed', error);
     return new Map();
   }
   const rows = (data as PreviousBalanceRow[] | null) ?? [];
-  return new Map(rows.map((r) => [r.realm_id, Number(r.previous_total)]));
+  return new Map(rows.map((r) => [r.empresa, Number(r.previous_total)]));
 }
 
-/** Cuentas excluidas del informe (bank_account_exclusions), como Set de
- * "realmId:accountId". Si la lectura falla el informe sigue sin filtro. */
-async function fetchExclusions(): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('bank_account_exclusions')
-    .select('realm_id, account_id');
-  if (error) {
-    console.warn('[bancos] bank_account_exclusions failed', error);
-    return new Set();
-  }
-  const rows = (data as { realm_id: string; account_id: string }[] | null) ?? [];
-  return new Set(rows.map((r) => `${r.realm_id}:${r.account_id}`));
-}
+function buildEmpresa(
+  name: string,
+  rows: PbiBancoRow[],
+  previousByEmpresa: Map<string, number>,
+): BancoEmpresa {
+  const empresaId = slugify(name, name);
 
-async function fetchEmpresa(
-  company: QBConnectedCompany,
-  exclusions: Set<string>,
-): Promise<BancoEmpresa> {
-  const empresaId = slugify(
-    company.name ?? `empresa-${company.realmId.slice(-4)}`,
-    company.realmId,
-  );
-  const empresaName =
-    company.name ?? `Empresa ${company.realmId.slice(-4)}`;
-
-  if (company.reauthRequired) {
-    return {
-      id: empresaId,
-      name: empresaName,
-      balance: null,
-      deltaPct: 0,
-      lastUpdatedAt: null,
-      cuentas: [],
-    };
-  }
-
-  try {
-    const resp = await qbQuery<QBAccountQueryResponse>(
-      'query',
-      { query: BANK_ACCOUNT_QUERY },
-      company.realmId,
-    );
-    const raw = resp.QueryResponse?.Account ?? [];
-    const cuentas = normalizeAccounts(empresaId, company.realmId, raw, exclusions);
-    const balance = cuentas.length
-      ? cuentas.reduce((s, c) => s + c.balance, 0)
-      : null;
-    return {
-      id: empresaId,
-      name: empresaName,
-      balance,
-      deltaPct: 0,
-      lastUpdatedAt: latestUpdatedTime(raw),
-      cuentas,
-    };
-  } catch (e) {
-    // Empresas sin conexión o con reauth quedan como "--"; el resto del
-    // informe sigue funcionando con las que sí respondieron.
-    if (e instanceof QBNotConnectedError || e instanceof QBReauthRequiredError) {
-      return {
-        id: empresaId,
-        name: empresaName,
-        balance: null,
-        deltaPct: 0,
-        lastUpdatedAt: null,
-        cuentas: [],
-      };
-    }
-    console.warn(`[bancos] fetch ${empresaName} failed`, e);
-    return {
-      id: empresaId,
-      name: empresaName,
-      balance: null,
-      deltaPct: 0,
-      lastUpdatedAt: null,
-      cuentas: [],
-    };
-  }
-}
-
-async function fetchFromQB(): Promise<BancosSnapshot> {
-  const { companies } = await qbStatus();
-
-  if (companies.length === 0) {
-    // Sin empresas QB conectadas → snapshot vacío. La UI muestra el
-    // hero en 0 y la lista vacía.
-    const todayIso = new Date().toISOString().slice(0, 10);
-    return {
-      totalizado: 0,
-      deltaPct: 0,
-      updatedAt: todayIso,
-      empresas: [],
-    };
-  }
-
-  // Exclusiones y snapshot previo son dos lecturas rápidas a Supabase y
-  // corren en paralelo; las exclusiones tienen que estar antes de armar
-  // las cuentas, así que los queries a QB (lo lento) van después.
-  const [exclusions, previousByRealm] = await Promise.all([
-    fetchExclusions(),
-    fetchPreviousBalances(),
-  ]);
-
-  // Cada empresa es una invocación independiente por realm, en paralelo.
-  const rawEmpresas = await Promise.all(
-    companies.map((company) => fetchEmpresa(company, exclusions)),
-  );
-
-  // Promise.all preserva el orden de `companies`, así que hacemos zip por
-  // índice para conocer el realmId de cada empresa sin recalcular el slug.
-  const empresas = rawEmpresas.map((e, i) => ({
-    ...e,
-    deltaPct: computeDeltaPct(e.balance, previousByRealm.get(companies[i].realmId)),
+  // Cuentas ordenadas por saldo desc; los colores del chart se asignan
+  // por índice, igual que hacía el flujo QB.
+  const sorted = [...rows].sort((a, b) => Number(b.saldo) - Number(a.saldo));
+  const cuentas: BancoCuenta[] = sorted.map((row, idx) => ({
+    id: `${empresaId}-acc-${slugify(row.numero_cuenta, String(idx))}`,
+    name: row.id_cuenta ?? row.banco ?? row.numero_cuenta,
+    code: buildCode(row.numero_cuenta),
+    color: CHART_COLORS[idx % CHART_COLORS.length],
+    gradient: CHART_GRADIENTS[idx % CHART_GRADIENTS.length],
+    balance: Number(row.saldo) || 0,
+    estado: row.estado ?? undefined,
   }));
 
-  const totalizado = empresas.reduce((s, e) => s + (e.balance ?? 0), 0);
-  const totalPrevious = [...previousByRealm.values()].reduce((s, v) => s + v, 0);
+  const balance = cuentas.length
+    ? cuentas.reduce((s, c) => s + c.balance, 0)
+    : null;
+
+  const lastUpdatedAt = rows
+    .map((r) => r.fecha_actualizacion)
+    .filter((d): d is string => d != null)
+    .sort()
+    .pop() ?? null;
+
+  return {
+    id: empresaId,
+    name,
+    balance,
+    deltaPct: computeDeltaPct(balance, previousByEmpresa.get(name)),
+    lastUpdatedAt,
+    cuentas,
+  };
+}
+
+async function fetchFromPbi(): Promise<BancosSnapshot> {
+  const [{ data, error }, previousByEmpresa] = await Promise.all([
+    supabase.from('bancos').select('*'),
+    fetchPreviousBalances(),
+  ]);
+  if (error) throw error;
+
+  const rows = (data as PbiBancoRow[] | null) ?? [];
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  // Fecha de corte = última actualización de cuentas en QB (máx. entre
-  // empresas); fallback a hoy si ninguna cuenta trae LastUpdatedTime.
-  const latestAccountUpdate = empresas
+  if (rows.length === 0) {
+    // Sync aún no corrió → snapshot vacío. La UI muestra el hero en 0 y
+    // la lista vacía.
+    return { totalizado: 0, deltaPct: 0, updatedAt: todayIso, empresas: [] };
+  }
+
+  const byEmpresa = new Map<string, PbiBancoRow[]>();
+  for (const row of rows) {
+    const list = byEmpresa.get(row.empresa);
+    if (list) list.push(row);
+    else byEmpresa.set(row.empresa, [row]);
+  }
+
+  const empresas = [...byEmpresa.entries()]
+    .map(([name, list]) => buildEmpresa(name, list, previousByEmpresa))
+    .sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0));
+
+  const totalizado = empresas.reduce((s, e) => s + (e.balance ?? 0), 0);
+  const totalPrevious = [...previousByEmpresa.values()].reduce((s, v) => s + v, 0);
+
+  // Fecha de corte = FECHA ACTUALIZACION más reciente entre las cuentas;
+  // fallback a hoy si el origen no trae fechas.
+  const latestUpdate = empresas
     .map((e) => e.lastUpdatedAt)
     .filter((t): t is string => t != null)
     .sort()
@@ -253,11 +160,11 @@ async function fetchFromQB(): Promise<BancosSnapshot> {
   return {
     totalizado,
     deltaPct: computeDeltaPct(totalizado, totalPrevious),
-    updatedAt: latestAccountUpdate?.slice(0, 10) ?? todayIso,
+    updatedAt: latestUpdate ?? todayIso,
     empresas,
   };
 }
 
 export async function getBancosSnapshot(): Promise<BancosSnapshot> {
-  return withMock(fetchFromQB, () => getBancosMock());
+  return withMock(fetchFromPbi, () => getBancosMock());
 }

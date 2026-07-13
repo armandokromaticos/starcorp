@@ -24,9 +24,10 @@ export const OrRepoApartadoCard = memo<OrRepoApartadoCardProps>(
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={nombre}
-        className="flex-row items-center justify-between rounded-xl px-4"
+        className="flex-row items-center justify-between px-4"
         style={{
           backgroundColor: NAVY,
+          borderRadius: 12,
           borderCurve: 'continuous',
           paddingVertical: 16,
           boxShadow: '0 2px 6px rgba(15, 27, 74, 0.25)',

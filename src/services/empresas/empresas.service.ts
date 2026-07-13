@@ -16,6 +16,7 @@ import {
   getEmpresasMock,
 } from '@/src/services/mock/empresas.mock';
 import type {
+  EmpresaCategoriaTercero,
   EmpresaCategory,
   EmpresaDetail,
   EmpresaFilters,
@@ -80,6 +81,8 @@ interface BbmRpcFinancials {
   total: number;
   categories: { cuenta4: string; amount: number }[];
   terceros: { tercero: string; nombre: string | null; amount: number }[];
+  /** Desglose cuenta4×tercero para el cross-filtrado torta↔lista. */
+  matrix?: { cuenta4: string; tercero: string; amount: number }[];
 }
 
 interface BbmRpcDetail {
@@ -108,6 +111,23 @@ function pucLabel(cuenta4: string): string {
   return PUC_LABELS[cuenta4] ?? `Cuenta ${cuenta4}`;
 }
 
+/** "Gastos de personal" → "cat-gastos-de-personal"; "Otros" → "cat-otros".
+ *  Id estable por etiqueta (no por índice) para que la selección de la
+ *  torta sobreviva a recálculos y se pueda cruzar con `links`. */
+function categoryId(label: string): string {
+  return (
+    'cat-' +
+    label
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
+}
+
+const OTROS_CATEGORY_ID = categoryId('Otros');
+
 /** Fusiona grupos con la misma etiqueta, ordena desc y arma top-N + Otros.
  *  Solo entran montos > 0: un monto negativo (ej. devoluciones) no se puede
  *  dibujar como sector; el total del bloque sí los incluye. */
@@ -124,7 +144,7 @@ function buildCategories(raw: BbmRpcFinancials['categories']): EmpresaCategory[]
   const categories: EmpresaCategory[] = sorted
     .slice(0, MAX_CATEGORIES)
     .map(([label, amount], i) => ({
-      id: `cat-${i}`,
+      id: categoryId(label),
       label,
       color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
       amount,
@@ -134,9 +154,37 @@ function buildCategories(raw: BbmRpcFinancials['categories']): EmpresaCategory[]
     .slice(MAX_CATEGORIES)
     .reduce((s, [, amount]) => s + amount, 0);
   if (restSum > 0) {
-    categories.push({ id: 'cat-otros', label: 'Otros', color: OTROS_COLOR, amount: restSum });
+    categories.push({ id: OTROS_CATEGORY_ID, label: 'Otros', color: OTROS_COLOR, amount: restSum });
   }
   return categories;
+}
+
+/** matrix (cuenta4×tercero) → links (categoryId×terceroId), agregando por
+ *  etiqueta PUC y mandando a "Otros" las categorías fuera del top-N. Las
+ *  categorías que no se dibujan (monto total ≤ 0) no generan vínculo. */
+function buildLinks(
+  prefix: string,
+  categories: EmpresaCategory[],
+  matrix: BbmRpcFinancials['matrix'],
+): EmpresaCategoriaTercero[] | undefined {
+  if (!matrix) return undefined;
+  const drawnIds = new Set(categories.map((c) => c.id));
+  const byKey = new Map<string, EmpresaCategoriaTercero>();
+  for (const row of matrix) {
+    const amount = Number(row.amount);
+    if (amount === 0) continue;
+    let catId = categoryId(pucLabel(row.cuenta4));
+    if (!drawnIds.has(catId)) {
+      if (!drawnIds.has(OTROS_CATEGORY_ID)) continue;
+      catId = OTROS_CATEGORY_ID;
+    }
+    const terceroId = `bbm-${prefix}-${row.tercero}`;
+    const key = `${catId}|${terceroId}`;
+    const prev = byKey.get(key);
+    if (prev) prev.amount += amount;
+    else byKey.set(key, { categoryId: catId, terceroId, amount });
+  }
+  return [...byKey.values()];
 }
 
 function buildTerceros(prefix: string, raw: BbmRpcFinancials['terceros']): EmpresaTercero[] {
@@ -150,11 +198,13 @@ function buildTerceros(prefix: string, raw: BbmRpcFinancials['terceros']): Empre
 
 function mapFinancials(prefix: string, f: BbmRpcFinancials): EmpresaFinancials {
   const total = Number(f.total);
+  const categories = buildCategories(f.categories);
   return {
     total,
-    categories: buildCategories(f.categories),
+    categories,
     terceros: buildTerceros(prefix, f.terceros),
     tercerosTotal: total,
+    links: buildLinks(prefix, categories, f.matrix),
   };
 }
 

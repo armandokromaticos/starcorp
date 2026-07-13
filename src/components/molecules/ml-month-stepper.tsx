@@ -21,6 +21,11 @@ export interface MonthValue {
   month: number;
 }
 
+/** 1..12 → "Enero".."Diciembre" (para los acordeones de Movimientos). */
+export function monthName(month: number): string {
+  return MONTHS[month - 1] ?? '';
+}
+
 interface MlMonthStepperProps {
   value: MonthValue;
   onChange: (value: MonthValue) => void;
