@@ -94,17 +94,24 @@ export function TmVagCuentas({ tipo }: TmVagCuentasProps) {
           />
         </View>
 
-        {/* Encabezado de columnas */}
+        {/* Encabezado de columnas — mismo inset (px-4) que el contenido de
+            las filas y spacer de 20 que compensa el chevron, para que
+            "Saldo" quede alineado como tabla sobre los montos. */}
         <View
-          className="mx-4 flex-row items-center justify-between px-1 pb-2"
+          className="mx-4 flex-row items-center px-4 pb-2"
           style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' }}
         >
-          <AtTypography variant="captionBold" color="#1A1F36">
-            {columnLabel}
-          </AtTypography>
-          <AtTypography variant="captionBold" color="#1A1F36">
-            Saldo
-          </AtTypography>
+          <View className="flex-1 pr-2">
+            <AtTypography variant="captionBold" color="#1A1F36">
+              {columnLabel}
+            </AtTypography>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <AtTypography variant="captionBold" color="#1A1F36">
+              Saldo
+            </AtTypography>
+            <View style={{ width: 20 }} />
+          </View>
         </View>
 
         {isLoading ? (

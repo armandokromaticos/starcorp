@@ -1,11 +1,12 @@
 /**
  * VAG — Movimientos.
  *
- * Lista de movimientos del mes (stepper < Enero 2026 >) con filas
- * expandibles y footer "Total consolidador". Con el parámetro `focus`
- * (navegación desde un activo o una cuenta) muestra solo ese movimiento,
- * expandido y resaltado en naranja, sin stepper ni footer — como el
- * mockup de "Movimientos / Gastos".
+ * Acordeones por activo (centro de costo) del mes elegido (stepper
+ * < Enero 2026 >): la fila muestra "Activo (n) | Mes | Consolidado" y
+ * expandida las cards de sus movimientos. Footer "Total consolidador".
+ * Con el parámetro `focus` (navegación desde un activo o una cuenta)
+ * muestra solo el acordeón de ese movimiento, expandido y con la card
+ * resaltada en naranja, sin stepper ni footer.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -18,13 +19,18 @@ import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
 import { MlInlineSearch } from '@/src/components/molecules/ml-inline-search';
-import { MlMonthStepper, type MonthValue } from '@/src/components/molecules/ml-month-stepper';
+import {
+  MlMonthStepper,
+  monthName,
+  type MonthValue,
+} from '@/src/components/molecules/ml-month-stepper';
 import { MlSimpleTotalFooter } from '@/src/components/molecules/ml-simple-total-footer';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
-import { OrVagMovimientoRow } from '@/src/components/organisms/or-vag-movimiento-row';
+import { OrVagMovimientosGroup } from '@/src/components/organisms/or-vag-movimientos-group';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import { useVagMovimientos } from '@/src/hooks/queries/use-vag';
 import { formatNumber } from '@/src/utils/number';
+import type { VagMovimiento } from '@/src/types/vag.types';
 
 export default function VagMovimientosScreen() {
   const insets = useSafeAreaInsets();
@@ -68,6 +74,23 @@ export default function VagMovimientosScreen() {
     [filtered],
   );
 
+  // Un acordeón por activo (centro de costo), ordenados por total desc.
+  const grupos = useMemo(() => {
+    const byNombre = new Map<string, VagMovimiento[]>();
+    for (const m of filtered) {
+      const list = byNombre.get(m.nombre);
+      if (list) list.push(m);
+      else byNombre.set(m.nombre, [m]);
+    }
+    return [...byNombre.entries()]
+      .map(([nombre, movs]) => ({
+        nombre,
+        movs,
+        total: movs.reduce((s, m) => s + m.valor, 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filtered]);
+
   return (
     <View className="flex-1 bg-bg-secondary" style={{ paddingTop: insets.top }}>
       <ScrollView
@@ -97,18 +120,27 @@ export default function VagMovimientosScreen() {
           />
         </View>
 
-        {/* Encabezado: Movimiento | <stepper de mes> | Valor */}
+        {/* Encabezado: Activo | <stepper de mes> | Consolidado. Mismas
+            tres zonas que las filas de acordeón (laterales flex-1, px-4
+            = inset del contenido de las cards) para que los títulos
+            queden alineados como tabla; el spacer de 20 compensa el
+            chevron de las filas. */}
         <View
-          className="mx-4 flex-row items-center justify-between px-1 pb-2"
+          className="mx-4 flex-row items-center px-4 pb-2"
           style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' }}
         >
-          <AtTypography variant="captionBold" color="#1A1F36">
-            Movimiento
-          </AtTypography>
+          <View className="flex-1 pr-2">
+            <AtTypography variant="captionBold" color="#1A1F36">
+              Activo
+            </AtTypography>
+          </View>
           {!focusMode && <MlMonthStepper value={effectiveMonth} onChange={setMonth} />}
-          <AtTypography variant="captionBold" color="#1A1F36">
-            Valor
-          </AtTypography>
+          <View className="flex-1 flex-row items-center justify-end gap-2 pl-2">
+            <AtTypography variant="captionBold" color="#1A1F36">
+              Consolidado
+            </AtTypography>
+            <View style={{ width: 20 }} />
+          </View>
         </View>
 
         {isLoading ? (
@@ -125,12 +157,20 @@ export default function VagMovimientosScreen() {
           />
         ) : (
           <View className="gap-3 px-4">
-            {filtered.map((mov) => (
-              <OrVagMovimientoRow
-                key={mov.id}
-                movimiento={mov}
-                highlighted={focusMode}
+            {grupos.map((grupo) => (
+              <OrVagMovimientosGroup
+                key={grupo.nombre}
+                nombre={grupo.nombre}
+                // En focus mode el mes sale de la fecha del movimiento
+                // enfocado (el stepper está oculto).
+                monthLabel={
+                  focusMode
+                    ? monthName(Number(grupo.movs[0].fecha.slice(5, 7)))
+                    : monthName(effectiveMonth.month)
+                }
+                movimientos={grupo.movs}
                 initiallyExpanded={focusMode}
+                highlightedId={focusMode ? focus : undefined}
               />
             ))}
           </View>

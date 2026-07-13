@@ -1,10 +1,14 @@
 /**
  * Otras compañías — detalle de una compañía.
  *
- * Toggle Ingresos/Gastos → donut por categoría (interactivo) + lista de
- * terceros. La tarjeta navy de Total queda FIJA abajo (fuera del scroll).
- * Filtro de periodo (año/mes) en bottom sheet; por ahora solo actualiza el
- * chip de periodo y el conteo de aplicados.
+ * Toggle Ingresos/Gastos → donut por categoría + lista de terceros con
+ * cross-filtrado bidireccional (como financiero/ingresos): tocar un
+ * sector filtra la lista a los terceros de esa categoría (con su monto
+ * dentro de ella); tocar un tercero colapsa la lista a esa fila y
+ * recalcula el donut con solo sus categorías. Requiere `links`
+ * (BBM real); en las compañías mock la selección solo resalta.
+ * La tarjeta navy de Total queda FIJA abajo (fuera del scroll) y refleja
+ * lo visible. Filtro de periodo (año/mes) en bottom sheet.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -49,6 +53,10 @@ const TIPO_OPTIONS = [
   { value: 'gastos', label: 'Gastos' },
 ];
 
+/** Selección única del cross-filtrado: un sector del donut (categoría)
+ *  o una fila de la lista (tercero); elegir uno reemplaza al otro. */
+type Selection = { kind: 'categoria' | 'tercero'; id: string } | null;
+
 export default function EmpresaDetailScreen() {
   const insets = useSafeAreaInsets();
   const { empresaId } = useLocalSearchParams<{ empresaId: string }>();
@@ -59,10 +67,72 @@ export default function EmpresaDetailScreen() {
   const [tipo, setTipo] = useState<EmpresaTipo>('ingresos');
   const [filters, setFilters] = useState<EmpresaFilters>(DEFAULT_EMPRESA_FILTERS);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [selection, setSelection] = useState<Selection>(null);
 
   const { data: detail, isLoading } = useEmpresaDetail(empresaId ?? '', filters);
 
   const financials = detail ? detail[tipo] : null;
+
+  // ── Cross-filtrado torta↔lista ────────────────────────────────────
+  // Con una categoría elegida, la lista muestra los terceros de esa
+  // categoría (monto dentro de ella). Con un tercero elegido, el donut se
+  // recalcula con las categorías de ese tercero. Sin `links` (mock) la
+  // selección solo resalta.
+  const donutCategories = useMemo(() => {
+    if (!financials) return [];
+    if (selection?.kind === 'tercero' && financials.links) {
+      const byCat = new Map<string, number>();
+      for (const l of financials.links) {
+        if (l.terceroId === selection.id) {
+          byCat.set(l.categoryId, (byCat.get(l.categoryId) ?? 0) + l.amount);
+        }
+      }
+      if (byCat.size > 0) {
+        return financials.categories
+          .map((c) => ({ ...c, amount: byCat.get(c.id) ?? 0 }))
+          .filter((c) => c.amount > 0);
+      }
+    }
+    return financials.categories;
+  }, [financials, selection]);
+
+  const listTerceros = useMemo(() => {
+    if (!financials) return [];
+    if (selection?.kind === 'categoria' && financials.links) {
+      const byTercero = new Map<string, number>();
+      for (const l of financials.links) {
+        if (l.categoryId === selection.id) {
+          byTercero.set(l.terceroId, (byTercero.get(l.terceroId) ?? 0) + l.amount);
+        }
+      }
+      return financials.terceros
+        .filter((t) => byTercero.has(t.id))
+        .map((t) => ({ ...t, amount: byTercero.get(t.id)! }))
+        .sort((a, b) => b.amount - a.amount);
+    }
+    return financials.terceros;
+  }, [financials, selection]);
+
+  const donutSelectedId = selection?.kind === 'categoria' ? selection.id : null;
+  const listSelectedId = selection?.kind === 'tercero' ? selection.id : null;
+
+  const selectedTercero =
+    listSelectedId != null
+      ? financials?.terceros.find((t) => t.id === listSelectedId) ?? null
+      : null;
+
+  // El donut filtrado por tercero muestra el total de ese tercero; el
+  // footer navy siempre refleja lo visible en la lista.
+  const donutTotal =
+    selectedTercero != null && financials?.links
+      ? donutCategories.reduce((s, c) => s + c.amount, 0)
+      : financials?.total ?? 0;
+  const footerTotal =
+    selectedTercero != null
+      ? selectedTercero.amount
+      : selection?.kind === 'categoria' && financials?.links
+        ? listTerceros.reduce((s, t) => s + t.amount, 0)
+        : financials?.tercerosTotal ?? 0;
   // BBM (real) devuelve el período resuelto por el RPC ("último mes con
   // datos"); el chip lo muestra tal cual. Mock cae al label derivado.
   const periodText = useMemo(() => {
@@ -112,7 +182,10 @@ export default function EmpresaDetailScreen() {
               <MlSegmentedToggle
                 options={TIPO_OPTIONS}
                 value={tipo}
-                onChange={(v) => setTipo(v as EmpresaTipo)}
+                onChange={(v) => {
+                  setTipo(v as EmpresaTipo);
+                  setSelection(null);
+                }}
                 gradient="brandOrange"
               />
             </View>
@@ -137,12 +210,27 @@ export default function EmpresaDetailScreen() {
                   <OrEmpresaDonutCard
                     title={tipoLabel}
                     periodLabel={periodText}
-                    total={financials.total}
-                    categories={financials.categories}
+                    total={donutTotal}
+                    categories={donutCategories}
+                    selectedId={donutSelectedId}
+                    onSelectChange={(id) =>
+                      setSelection(id ? { kind: 'categoria', id } : null)
+                    }
+                    emptyHint={
+                      selectedTercero
+                        ? `Filtrado por ${selectedTercero.name}`
+                        : undefined
+                    }
                   />
                 </View>
 
-                <OrEmpresaTercerosList terceros={financials.terceros} />
+                <OrEmpresaTercerosList
+                  terceros={listTerceros}
+                  selectedId={listSelectedId}
+                  onSelectChange={(id) =>
+                    setSelection(id ? { kind: 'tercero', id } : null)
+                  }
+                />
               </>
             )}
           </>
@@ -155,9 +243,7 @@ export default function EmpresaDetailScreen() {
           className="px-4 pt-2 bg-bg-secondary"
           style={{ paddingBottom: 8 }}
         >
-          <MlSimpleTotalFooter
-            value={formatNumber(financials.tercerosTotal, 2)}
-          />
+          <MlSimpleTotalFooter value={formatNumber(footerTotal, 2)} />
         </View>
       )}
 
@@ -165,7 +251,10 @@ export default function EmpresaDetailScreen() {
         visible={filtersVisible}
         onClose={() => setFiltersVisible(false)}
         initialFilters={filters}
-        onApply={setFilters}
+        onApply={(f) => {
+          setFilters(f);
+          setSelection(null);
+        }}
       />
 
       <OrDrawer

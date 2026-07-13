@@ -9,6 +9,10 @@
  * (OrThirdPartiesDonutCard): centro vacío por defecto, tap en un sector
  * muestra su % en el centro y su leyenda (dot + nombre + monto) debajo;
  * sin selección se muestra el hint "Toca un sector…".
+ *
+ * La selección puede elevarse al padre con `selectedId`/`onSelectChange`
+ * (cross-filtrado con la lista de terceros, como financiero/ingresos);
+ * sin esas props funciona igual que antes con estado interno.
  */
 
 import React, { memo, useMemo, useState } from 'react';
@@ -24,13 +28,28 @@ interface OrEmpresaDonutCardProps {
   periodLabel: string;
   total: number;
   categories: EmpresaCategory[];
+  /** Selección controlada por el padre (cross-filtrado con la lista). */
+  selectedId?: string | null;
+  onSelectChange?: (id: string | null) => void;
+  /** Hint bajo el donut cuando no hay sector seleccionado. */
+  emptyHint?: string;
 }
 
 const DONUT_SIZE = 160;
 
 export const OrEmpresaDonutCard = memo<OrEmpresaDonutCardProps>(
-  ({ title, periodLabel, total, categories }) => {
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+  ({
+    title,
+    periodLabel,
+    total,
+    categories,
+    selectedId: selectedIdProp,
+    onSelectChange,
+    emptyHint = 'Toca un sector para ver la categoría',
+  }) => {
+    const [internalId, setInternalId] = useState<string | null>(null);
+    const selectedId = selectedIdProp !== undefined ? selectedIdProp : internalId;
+    const setSelectedId = onSelectChange ?? setInternalId;
 
     const sumTotal = useMemo(
       () => categories.reduce((s, c) => s + c.amount, 0),
@@ -48,8 +67,7 @@ export const OrEmpresaDonutCard = memo<OrEmpresaDonutCardProps>(
     const selectedPct =
       selected && sumTotal > 0 ? (selected.amount / sumTotal) * 100 : null;
 
-    const toggle = (id: string) =>
-      setSelectedId((prev) => (prev === id ? null : id));
+    const toggle = (id: string) => setSelectedId(selectedId === id ? null : id);
 
     return (
       <View
@@ -143,8 +161,8 @@ export const OrEmpresaDonutCard = memo<OrEmpresaDonutCardProps>(
             className="flex-row items-center justify-center"
             style={{ minHeight: 28 }}
           >
-            <AtTypography variant="caption" color="#8892A4">
-              Toca un sector para ver la categoría
+            <AtTypography variant="caption" color="#8892A4" numberOfLines={1}>
+              {emptyHint}
             </AtTypography>
           </View>
         )}
