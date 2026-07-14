@@ -79,14 +79,14 @@ function buildDetail(id: string, name: string): EmpresaDetail {
 
 const LIST: EmpresaListItem[] = [
   { id: 'bbm', name: 'BBM', ingresos: 77630, deltaPercent: 1.87, hasDetail: true },
-  { id: 'vag', name: 'VAG', ingresos: 77630, deltaPercent: 1.87, hasDetail: true },
+  { id: 'vag', name: 'Grupo Orion Holding', ingresos: 77630, deltaPercent: 1.87, hasDetail: true },
   // Sin métricas, pero navega a su ruta estática /empresas/repositorio-alejandro.
   { id: 'repositorio-alejandro', name: 'Repositorio Alejandro', ingresos: null, deltaPercent: null, hasDetail: true },
 ];
 
 const DETAILS: Record<string, EmpresaDetail> = {
   bbm: buildDetail('bbm', 'BBM'),
-  vag: buildDetail('vag', 'VAG'),
+  vag: buildDetail('vag', 'Grupo Orion Holding'),
 };
 
 export function getEmpresasMock(): EmpresaListItem[] {

@@ -73,7 +73,7 @@ export const PERMISSION_SECTIONS: PermissionSection[] = [
     permissions: [
       { key: 'empresas.ver', label: 'Ver otras compañías' },
       { key: 'empresas.bbm', label: 'Ver BBM' },
-      { key: 'empresas.vag', label: 'Ver VAG' },
+      { key: 'empresas.vag', label: 'Ver Grupo Orion Holding' },
       { key: 'empresas.repositorio', label: 'Ver repositorio' },
     ],
   },
