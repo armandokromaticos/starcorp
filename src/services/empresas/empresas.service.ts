@@ -187,24 +187,47 @@ function buildLinks(
   return [...byKey.values()];
 }
 
-function buildTerceros(prefix: string, raw: BbmRpcFinancials['terceros']): EmpresaTercero[] {
-  return raw.map((t, i) => ({
-    id: `bbm-${prefix}-${t.tercero}`,
-    name: t.nombre ?? (t.tercero && t.tercero !== '0' ? t.tercero : 'Sin tercero'),
-    color: TERCERO_COLORS[i % TERCERO_COLORS.length],
-    amount: Number(t.amount),
-  }));
+/** El dot de cada tercero usa el color de su categoría dominante (la de
+ *  mayor monto en `links`), para que la lista lea como leyenda de la
+ *  torta. Sin vínculo (o sin matrix) cae al color cíclico de siempre. */
+function buildTerceros(
+  prefix: string,
+  raw: BbmRpcFinancials['terceros'],
+  categories: EmpresaCategory[],
+  links?: EmpresaCategoriaTercero[],
+): EmpresaTercero[] {
+  const colorByCategory = new Map(categories.map((c) => [c.id, c.color]));
+  const dominant = new Map<string, { categoryId: string; amount: number }>();
+  for (const l of links ?? []) {
+    const prev = dominant.get(l.terceroId);
+    if (!prev || l.amount > prev.amount) {
+      dominant.set(l.terceroId, { categoryId: l.categoryId, amount: l.amount });
+    }
+  }
+  return raw.map((t, i) => {
+    const id = `bbm-${prefix}-${t.tercero}`;
+    const catId = dominant.get(id)?.categoryId;
+    return {
+      id,
+      name: t.nombre ?? (t.tercero && t.tercero !== '0' ? t.tercero : 'Sin tercero'),
+      color:
+        (catId != null ? colorByCategory.get(catId) : undefined) ??
+        TERCERO_COLORS[i % TERCERO_COLORS.length],
+      amount: Number(t.amount),
+    };
+  });
 }
 
 function mapFinancials(prefix: string, f: BbmRpcFinancials): EmpresaFinancials {
   const total = Number(f.total);
   const categories = buildCategories(f.categories);
+  const links = buildLinks(prefix, categories, f.matrix);
   return {
     total,
     categories,
-    terceros: buildTerceros(prefix, f.terceros),
+    terceros: buildTerceros(prefix, f.terceros, categories, links),
     tercerosTotal: total,
-    links: buildLinks(prefix, categories, f.matrix),
+    links,
   };
 }
 

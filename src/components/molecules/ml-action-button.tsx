@@ -58,6 +58,10 @@ export const MlActionButton = memo<MlActionButtonProps>(
             start={gradients.buttonBlue.start}
             end={gradients.buttonBlue.end}
             style={{
+              // flexGrow: si el Pressable se estira (fila junto a un botón
+              // más alto), el degradado llena todo el alto y no queda una
+              // franja del fondo visible bajo el botón.
+              flexGrow: 1,
               paddingVertical: 14,
               paddingHorizontal: 16,
               alignItems: 'center',
