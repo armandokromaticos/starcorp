@@ -81,7 +81,7 @@ export function TmVagCuentas({ tipo }: TmVagCuentasProps) {
 
         <View className="px-4">
           <MlBreadcrumb
-            segments={['Otras compañías', 'VAG', crumb]}
+            segments={['Otras compañías', 'Grupo Orion Holding', crumb]}
             onBack={() => router.back()}
           />
         </View>

@@ -26,7 +26,7 @@ const BUCKET = 'repositorio';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 /** Apartado del Repositorio Alejandro donde se reflejan estos documentos.
  * Se busca por nombre (si lo renombran, la próxima subida crea uno nuevo). */
-const REPO_APARTADO_VAG = 'Activos VAG';
+const REPO_APARTADO_VAG = 'Activos Grupo Orion Holding';
 
 interface DocRow {
   activo_id: string;

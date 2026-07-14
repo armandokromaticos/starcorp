@@ -40,7 +40,7 @@ export default function VagHubScreen() {
 
       <View className="px-4">
         <MlBreadcrumb
-          segments={['Otras compañías', 'VAG']}
+          segments={['Otras compañías', 'Grupo Orion Holding']}
           onBack={() => router.back()}
         />
       </View>
