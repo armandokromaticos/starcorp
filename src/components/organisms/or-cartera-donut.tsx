@@ -41,6 +41,19 @@ interface OrCarteraDonutProps {
   valueFormatter?: (value: number) => string;
   /** Hint cuando no hay slice seleccionado en modo tap-only. */
   emptyHint?: string;
+  /**
+   * Selección que NO corresponde a un slice del donut (p. ej. un tercero
+   * elegido en la lista durante el cross-filtrado). Se muestra con el
+   * mismo % central y banner que un slice seleccionado; tocar el banner
+   * llama `onSelectChange(null)`. Ignorada si hay un slice seleccionado.
+   */
+  externalSelection?: {
+    label: string;
+    value: number;
+    color: string;
+    /** % a mostrar en el centro del donut; omitido = centro vacío. */
+    pct?: number | null;
+  } | null;
 }
 
 interface PositionedLabel {
@@ -115,6 +128,7 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
     labelsMode = 'floating',
     valueFormatter,
     emptyHint = 'Toca un sector para ver detalle',
+    externalSelection = null,
   }) => {
     const isTapOnly = labelsMode === 'tap-only';
     const containerSize = isTapOnly ? donutSize : donutSize + 140;
@@ -146,6 +160,10 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
       if (selectedIndex == null || total === 0) return null;
       return (data[selectedIndex].value / total) * 100;
     }, [data, selectedIndex, total]);
+
+    // La selección externa solo aplica cuando ningún slice está seleccionado.
+    const external = selectedIndex == null ? externalSelection : null;
+    const centerPct = selectedPct ?? external?.pct ?? null;
 
     const handleSlicePress = (index: number) => {
       if (!onSelectChange) return;
@@ -200,14 +218,14 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
               onSlicePress={onSelectChange ? handleSlicePress : undefined}
               selectedIndex={selectedIndex}
             >
-              {selectedPct != null ? (
+              {centerPct != null ? (
                 <View style={{ alignItems: 'center', paddingHorizontal: 12 }}>
                   <AtTypography
                     variant="metricSmall"
                     color="#1A1F36"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    {`${selectedPct.toFixed(1)}%`}
+                    {`${centerPct.toFixed(1)}%`}
                   </AtTypography>
                 </View>
               ) : (
@@ -312,6 +330,45 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
                   {valueFormatter
                     ? valueFormatter(data[selectedIndex].value)
                     : data[selectedIndex].value.toLocaleString('es-VE')}
+                </AtTypography>
+              </Pressable>
+            ) : external ? (
+              /* Selección externa (p. ej. tercero de la lista): mismo
+                 banner que un slice seleccionado. */
+              <Pressable
+                onPress={() => onSelectChange?.(null)}
+                className="items-center"
+                style={{ flexShrink: 1, maxWidth: '100%' }}
+                hitSlop={6}
+              >
+                <View className="flex-row items-center gap-2">
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: external.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <AtTypography
+                    variant="bodyBold"
+                    color="#1A1F36"
+                    numberOfLines={1}
+                    style={{ flexShrink: 1 }}
+                  >
+                    {external.label}
+                  </AtTypography>
+                </View>
+                <AtTypography
+                  variant="caption"
+                  color="#8892A4"
+                  numberOfLines={1}
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {valueFormatter
+                    ? valueFormatter(external.value)
+                    : external.value.toLocaleString('es-VE')}
                 </AtTypography>
               </Pressable>
             ) : (

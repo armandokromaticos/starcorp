@@ -23,8 +23,8 @@ import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
 import { MlSegmentedToggle } from '@/src/components/molecules/ml-segmented-toggle';
 import { MlSimpleTotalFooter } from '@/src/components/molecules/ml-simple-total-footer';
+import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
-import { OrEmpresaDonutCard } from '@/src/components/organisms/or-empresa-donut-card';
 import { OrEmpresaTercerosList } from '@/src/components/organisms/or-empresa-terceros-list';
 import {
   OrEmpresaFiltersSheet,
@@ -32,6 +32,7 @@ import {
 } from '@/src/components/organisms/or-empresa-filters-sheet';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import { useEmpresaDetail } from '@/src/hooks/queries/use-empresa-detail';
+import { formatCurrency } from '@/src/utils/currency';
 import { formatNumber } from '@/src/utils/number';
 import type { EmpresaFilters, EmpresaTipo } from '@/src/types/empresas.types';
 
@@ -121,12 +122,7 @@ export default function EmpresaDetailScreen() {
       ? financials?.terceros.find((t) => t.id === listSelectedId) ?? null
       : null;
 
-  // El donut filtrado por tercero muestra el total de ese tercero; el
-  // footer navy siempre refleja lo visible en la lista.
-  const donutTotal =
-    selectedTercero != null && financials?.links
-      ? donutCategories.reduce((s, c) => s + c.amount, 0)
-      : financials?.total ?? 0;
+  // El footer navy siempre refleja lo visible en la lista.
   const footerTotal =
     selectedTercero != null
       ? selectedTercero.amount
@@ -207,19 +203,46 @@ export default function EmpresaDetailScreen() {
             {financials && (
               <>
                 <View className="px-4">
-                  <OrEmpresaDonutCard
-                    title={tipoLabel}
-                    periodLabel={periodText}
-                    total={donutTotal}
-                    categories={donutCategories}
+                  {/* Mismo donut que /informes/cartera (look y comportamiento);
+                      el chip de periodo va como badge del header. */}
+                  <OrCarteraDonut
+                    title={`Distribución ${tipoLabel.toLowerCase()} por categoría`}
+                    headerBadge={
+                      <View
+                        className="rounded-full bg-bg-secondary px-3 py-1"
+                        style={{ borderCurve: 'continuous' }}
+                      >
+                        <AtTypography variant="caption" color="#4A5568">
+                          {periodText}
+                        </AtTypography>
+                      </View>
+                    }
+                    data={donutCategories.map((c) => ({
+                      id: c.id,
+                      value: c.amount,
+                      color: c.color,
+                      label: c.label,
+                    }))}
+                    labelsMode="tap-only"
                     selectedId={donutSelectedId}
                     onSelectChange={(id) =>
                       setSelection(id ? { kind: 'categoria', id } : null)
                     }
-                    emptyHint={
+                    valueFormatter={(v) => formatCurrency(v)}
+                    emptyHint="Toca un sector para ver la categoría"
+                    externalSelection={
                       selectedTercero
-                        ? `Filtrado por ${selectedTercero.name}`
-                        : undefined
+                        ? {
+                            label: selectedTercero.name,
+                            value: selectedTercero.amount,
+                            color: selectedTercero.color,
+                            pct:
+                              financials.total > 0
+                                ? (selectedTercero.amount / financials.total) *
+                                  100
+                                : null,
+                          }
+                        : null
                     }
                   />
                 </View>
