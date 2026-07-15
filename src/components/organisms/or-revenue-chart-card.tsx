@@ -11,6 +11,7 @@ import { useWindowDimensions } from 'react-native';
 import { View, Pressable } from '@/src/tw';
 import { tokens } from '@/src/theme/tokens';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { Skeleton } from '@/src/components/atoms/skeleton';
@@ -39,6 +40,12 @@ interface OrRevenueChartCardProps {
    *  P&L summary, e.g. QB outstanding balance ("Cartera"). The area chart
    *  itself keeps showing `categoryId` since cartera has no timeseries. */
   headerValueOverride?: number | null;
+  /** Arrow rendered next to the override value (e.g. Cartera ascendente o
+   *  descendente). Only shown when `headerValueOverride` is provided. */
+  headerTrend?: 'up' | 'down' | null;
+  /** When true the chart series are forced to 0 — used when the selected
+   *  metric has no data for this client (e.g. sin cartera). */
+  zeroData?: boolean;
 }
 
 type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
@@ -54,7 +61,7 @@ const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
 };
 
 export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
-  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride }) => {
+  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride, headerTrend, zeroData }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -71,6 +78,8 @@ export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
           period={period}
           centroCosto={centroCosto}
           headerValueOverride={headerValueOverride}
+          headerTrend={headerTrend}
+          zeroData={zeroData}
         />
       </Pressable>
     );
@@ -101,7 +110,9 @@ const ConsolidadoChartCard = memo<{
   period: PeriodKey;
   centroCosto?: string | null;
   headerValueOverride?: number | null;
-}>(({ categoryId, label, period, centroCosto, headerValueOverride }) => {
+  headerTrend?: 'up' | 'down' | null;
+  zeroData?: boolean;
+}>(({ categoryId, label, period, centroCosto, headerValueOverride, headerTrend, zeroData }) => {
   const [view, setView] = useState<ConsolidadoView>('totalizado');
   const rpcPeriod = RPC_PERIOD[period];
   const summary = useDashboardSummary(rpcPeriod, {
@@ -115,12 +126,12 @@ const ConsolidadoChartCard = memo<{
 
   const buckets = useMemo(() => timeseries.data ?? [], [timeseries.data]);
   const corriente = useMemo(
-    () => buckets.map((b) => b[categoryId]),
-    [buckets, categoryId],
+    () => buckets.map((b) => (zeroData ? 0 : b[categoryId])),
+    [buckets, categoryId, zeroData],
   );
   const historico = useMemo(
-    () => buckets.map((b) => prevField(b, categoryId)),
-    [buckets, categoryId],
+    () => buckets.map((b) => (zeroData ? 0 : prevField(b, categoryId))),
+    [buckets, categoryId, zeroData],
   );
   // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
   // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
@@ -173,6 +184,13 @@ const ConsolidadoChartCard = memo<{
           ) : (
             <>
               <AtMetricValue value={headerValue} size="lg" />
+              {isOverride && headerTrend != null && (
+                <AtIcon
+                  name={headerTrend === 'up' ? 'north-east' : 'south-east'}
+                  size={22}
+                  color={headerTrend === 'up' ? '#22C55E' : '#EF4444'}
+                />
+              )}
               {headerDelta != null && (
                 <AtDeltaIndicator value={headerDelta} appearance="dark" size="lg" />
               )}

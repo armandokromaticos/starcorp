@@ -1,5 +1,5 @@
 /**
- * /financiero/egresos/[groupId] — Vendors hitting a single Expense account.
+ * /financiero/egresos/[groupId] — desglose de una cuenta Expense.
  * Mirrors /financiero/costos/[groupId]; only the section ("Expenses") differs.
  */
 
@@ -12,11 +12,11 @@ import {
 import { OrTercerosList } from "@/src/components/organisms/or-terceros-list";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
+import { useQBGeneralLedger } from "@/src/hooks/queries/use-qb-general-ledger";
 import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
-import { useQBTransactionList } from "@/src/hooks/queries/use-qb-transaction-list";
 import {
   findPnLLeafById,
-  normalizeTransactionList,
+  normalizeGeneralLedgerByAccount,
 } from "@/src/services/quickbooks/normalizer";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
@@ -35,6 +35,7 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
  *  when an account has dozens/hundreds of transactions. */
 const MAX_CHART_BARS = 20;
 
+/** Aggregate transactions by vendor name → list ordered by absolute amount. */
 function aggregateVendors(
   transactions: { name: string; amount: number }[],
 ): ThirdParty[] {
@@ -62,7 +63,10 @@ function aggregateVendors(
 }
 
 export default function EgresosCuentaDetalleScreen() {
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const { groupId, vendor } = useLocalSearchParams<{
+    groupId: string;
+    vendor?: string;
+  }>();
   const decodedGroupId = decodeURIComponent(groupId ?? "");
 
   const period = useFiltersStore((s) => s.activePeriod);
@@ -82,47 +86,41 @@ export default function EgresosCuentaDetalleScreen() {
     [pnl.data, decodedGroupId],
   );
 
-  const txList = useQBTransactionList({
-    accountId: decodedGroupId,
+  const gl = useQBGeneralLedger({
+    accountIds: [decodedGroupId],
     start_date: period.start,
     end_date: period.end,
   });
 
-  const transactions = useMemo(
-    () => normalizeTransactionList(txList.data ?? null),
-    [txList.data],
-  );
+  const transactions = useMemo(() => {
+    const grouped = normalizeGeneralLedgerByAccount(gl.data ?? null);
+    return (
+      grouped.find((a) => a.accountId === decodedGroupId)?.transactions ??
+      grouped.flatMap((a) => a.transactions)
+    );
+  }, [gl.data, decodedGroupId]);
 
   const vendors = useMemo(() => aggregateVendors(transactions), [transactions]);
 
   const groupLabel = account?.label ?? decodedGroupId;
   const groupAmount = account?.amount ?? 0;
 
-  /** One bar per QB transaction (factura), capped at the top N by magnitude
-   *  so the chart layout stays legible. Magnitude is used by the chart so
-   *  signed values render upward. */
+  /** Una barra por PROVEEDOR (el mismo agregado que la lista de abajo),
+   *  capped at the top N by magnitude so the chart layout stays legible. */
   const bars: HighlightedBarChartPoint[] = useMemo(
     () =>
-      [...transactions]
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, MAX_CHART_BARS)
-        .map((tx) => ({
-          id: tx.id,
-          label: tx.num || tx.name || tx.date,
-          value: tx.amount,
-        })),
-    [transactions],
+      vendors.slice(0, MAX_CHART_BARS).map((v) => ({
+        id: v.id,
+        label: v.name,
+        value: v.amount,
+      })),
+    [vendors],
   );
 
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-
-  /** Transaction IDs that belong to the selected vendor (matched by name). */
-  const highlightedTxIds = useMemo(() => {
-    if (!selectedVendorId) return [];
-    return transactions
-      .filter((tx) => (tx.name || "—") === selectedVendorId)
-      .map((tx) => tx.id);
-  }, [transactions, selectedVendorId]);
+  // Proveedor preseleccionado desde el index (?vendor=).
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(
+    vendor ? decodeURIComponent(vendor) : null,
+  );
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
@@ -134,7 +132,7 @@ export default function EgresosCuentaDetalleScreen() {
   );
 
   const isPnLLoading = pnl.isLoading;
-  const isTxLoading = txList.isLoading;
+  const isTxLoading = gl.isLoading;
 
   return (
     <TmConsolidatedDetail
@@ -152,9 +150,9 @@ export default function EgresosCuentaDetalleScreen() {
           <OrHighlightedBarChartCard
             title={groupLabel}
             amount={groupAmount}
-            deltaPercent={0}
+            deltaPercent={null}
             bars={bars}
-            highlightedIds={highlightedTxIds}
+            highlightedId={selectedVendorId ?? undefined}
             highlightMode="dot"
           />
         )

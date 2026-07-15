@@ -26,7 +26,8 @@ export interface HighlightedBarChartPoint {
 interface OrHighlightedBarChartCardProps {
   title: string;
   amount: number;
-  deltaPercent: number;
+  /** Null/undefined = sin comparativo: el chip de delta no se renderiza. */
+  deltaPercent?: number | null;
   bars: HighlightedBarChartPoint[];
   highlightedId?: string;
   /** Multiple bar IDs to mark — used by 'dot' mode when one selection in the
@@ -82,7 +83,9 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
           </AtTypography>
           <View className="flex-row items-center gap-3">
             <AtMetricValue value={amount} size="lg" />
-            <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />
+            {deltaPercent != null && (
+              <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />
+            )}
           </View>
         </View>
 

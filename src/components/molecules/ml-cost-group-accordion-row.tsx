@@ -29,7 +29,8 @@ export interface CostGroupSubItem {
 export interface MlCostGroupAccordionRowProps {
   name: string;
   amount: number;
-  deltaPercent: number;
+  /** Null/undefined = sin comparativo: el chip de delta no se renderiza. */
+  deltaPercent?: number | null;
   gradientColors: [string, string];
   subItems?: CostGroupSubItem[];
   onSubItemPress?: (subItemId: string) => void;
@@ -97,7 +98,9 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
               >
                 {name}
               </AtTypography>
-              <AtDeltaIndicator value={deltaPercent} size="sm" appearance="soft" />
+              {deltaPercent != null && (
+                <AtDeltaIndicator value={deltaPercent} size="sm" appearance="soft" />
+              )}
             </View>
             <AtTypography
               variant="caption"
@@ -129,7 +132,8 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
             {subItems!.map((item, index) => (
               <View key={item.id}>
                 <Pressable
-                  onPress={() => onSubItemPress?.(item.id)}
+                  onPress={onSubItemPress ? () => onSubItemPress(item.id) : undefined}
+                  disabled={!onSubItemPress}
                   className="flex-row items-center px-4 py-3"
                 >
                   {/* Sub-item name + amount */}
@@ -146,8 +150,10 @@ export const MlCostGroupAccordionRow = memo<MlCostGroupAccordionRowProps>(
                       {formatCurrency(item.amount)}
                     </AtTypography>
                   </View>
-                  {/* Arrow right */}
-                  <AtIcon name="arrow-forward" size="sm" color="#8892A4" />
+                  {/* Arrow right — solo cuando el sub-item navega */}
+                  {onSubItemPress && (
+                    <AtIcon name="arrow-forward" size="sm" color="#8892A4" />
+                  )}
                 </Pressable>
                 {/* Divider between sub-items (skip after last) */}
                 {index < subItems!.length - 1 && (

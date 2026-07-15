@@ -86,6 +86,9 @@ export interface QBTransactionListRaw {
 
 export interface QBTransactionListRow {
   ColData?: { value?: string; id?: string }[];
+  /** Section header (GeneralLedger agrupa por cuenta; el header trae
+   *  nombre e id de la cuenta). */
+  Header?: { ColData?: { value?: string; id?: string }[] };
   Rows?: { Row?: QBTransactionListRow[] };
   Summary?: { ColData?: { value?: string }[] };
   type?: string;

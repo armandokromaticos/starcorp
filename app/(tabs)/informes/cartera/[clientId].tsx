@@ -1,10 +1,14 @@
 /**
  * Informe Cartera — detalle "Gestión carteras vencidas" por cliente.
+ *
+ * Arriba se mantiene el MISMO donut de distribución del index (orden,
+ * colores y bucket "Otros" idénticos), con la cartera de la ruta marcada
+ * como seleccionada y SIN interacción — es solo contexto visual.
  */
 
 import React, { useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, TextInput, View } from '@/src/tw';
+import { ScrollView, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
@@ -19,6 +23,10 @@ import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useCartera } from '@/src/hooks/queries/use-cartera';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import { donutColorAt, DONUT_MAX_NAMED } from '@/src/utils/donut';
+import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
+
+const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
 
 function formatMoney(value: number): string {
   return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -32,14 +40,21 @@ export default function CarteraClientDetailScreen() {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedSliceId, setSelectedSliceId] = useState<string | null>(
-    clientId ?? null,
-  );
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
+  // Mismo orden y colores que el donut del index (mayor→menor, paleta por
+  // posición) para que la gráfica sea idéntica en ambas vistas.
+  const sortedClients = useMemo(
+    () =>
+      [...(data?.clients ?? [])]
+        .sort((a, b) => b.total - a.total)
+        .map((c, i) => ({ ...c, color: donutColorAt(i) })),
+    [data],
+  );
+
   const client = useMemo(
-    () => data?.clients.find((c) => c.id === clientId),
-    [data, clientId],
+    () => sortedClients.find((c) => c.id === clientId),
+    [sortedClients, clientId],
   );
 
   const invoices = useMemo(() => {
@@ -58,15 +73,43 @@ export default function CarteraClientDetailScreen() {
     [invoices],
   );
 
+  // Réplica exacta del donut del index: top-N + bucket "Otros".
   const donutData = useMemo(() => {
-    if (!data?.clients) return [];
-    return data.clients.slice(0, 8).map((c) => ({
-      id: c.id,
-      value: c.total,
-      color: c.color,
-      label: c.name,
-    }));
-  }, [data]);
+    if (!sortedClients.length) return [];
+    if (sortedClients.length <= MAX_DONUT_SLICES) {
+      return sortedClients.map((c) => ({
+        id: c.id,
+        value: c.total,
+        color: c.color,
+        label: c.name,
+      }));
+    }
+    const top = sortedClients.slice(0, MAX_DONUT_SLICES);
+    const rest = sortedClients.slice(MAX_DONUT_SLICES);
+    return [
+      ...top.map((c) => ({
+        id: c.id,
+        value: c.total,
+        color: c.color,
+        label: c.name,
+      })),
+      {
+        id: 'otros',
+        value: rest.reduce((s, c) => s + c.total, 0),
+        color: OTROS_SEGMENT_COLOR,
+        label: 'Otros',
+      },
+    ];
+  }, [sortedClients]);
+
+  // La cartera de la ruta se marca en el donut; si cae fuera del top-N,
+  // se marca el bucket "Otros" que la contiene.
+  const markedSliceId = useMemo(() => {
+    if (!clientId) return null;
+    const idx = sortedClients.findIndex((c) => c.id === clientId);
+    if (idx < 0) return null;
+    return idx < MAX_DONUT_SLICES ? clientId : 'otros';
+  }, [sortedClients, clientId]);
 
   return (
     <View
@@ -93,14 +136,14 @@ export default function CarteraClientDetailScreen() {
         </View>
 
         <View className="px-4">
+          {/* Sin onSelectChange: la gráfica no es interactiva en esta vista;
+              solo marca la cartera con la que se entró. */}
           <OrCarteraDonut
             title="Distribución cartera por cliente"
             data={donutData}
             labelsMode="tap-only"
-            selectedId={selectedSliceId}
-            onSelectChange={setSelectedSliceId}
+            selectedId={markedSliceId}
             valueFormatter={formatMoney}
-            emptyHint="Toca un sector para ver el cliente"
           />
         </View>
 

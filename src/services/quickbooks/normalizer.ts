@@ -303,51 +303,88 @@ function resolveTxField(
   return null;
 }
 
-function walkTxRows(
-  rows: QBTransactionListRow[] | undefined,
-  out: QBTransactionListRow[],
-): void {
-  if (!rows) return;
-  for (const row of rows) {
-    if (row.ColData?.length) out.push(row);
-    if (row.Rows?.Row?.length) walkTxRows(row.Rows.Row, out);
-  }
+function mapTxRow(
+  columns: { ColTitle?: string; ColType?: string }[],
+  row: QBTransactionListRow,
+  rowIdx: number,
+): QBTransaction {
+  const cols = row.ColData ?? [];
+  const tx: QBTransaction = {
+    id: '',
+    date: '',
+    type: '',
+    num: '',
+    name: '',
+    memo: '',
+    amount: 0,
+  };
+  cols.forEach((cell, i) => {
+    const field = resolveTxField(columns[i]);
+    if (!field) return;
+    const value = cell.value ?? '';
+    if (field === 'amount') {
+      const n = Number(value);
+      tx.amount = Number.isFinite(n) ? n : 0;
+    } else {
+      tx[field] = value;
+    }
+    if (!tx.id && cell.id) tx.id = String(cell.id);
+  });
+  if (!tx.id) tx.id = `tx-${rowIdx}-${tx.date}-${tx.num}`;
+  return tx;
 }
 
-export function normalizeTransactionList(
+/** GeneralLedger antepone una fila "Beginning Balance" en cuentas de
+ *  balance; no es una transacción. */
+function isBeginningBalanceRow(row: QBTransactionListRow): boolean {
+  return /beginning balance/i.test(row.ColData?.[0]?.value ?? '');
+}
+
+/** Las transacciones de una cuenta dentro de un reporte GeneralLedger. */
+export interface QBAccountTransactions {
+  accountId: string;
+  accountName: string;
+  transactions: QBTransaction[];
+}
+
+/**
+ * GeneralLedger multi-cuenta → transacciones agrupadas por cuenta. El
+ * reporte anida las filas bajo secciones cuyo Header trae nombre e id de
+ * la cuenta; las secciones sin id (agrupadores intermedios) heredan el
+ * contexto del padre. OJO: GL devuelve una fila por LÍNEA de asiento.
+ */
+export function normalizeGeneralLedgerByAccount(
   raw: QBTransactionListRaw | null,
-): QBTransaction[] {
+): QBAccountTransactions[] {
   if (!raw) return [];
   const columns = raw.Columns?.Column ?? [];
-  const flatRows: QBTransactionListRow[] = [];
-  walkTxRows(raw.Rows?.Row, flatRows);
+  const out: QBAccountTransactions[] = [];
 
-  return flatRows.map((row, rowIdx) => {
-    const cols = row.ColData ?? [];
-    const tx: QBTransaction = {
-      id: '',
-      date: '',
-      type: '',
-      num: '',
-      name: '',
-      memo: '',
-      amount: 0,
-    };
-    cols.forEach((cell, i) => {
-      const field = resolveTxField(columns[i]);
-      if (!field) return;
-      const value = cell.value ?? '';
-      if (field === 'amount') {
-        const n = Number(value);
-        tx.amount = Number.isFinite(n) ? n : 0;
-      } else {
-        tx[field] = value;
+  const walk = (
+    rows: QBTransactionListRow[] | undefined,
+    current: QBAccountTransactions | null,
+  ): void => {
+    if (!rows) return;
+    for (const row of rows) {
+      let ctx = current;
+      const header = row.Header?.ColData?.[0];
+      if (header?.id != null || header?.value) {
+        ctx = {
+          accountId: String(header.id ?? header.value),
+          accountName: header.value ?? '',
+          transactions: [],
+        };
+        out.push(ctx);
       }
-      if (!tx.id && cell.id) tx.id = String(cell.id);
-    });
-    if (!tx.id) tx.id = `tx-${rowIdx}-${tx.date}-${tx.num}`;
-    return tx;
-  });
+      if (row.ColData?.length && ctx && !isBeginningBalanceRow(row)) {
+        ctx.transactions.push(mapTxRow(columns, row, ctx.transactions.length));
+      }
+      walk(row.Rows?.Row, ctx);
+    }
+  };
+  walk(raw.Rows?.Row, null);
+
+  return out.filter((acc) => acc.transactions.length > 0);
 }
 
 export function normalizeMetricsFromPnL(

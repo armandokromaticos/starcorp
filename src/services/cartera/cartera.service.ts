@@ -153,9 +153,16 @@ async function fetchFromQB(): Promise<CarteraSnapshot> {
     }
   }
 
-  // Ordenar invoices de cada cliente por fecha de vencimiento (más vieja primero)
+  // Ordenar invoices de cada cliente por fecha de vencimiento y, a igual
+  // vencimiento, por número de factura (comparación numérica: F-9 < F-10).
   for (const client of clientsMap.values()) {
-    client.invoices.sort((a, b) => a.daysOverdue - b.daysOverdue);
+    client.invoices.sort(
+      (a, b) =>
+        a.daysOverdue - b.daysOverdue ||
+        a.invoiceNumber.localeCompare(b.invoiceNumber, undefined, {
+          numeric: true,
+        }),
+    );
   }
 
   return {
