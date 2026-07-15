@@ -1,14 +1,15 @@
 /**
- * /financiero/costos/[groupId] — Vendors hitting a single COGS account.
+ * /financiero/costos/[groupId] — desglose de una cuenta COGS.
  *
- * groupId is the QB account leaf ID picked from the accordion at the parent
- * screen. Transactions come from QB reports/TransactionList filtered by
- * account and are aggregated by vendor (name) into rows.
+ * groupId es el id de cuenta hoja; se llega tocando un proveedor en el
+ * acordeón del index (que pasa `?vendor=` para preseleccionarlo).
+ * Los movimientos vienen de reports/GeneralLedger filtrado por cuenta.
  *
  * Layout:
- *   - Pinned: OrHighlightedBarChartCard, one bar per top vendor. The bar of
- *     the selected vendor gets a small dot indicator above it.
- *   - Scrollable: OrTercerosList (search + outline-on-select row list).
+ *   - Pinned: OrHighlightedBarChartCard, una barra por PROVEEDOR (mismo
+ *     agregado que la lista). La barra del proveedor seleccionado se
+ *     marca con un punto.
+ *   - Scrollable: OrTercerosList (proveedores agregados de la cuenta).
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
@@ -20,11 +21,11 @@ import {
 import { OrTercerosList } from "@/src/components/organisms/or-terceros-list";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
+import { useQBGeneralLedger } from "@/src/hooks/queries/use-qb-general-ledger";
 import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
-import { useQBTransactionList } from "@/src/hooks/queries/use-qb-transaction-list";
 import {
   findPnLLeafById,
-  normalizeTransactionList,
+  normalizeGeneralLedgerByAccount,
 } from "@/src/services/quickbooks/normalizer";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
@@ -71,7 +72,10 @@ function aggregateVendors(
 }
 
 export default function CostosCuentaDetalleScreen() {
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const { groupId, vendor } = useLocalSearchParams<{
+    groupId: string;
+    vendor?: string;
+  }>();
   const decodedGroupId = decodeURIComponent(groupId ?? "");
 
   const period = useFiltersStore((s) => s.activePeriod);
@@ -91,47 +95,41 @@ export default function CostosCuentaDetalleScreen() {
     [pnl.data, decodedGroupId],
   );
 
-  const txList = useQBTransactionList({
-    accountId: decodedGroupId,
+  const gl = useQBGeneralLedger({
+    accountIds: [decodedGroupId],
     start_date: period.start,
     end_date: period.end,
   });
 
-  const transactions = useMemo(
-    () => normalizeTransactionList(txList.data ?? null),
-    [txList.data],
-  );
+  const transactions = useMemo(() => {
+    const grouped = normalizeGeneralLedgerByAccount(gl.data ?? null);
+    return (
+      grouped.find((a) => a.accountId === decodedGroupId)?.transactions ??
+      grouped.flatMap((a) => a.transactions)
+    );
+  }, [gl.data, decodedGroupId]);
 
   const vendors = useMemo(() => aggregateVendors(transactions), [transactions]);
 
   const groupLabel = account?.label ?? decodedGroupId;
   const groupAmount = account?.amount ?? 0;
 
-  /** One bar per QB transaction (factura), capped at the top N by magnitude
-   *  so the chart layout stays legible. Magnitude is used by the chart so
-   *  signed values render upward. */
+  /** Una barra por PROVEEDOR (el mismo agregado que la lista de abajo),
+   *  capped at the top N by magnitude so the chart layout stays legible. */
   const bars: HighlightedBarChartPoint[] = useMemo(
     () =>
-      [...transactions]
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .slice(0, MAX_CHART_BARS)
-        .map((tx) => ({
-          id: tx.id,
-          label: tx.num || tx.name || tx.date,
-          value: tx.amount,
-        })),
-    [transactions],
+      vendors.slice(0, MAX_CHART_BARS).map((v) => ({
+        id: v.id,
+        label: v.name,
+        value: v.amount,
+      })),
+    [vendors],
   );
 
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-
-  /** Transaction IDs that belong to the selected vendor (matched by name). */
-  const highlightedTxIds = useMemo(() => {
-    if (!selectedVendorId) return [];
-    return transactions
-      .filter((tx) => (tx.name || "—") === selectedVendorId)
-      .map((tx) => tx.id);
-  }, [transactions, selectedVendorId]);
+  // Proveedor preseleccionado desde el index (?vendor=).
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(
+    vendor ? decodeURIComponent(vendor) : null,
+  );
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
@@ -143,7 +141,7 @@ export default function CostosCuentaDetalleScreen() {
   );
 
   const isPnLLoading = pnl.isLoading;
-  const isTxLoading = txList.isLoading;
+  const isTxLoading = gl.isLoading;
 
   return (
     <TmConsolidatedDetail
@@ -161,9 +159,9 @@ export default function CostosCuentaDetalleScreen() {
           <OrHighlightedBarChartCard
             title={groupLabel}
             amount={groupAmount}
-            deltaPercent={0}
+            deltaPercent={null}
             bars={bars}
-            highlightedIds={highlightedTxIds}
+            highlightedId={selectedVendorId ?? undefined}
             highlightMode="dot"
           />
         )

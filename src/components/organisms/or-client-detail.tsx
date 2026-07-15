@@ -280,6 +280,13 @@ export function OrClientDetail({
 
   const chartCategory = METRIC_TO_CATEGORY[selectedMetric];
 
+  // Cartera seleccionada: el header y la gráfica dejan de reflejar la
+  // categoría P&L. Sin cartera (null o 0) todo se fuerza a 0; con cartera
+  // se muestra el saldo QB con flecha según su signo (QB solo expone el
+  // saldo actual, no hay serie histórica para un trend real).
+  const carteraSelected = selectedMetric === "cartera";
+  const hasCartera = cartera != null && cartera !== 0;
+
   const hasNoActivity =
     !!summary &&
     summary.ingresos === 0 &&
@@ -337,9 +344,15 @@ export function OrClientDetail({
           }
           period={activePeriodKey}
           centroCosto={centroCosto}
-          headerValueOverride={
-            selectedMetric === "cartera" ? cartera : undefined
+          headerValueOverride={carteraSelected ? (cartera ?? 0) : undefined}
+          headerTrend={
+            carteraSelected && hasCartera
+              ? cartera > 0
+                ? "up"
+                : "down"
+              : null
           }
+          zeroData={carteraSelected && !hasCartera}
         />
       </View>
 

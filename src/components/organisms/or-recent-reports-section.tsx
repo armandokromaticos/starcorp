@@ -3,6 +3,8 @@
  *
  * "Reportes más recientes" del dashboard — lista vertical de
  * departamentos → proyectos → tareas (alimentada por NexiaTask).
+ * Preview acotado: por departamento se muestran los 2 primeros
+ * proyectos, cada uno con sus 3 primeras tareas.
  *
  * Comparte source of truth y componentes con la pantalla /reportes:
  * usa el mismo hook (useNexiataskResponsibilities) y la misma fila
@@ -27,33 +29,44 @@ import type {
 
 const CARD_BG = '#1C224D';
 const CARD_RADIUS = 8;
-// Marco blanco que envuelve la card azul.
+// Marco blanco que envuelve las cards azules.
 const OUTER_CARD_BG = '#FFFFFF';
 const OUTER_CARD_RADIUS = 12;
+const HEADER_TEXT_COLOR = '#1A2440';
 const MAX_DEPARTAMENTOS = 3;
-const MAX_TAREAS_POR_DEPTO = 4;
+const MAX_PROYECTOS_POR_DEPTO = 2;
+const MAX_TAREAS_POR_PROYECTO = 3;
+
+interface ProyectoPreview {
+  id: string;
+  titulo: string;
+  tareas: NexiataskTarea[];
+  totalTareas: number;
+}
 
 interface DeptoPreview {
   id: string;
   nombre: string;
   icon: NexiataskDepartamento['icon'];
-  tareas: NexiataskTarea[];
-  totalTareas: number;
+  proyectos: ProyectoPreview[];
 }
 
 function buildPreview(
   departamentos: readonly NexiataskDepartamento[],
 ): DeptoPreview[] {
-  return departamentos.slice(0, MAX_DEPARTAMENTOS).map((dept) => {
-    const allTareas = dept.proyectos.flatMap((p) => p.tareas);
-    return {
-      id: dept.id,
-      nombre: dept.nombre,
-      icon: dept.icon,
-      tareas: allTareas.slice(0, MAX_TAREAS_POR_DEPTO),
-      totalTareas: allTareas.length,
-    };
-  });
+  return departamentos.slice(0, MAX_DEPARTAMENTOS).map((dept) => ({
+    id: dept.id,
+    nombre: dept.nombre,
+    icon: dept.icon,
+    proyectos: dept.proyectos
+      .slice(0, MAX_PROYECTOS_POR_DEPTO)
+      .map((proyecto) => ({
+        id: proyecto.id,
+        titulo: proyecto.titulo,
+        tareas: proyecto.tareas.slice(0, MAX_TAREAS_POR_PROYECTO),
+        totalTareas: proyecto.tareas.length,
+      })),
+  }));
 }
 
 export const OrRecentReportsSection = memo(() => {
@@ -102,14 +115,24 @@ export const OrRecentReportsSection = memo(() => {
         </View>
       ) : (
         <>
-          <View className="gap-4 px-4">
-            {previews.map((preview) => (
-              <DepartmentCard
-                key={preview.id}
-                preview={preview}
-                onTareaPress={handleTareaPress}
-              />
-            ))}
+          <View className="px-4">
+            <View
+              className="p-3 gap-4"
+              style={{
+                backgroundColor: OUTER_CARD_BG,
+                borderRadius: OUTER_CARD_RADIUS,
+                borderCurve: 'continuous',
+                boxShadow: '0 4px 12px rgba(15, 27, 74, 0.12)',
+              }}
+            >
+              {previews.map((preview) => (
+                <DepartmentCard
+                  key={preview.id}
+                  preview={preview}
+                  onTareaPress={handleTareaPress}
+                />
+              ))}
+            </View>
           </View>
 
           {/* Footer CTA — mismo estilo que "Ver clientes" del dashboard */}
@@ -154,59 +177,79 @@ interface DepartmentCardProps {
 
 const DepartmentCard = memo<DepartmentCardProps>(
   ({ preview, onTareaPress }) => {
-    const shown = preview.tareas.length;
-    const total = preview.totalTareas;
-    const countLabel =
-      total > shown
-        ? `${shown} de ${total} tareas`
-        : `${shown} ${shown === 1 ? 'Tarea' : 'Tareas'}`;
-
     return (
-      <View
-        className="p-2"
-        style={{
-          backgroundColor: OUTER_CARD_BG,
-          borderRadius: OUTER_CARD_RADIUS,
-          borderCurve: 'continuous',
-          boxShadow: '0 4px 12px rgba(15, 27, 74, 0.12)',
-        }}
-      >
-        <View
-          className="p-4 gap-3"
-          style={{
-            backgroundColor: CARD_BG,
-            borderRadius: CARD_RADIUS,
-            borderCurve: 'continuous',
-          }}
-        >
-          <View className="flex-row justify-between items-center">
-            <View className="flex-row items-center gap-2 flex-1">
-              <AtIcon name={preview.icon} size={18} color="#FFFFFF" />
-              <AtTypography
-                variant="bodyBold"
-                color="#FFFFFF"
-                numberOfLines={1}
-              >
-                {preview.nombre}
-              </AtTypography>
-            </View>
-            <AtTypography variant="caption" color="#8FA0D6">
-              {countLabel}
-            </AtTypography>
-          </View>
-
-          <View className="gap-4">
-            {preview.tareas.map((tarea) => (
-              <MlTaskRow
-                key={tarea.id}
-                tarea={tarea}
-                onPress={() => onTareaPress(tarea.id)}
-              />
-            ))}
-          </View>
+      <View className="gap-3">
+        <View className="flex-row items-center gap-2 px-1">
+          <AtIcon name={preview.icon} size={18} color={HEADER_TEXT_COLOR} />
+          <AtTypography
+            variant="bodyBold"
+            color={HEADER_TEXT_COLOR}
+            numberOfLines={1}
+            className="flex-1"
+          >
+            {preview.nombre}
+          </AtTypography>
         </View>
+
+        {preview.proyectos.map((proyecto) => (
+          <ProyectoCard
+            key={proyecto.id}
+            proyecto={proyecto}
+            onTareaPress={onTareaPress}
+          />
+        ))}
       </View>
     );
   },
 );
 DepartmentCard.displayName = 'DepartmentCard';
+
+interface ProyectoCardProps {
+  proyecto: ProyectoPreview;
+  onTareaPress: (tareaId: string) => void;
+}
+
+const ProyectoCard = memo<ProyectoCardProps>(({ proyecto, onTareaPress }) => {
+  const shown = proyecto.tareas.length;
+  const total = proyecto.totalTareas;
+  const countLabel =
+    total > shown
+      ? `${shown} de ${total} tareas`
+      : `${shown} ${shown === 1 ? 'Tarea' : 'Tareas'}`;
+
+  return (
+    <View
+      className="p-3 gap-3"
+      style={{
+        backgroundColor: CARD_BG,
+        borderRadius: CARD_RADIUS,
+        borderCurve: 'continuous',
+      }}
+    >
+      <View className="flex-row justify-between items-center gap-2">
+        <AtTypography
+          variant="bodyBold"
+          color="#FFFFFF"
+          numberOfLines={1}
+          className="flex-1"
+        >
+          {proyecto.titulo}
+        </AtTypography>
+        <AtTypography variant="caption" color="#8FA0D6">
+          {countLabel}
+        </AtTypography>
+      </View>
+
+      <View className="gap-3">
+        {proyecto.tareas.map((tarea) => (
+          <MlTaskRow
+            key={tarea.id}
+            tarea={tarea}
+            onPress={() => onTareaPress(tarea.id)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+});
+ProyectoCard.displayName = 'ProyectoCard';

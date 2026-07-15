@@ -9,32 +9,42 @@ import type { QBTransactionListRaw } from '@/src/types/api.types';
 import { queryKeys } from './query-keys';
 
 interface Params {
-  accountId: string;
+  /** QB account leaf ids. GL acepta lista separada por comas. */
+  accountIds: string[];
   start_date: string;
   end_date: string;
 }
 
 const TX_COLUMNS = 'tx_date,txn_type,doc_num,name,memo,subt_nat_amount';
 
-export function useQBTransactionList(params: Params) {
+/**
+ * Movimientos de una o varias cuentas vía reports/GeneralLedger.
+ *
+ * OJO: reports/TransactionList NO soporta el filtro `account` — lo ignora
+ * silenciosamente y devuelve todas las transacciones del periodo.
+ * GeneralLedger sí filtra por account id(s) y agrupa las filas en
+ * secciones por cuenta (ver normalizeGeneralLedgerByAccount).
+ */
+export function useQBGeneralLedger(params: Params) {
   const realmId = useQBStore((s) => s.activeRealmId);
+  const accountIds = params.accountIds.join(',');
 
   return useQuery({
     queryKey: [
-      ...queryKeys.qbTransactionList(
-        params.accountId,
+      ...queryKeys.qbGeneralLedger(
+        accountIds,
         params.start_date,
         params.end_date,
       ),
       realmId ?? 'default',
     ],
-    enabled: Boolean(params.accountId),
+    enabled: accountIds.length > 0,
     queryFn: async () => {
       try {
         return await qbQuery<QBTransactionListRaw>(
-          'reports/TransactionList',
+          'reports/GeneralLedger',
           {
-            account: params.accountId,
+            account: accountIds,
             start_date: params.start_date,
             end_date: params.end_date,
             columns: TX_COLUMNS,

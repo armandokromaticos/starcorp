@@ -279,32 +279,35 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
             {selectedIndex != null ? (
               <Pressable
                 onPress={() => onSelectChange?.(null)}
-                className="flex-row items-center gap-2"
+                className="items-center"
                 style={{ flexShrink: 1, maxWidth: '100%' }}
                 hitSlop={6}
               >
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: data[selectedIndex].color,
-                    flexShrink: 0,
-                  }}
-                />
-                <AtTypography
-                  variant="bodyBold"
-                  color="#1A1F36"
-                  numberOfLines={1}
-                  style={{ flexShrink: 1 }}
-                >
-                  {data[selectedIndex].label}
-                </AtTypography>
+                {/* Fila: dot + nombre; el valor va debajo */}
+                <View className="flex-row items-center gap-2">
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: data[selectedIndex].color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <AtTypography
+                    variant="bodyBold"
+                    color="#1A1F36"
+                    numberOfLines={1}
+                    style={{ flexShrink: 1 }}
+                  >
+                    {data[selectedIndex].label}
+                  </AtTypography>
+                </View>
                 <AtTypography
                   variant="caption"
                   color="#8892A4"
                   numberOfLines={1}
-                  style={{ fontVariant: ['tabular-nums'], flexShrink: 0 }}
+                  style={{ fontVariant: ['tabular-nums'] }}
                 >
                   {valueFormatter
                     ? valueFormatter(data[selectedIndex].value)

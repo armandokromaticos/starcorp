@@ -2,7 +2,8 @@
  * Molecule: MlTaskRow
  *
  * Fila de tarea dentro de un proyecto: check + título + flecha arriba,
- * pill de cumplimiento, y card blanca interna con fecha + descripción.
+ * pill de cumplimiento, y card blanca interna con fecha + descripción
+ * de la semana + objetivo de la tarea (mismo campo que el detalle).
  *
  * Reutilizada en /reportes (lista) y en el dashboard "Reportes recientes".
  */
@@ -14,9 +15,7 @@ import { Pressable, View } from "@/src/tw";
 import type { NexiataskTarea } from "@/src/types/nexiatask.types";
 import React, { memo } from "react";
 
-const INNER_CARD_BG = "#0C2B78";
 const INNER_CARD_RADIUS = 8;
-const DATE_BOX_BG = "#FFFFFF";
 const DATE_NUMBER_COLOR = "#5B82E6";
 
 interface MlTaskRowProps {
@@ -31,6 +30,7 @@ function isCompletedState(estado: string): boolean {
 
 export const MlTaskRow = memo<MlTaskRowProps>(({ tarea, onPress }) => {
   const completed = isCompletedState(tarea.estado);
+  const objetivo = tarea.raw.objetivo?.trim();
 
   return (
     <Pressable onPress={onPress} className="gap-2 bg-[#0C2B78] p-4 rounded-md">
@@ -83,6 +83,11 @@ export const MlTaskRow = memo<MlTaskRowProps>(({ tarea, onPress }) => {
           <AtTypography variant="caption" color="#424654">
             {tarea.seguimiento}
           </AtTypography>
+          {!!objetivo && (
+            <AtTypography variant="caption" color="#424654" className="mt-1.5">
+              {objetivo}
+            </AtTypography>
+          )}
         </View>
       </View>
     </Pressable>

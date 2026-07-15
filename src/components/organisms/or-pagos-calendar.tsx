@@ -150,9 +150,11 @@ export const OrPagosCalendar = memo<OrPagosCalendarProps>(
           </Pressable>
         </View>
 
+        {/* Cada columna (header y celdas) mide exactamente 100/7% del ancho,
+            así el día 1 queda siempre en la misma columna que el 8. */}
         <View className="flex-row">
           {WEEKDAY_HEADERS.map((w, i) => (
-            <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+            <View key={i} style={{ width: COL_WIDTH, alignItems: 'center' }}>
               <AtTypography variant="caption" color="#8892A4">
                 {w}
               </AtTypography>
@@ -160,9 +162,9 @@ export const OrPagosCalendar = memo<OrPagosCalendarProps>(
           ))}
         </View>
 
-        <View className="gap-1">
+        <View>
           {Array.from({ length: cells.length / 7 }).map((_, rowIdx) => (
-            <View key={rowIdx} className="flex-row gap-1">
+            <View key={rowIdx} className="flex-row">
               {cells.slice(rowIdx * 7, rowIdx * 7 + 7).map((cell, colIdx) => (
                 <DayCell
                   key={`${rowIdx}-${colIdx}`}
@@ -214,64 +216,74 @@ interface DayCellProps {
   onPress?: () => void;
 }
 
+/**
+ * Ancho de columna fijo: el reparto por flex (incluso con flexBasis 0)
+ * resultaba sensible al contenido en web y desfasaba las filas parciales.
+ * Con un ancho porcentual explícito, header y todas las filas comparten
+ * exactamente las mismas 7 columnas. El espaciado entre celdas es el
+ * padding interno del slot (2px por lado = 4px entre recuadros).
+ */
+const COL_WIDTH = `${100 / 7}%` as const;
+
+const SLOT_STYLE = {
+  width: COL_WIDTH,
+  height: 60,
+  padding: 2,
+} as const;
+
 const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress }) => {
   if (!cell) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          aspectRatio: 1,
-          backgroundColor: 'transparent',
-        }}
-      />
-    );
+    return <View style={SLOT_STYLE} />;
   }
   if (cell.total === 0) {
     return (
-      <View
-        style={{
-          flex: 1,
-          aspectRatio: 1,
-          backgroundColor: '#F3F4F6',
-          borderRadius: 6,
-          padding: 4,
-          borderCurve: 'continuous',
-        }}
-      >
-        <AtTypography variant="caption" color="#8892A4">
-          {cell.day}
-        </AtTypography>
+      <View style={SLOT_STYLE}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#F3F4F6',
+            borderRadius: 6,
+            padding: 4,
+            borderCurve: 'continuous',
+          }}
+        >
+          <AtTypography variant="caption" color="#8892A4">
+            {cell.day}
+          </AtTypography>
+        </View>
       </View>
     );
   }
   const tone = MONTO_BUCKET_COLOR[cell.bucket];
   const Wrapper = onPress ? Pressable : View;
   return (
-    <Wrapper
-      onPress={onPress}
-      style={{
-        flex: 1,
-        aspectRatio: 1,
-        backgroundColor: tone.bg,
-        borderRadius: 6,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? '#1A1F36' : tone.border,
-        padding: 4,
-        borderCurve: 'continuous',
-        justifyContent: 'space-between',
-      }}
-    >
-      <AtTypography variant="captionBold" color={tone.text}>
-        {cell.day}
-      </AtTypography>
-      <AtTypography
-        variant="caption"
-        color={tone.text}
-        style={{ fontSize: 10 }}
+    <View style={SLOT_STYLE}>
+      <Wrapper
+        onPress={onPress}
+        style={{
+          flex: 1,
+          backgroundColor: tone.bg,
+          borderRadius: 6,
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? '#1A1F36' : tone.border,
+          padding: 4,
+          borderCurve: 'continuous',
+          justifyContent: 'space-between',
+        }}
       >
-        {formatCompactMoney(cell.total)}
-      </AtTypography>
-    </Wrapper>
+        <AtTypography variant="captionBold" color={tone.text} numberOfLines={1}>
+          {cell.day}
+        </AtTypography>
+        <AtTypography
+          variant="caption"
+          color={tone.text}
+          numberOfLines={1}
+          style={{ fontSize: 10 }}
+        >
+          {formatCompactMoney(cell.total)}
+        </AtTypography>
+      </Wrapper>
+    </View>
   );
 });
 
