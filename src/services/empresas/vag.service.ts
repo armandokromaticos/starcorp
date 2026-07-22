@@ -3,9 +3,11 @@
  *
  * Fuente real: RPCs get_vag_* sobre vag_activos/vag_movimientos (sync
  * diario de las tablas curadas ListadoActivosVag y MovimientosVag de
- * Power BI vía pbi-sync-vag). Cuentas por cobrar / por pagar aún no
- * tienen fuente → mock; el resumen del hub mezcla RPC (activos y
- * movimientos) con el mock (CxC/CxP).
+ * Power BI vía pbi-sync-vag). Cuentas por cobrar/por pagar salen de
+ * vag_movimientos filtrado por CENTRO DE COSTO = "Cuentas por Cobrar" /
+ * "Cuentas por pagar" y agrupado por tercero (get_vag_cuentas, migración
+ * 0037); esas filas son saldos de corte, no gastos, así que
+ * get_vag_movimientos/get_vag_resumen las excluyen del cálculo normal.
  */
 
 import { supabase } from '@/src/config/supabase';
@@ -33,6 +35,8 @@ interface RpcMetric {
 interface RpcResumen {
   activos: RpcMetric;
   movimientos: RpcMetric;
+  cuentas_cobrar: RpcMetric;
+  cuentas_pagar: RpcMetric;
 }
 
 interface RpcActivoMovimiento {
@@ -73,6 +77,22 @@ interface RpcMovimiento {
   observaciones: string;
 }
 
+interface RpcCuentaMovimiento {
+  id: string;
+  tipo: string;
+  monto: number;
+  movimientoId: string;
+}
+
+interface RpcCuenta {
+  id: string;
+  nombre: string;
+  saldo: number;
+  cuenta: string;
+  direccion: string | null;
+  movimientos: RpcCuentaMovimiento[];
+}
+
 /** ISO yyyy-mm-dd → dd/mm/yyyy (formato de las cards). */
 function formatFecha(iso: string | null): string | null {
   if (!iso) return null;
@@ -89,13 +109,11 @@ async function fetchResumen(): Promise<VagResumen> {
     total: Number(m.total),
     deltaPct: Number(m.delta_pct),
   });
-  // CxC/CxP sin fuente aún → métricas del mock.
-  const mock = getVagResumenMock();
   return {
     activos: metric(r.activos),
     movimientos: metric(r.movimientos),
-    cuentasCobrar: mock.cuentasCobrar,
-    cuentasPagar: mock.cuentasPagar,
+    cuentasCobrar: metric(r.cuentas_cobrar),
+    cuentasPagar: metric(r.cuentas_pagar),
   };
 }
 
@@ -138,6 +156,26 @@ async function fetchActivos(): Promise<VagActivo[]> {
   }));
 }
 
+async function fetchCuentas(tipo: VagCuentaTipo): Promise<VagCuenta[]> {
+  const { data, error } = await supabase.rpc('get_vag_cuentas', {
+    p_tipo: tipo,
+  });
+  if (error) throw new Error(`get_vag_cuentas: ${error.message}`);
+  return (data as RpcCuenta[]).map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    saldo: Number(c.saldo),
+    cuenta: c.cuenta,
+    direccion: c.direccion,
+    movimientos: c.movimientos.map((m) => ({
+      id: m.id,
+      tipo: m.tipo,
+      monto: Number(m.monto),
+      movimientoId: m.movimientoId,
+    })),
+  }));
+}
+
 async function fetchMovimientos(): Promise<VagMovimiento[]> {
   const { data, error } = await supabase.rpc('get_vag_movimientos');
   if (error) throw new Error(`get_vag_movimientos: ${error.message}`);
@@ -166,10 +204,6 @@ export function getVagMovimientos(): Promise<VagMovimiento[]> {
   return withMock(fetchMovimientos, getVagMovimientosMock);
 }
 
-// Cuentas por cobrar / por pagar: sin fuente aún → mock siempre (con una
-// latencia corta para que el skeleton se vea natural).
 export function getVagCuentas(tipo: VagCuentaTipo): Promise<VagCuenta[]> {
-  return new Promise((resolve) =>
-    setTimeout(() => resolve(getVagCuentasMock(tipo)), 250),
-  );
+  return withMock(() => fetchCuentas(tipo), () => getVagCuentasMock(tipo));
 }

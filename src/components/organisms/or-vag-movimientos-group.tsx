@@ -28,6 +28,8 @@ interface OrVagMovimientosGroupProps {
   initiallyExpanded?: boolean;
   /** id del movimiento a resaltar en naranja (focus mode). */
   highlightedId?: string;
+  /** Oculta el "(n)" y el mes del título (focus mode: un solo movimiento). */
+  hideMeta?: boolean;
 }
 
 /** '2026-01-07' → '7/1/2026' (como el mockup). */
@@ -37,7 +39,14 @@ function formatFecha(iso: string): string {
 }
 
 export const OrVagMovimientosGroup = memo<OrVagMovimientosGroupProps>(
-  ({ nombre, monthLabel, movimientos, initiallyExpanded = false, highlightedId }) => {
+  ({
+    nombre,
+    monthLabel,
+    movimientos,
+    initiallyExpanded = false,
+    highlightedId,
+    hideMeta = false,
+  }) => {
     const [expanded, setExpanded] = useState(initiallyExpanded);
 
     const total = movimientos.reduce((s, m) => s + m.valor, 0);
@@ -63,12 +72,14 @@ export const OrVagMovimientosGroup = memo<OrVagMovimientosGroupProps>(
         >
           <View className="flex-1 pr-2">
             <AtTypography variant="bodyBold" color="#1A1F36" numberOfLines={1}>
-              {nombre} ({movimientos.length})
+              {hideMeta ? nombre : `${nombre} (${movimientos.length})`}
             </AtTypography>
           </View>
-          <AtTypography variant="caption" color="#4A5568">
-            {monthLabel}
-          </AtTypography>
+          {!hideMeta && (
+            <AtTypography variant="caption" color="#4A5568">
+              {monthLabel}
+            </AtTypography>
+          )}
           <View className="flex-1 flex-row items-center justify-end gap-2 pl-2">
             <AtTypography
               variant="captionBold"
