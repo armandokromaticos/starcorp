@@ -1,13 +1,14 @@
 /**
  * pbi-sync-vag — staging de las tablas curadas de VAG en Power BI:
  * ListadoActivosVag → vag_activos (ficha completa de cada activo) y
- * MovimientosVag → vag_movimientos (movimientos por centro de costo).
- * Son tablas chicas (~15 y ~100 filas): cada corrida trae todo, upserta
- * (activos por codigo; movimientos insert) y poda synced_at viejo.
+ * MovimientosVag → vag_movimientos (movimientos por centro de costo,
+ * incluye las filas de Cuentas por Cobrar/Pagar bajo CENTRO DE COSTO —
+ * ver get_vag_cuentas en la migración 0037). Son tablas chicas
+ * (~15 y ~100-120 filas): cada corrida trae todo, upserta (activos por
+ * codigo; movimientos insert) y poda synced_at viejo.
  *
  * OJO: NO usa AuxiliarVAG (fue un error inicial — esa tabla es el
- * auxiliar contable, desactualizado y con otro grano). Cuentas por
- * cobrar/pagar aún no tienen fuente.
+ * auxiliar contable, desactualizado y con otro grano).
  *
  * Los nombres de columna del origen pueden venir con mojibake
  * ("Fecha de AdquisiciÃ³n") y los montos como texto con puntos de miles
@@ -137,16 +138,22 @@ function parseMoneyCo(v: unknown): number | null {
   return negParen ? -n : n;
 }
 
-/** "26/08/2020", "2026-01-14T...", Date → ISO yyyy-mm-dd. "0"/vacío → null. */
+/**
+ * "8/26/2020" (m/d/yyyy, formato US del origen — confirmado 2026-07-22:
+ * "8/26/2020" = 26 de agosto; el dataset cambió de dd/mm/yyyy a m/d/yyyy
+ * en algún momento, probablemente al re-publicar el reporte con las
+ * cuentas por cobrar/pagar), "2026-01-14T...", Date → ISO yyyy-mm-dd.
+ * "0"/vacío → null.
+ */
 function toIsoDate(v: unknown): string | null {
   if (!v) return null;
   if (v instanceof Date) return v.toISOString().slice(0, 10);
   const s = String(v).trim();
   if (!s || s === "0") return null;
   if (s.length >= 10 && s[4] === "-" && s[7] === "-") return s.slice(0, 10);
-  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (dmy) {
-    const [, d, m, y] = dmy;
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const [, m, d, y] = mdy;
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }
   const parsed = new Date(s);
