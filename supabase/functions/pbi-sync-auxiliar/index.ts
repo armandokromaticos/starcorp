@@ -3,6 +3,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/.default";
 const CHUNK = 2000;
 const DEFAULT_LOOKBACK_DAYS = 90;
+// Tamaño de lote y tope de pasadas del prune. 40 × 2000 = 80k filas por
+// corrida; si se llega al tope, lo que sobra lo limpia la corrida siguiente.
+const PRUNE_BATCH = 2000;
+const PRUNE_MAX_PASSES = 40;
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -382,16 +386,40 @@ Deno.serve(async (req) => {
     // synced_at was not returned by this run's Auxiliar query, so it's an
     // adjusted-away version or a deleted line. Guard on a non-empty fetch so a
     // transient empty PBI response can never wipe the whole range.
+    //
+    // Va por lotes (prune_accounting_stale) porque el DELETE del rango completo
+    // expiraba por statement timeout: la fila vieja y la re-auditada quedaban
+    // conviviendo e inflaban los totales del mes hasta un 30%.
     let deleted = 0;
+    let pruneTruncated = false;
     if (unique.length > 0) {
-      const { error: delErr, count } = await admin
-        .from("accounting_entries")
-        .delete({ count: "exact" })
-        .gte("fecha", from.toISOString().slice(0, 10))
-        .lt("fecha", to.toISOString().slice(0, 10))
-        .lt("synced_at", runIso);
-      if (delErr) throw new Error(`prune stale: ${delErr.message}`);
-      deleted = count ?? 0;
+      const fromIso = from.toISOString().slice(0, 10);
+      const toIso = to.toISOString().slice(0, 10);
+      pruneTruncated = true;
+      for (let pass = 0; pass < PRUNE_MAX_PASSES; pass++) {
+        const { data: batchDeleted, error: delErr } = await admin.rpc(
+          "prune_accounting_stale",
+          {
+            p_from: fromIso,
+            p_to: toIso,
+            p_before: runIso,
+            p_limit: PRUNE_BATCH,
+          },
+        );
+        if (delErr) throw new Error(`prune stale: ${delErr.message}`);
+        const n = (batchDeleted as number | null) ?? 0;
+        deleted += n;
+        if (n < PRUNE_BATCH) {
+          pruneTruncated = false;
+          break;
+        }
+      }
+      if (pruneTruncated) {
+        console.warn(
+          `prune stale: se alcanzó el tope de ${PRUNE_MAX_PASSES} lotes ` +
+            `(${deleted} filas); el resto queda para la próxima corrida`,
+        );
+      }
     }
 
     const { error: refErr } = await admin.rpc("refresh_mv_monthly_summary");
@@ -406,7 +434,8 @@ Deno.serve(async (req) => {
         rows_fetched: rowsFetched,
         rows_upserted: upserted,
         duration_ms: duration,
-        error_message: `range=${rangeLabel}; pruned=${deleted}`,
+        error_message: `range=${rangeLabel}; pruned=${deleted}` +
+          (pruneTruncated ? "; prune_truncated" : ""),
       })
       .eq("id", logId);
 
