@@ -49,10 +49,25 @@ function closedMonths(
 }
 
 /**
- * Compute the same-length window immediately preceding the given range.
- * Used to derive a previous-period baseline for delta % calculations.
+ * Ventana histórica contra la que se compara el periodo activo.
+ *
+ * 1m / 3m / 12m usan la MISMA ventana un año atrás (espejo): julio 2026 compara
+ * contra julio 2025, no contra junio 2026. Es el mismo criterio que aplican los
+ * RPCs del consolidado (migración 0045).
+ *
+ * `today` (mes corriente) y `1w` siguen comparando contra la ventana
+ * inmediatamente anterior del mismo largo: una semana contra la misma semana
+ * del año pasado no alinea los días de la semana y el delta sale ruidoso.
  */
 export function computePreviousPeriod(current: PeriodRange): PeriodRange {
+  if (current.key === '1m' || current.key === '3m' || current.key === '12m') {
+    return {
+      key: current.key,
+      start: shiftIsoMonths(current.start, -12),
+      end: shiftIsoMonths(current.end, -12),
+    };
+  }
+
   const dayMs = 24 * 60 * 60 * 1000;
   const startD = new Date(`${current.start}T00:00:00Z`);
   const endD = new Date(`${current.end}T00:00:00Z`);
@@ -67,6 +82,22 @@ export function computePreviousPeriod(current: PeriodRange): PeriodRange {
     start: toISODate(prevStart),
     end: toISODate(prevEnd),
   };
+}
+
+/**
+ * Desplaza una fecha ISO N meses, en UTC y por partes. Si el día no existe en
+ * el mes destino (29-feb hacia un año no bisiesto) JS desborda al mes
+ * siguiente, así que se corrige al último día del mes destino.
+ */
+function shiftIsoMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const targetMonth = (m ?? 1) - 1 + months;
+  const dt = new Date(Date.UTC(y ?? 1970, targetMonth, d ?? 1));
+  const expectedMonth = ((targetMonth % 12) + 12) % 12;
+  if (dt.getUTCMonth() !== expectedMonth) dt.setUTCDate(0);
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${dt.getUTCFullYear()}-${mm}-${dd}`;
 }
 
 function toISODate(d: Date): string {
