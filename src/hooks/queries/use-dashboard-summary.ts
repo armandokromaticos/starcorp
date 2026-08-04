@@ -15,6 +15,8 @@ interface DashboardSummaryRow {
   ingresos_prev: number | string;
   costos_prev: number | string;
   gastos_prev: number | string;
+  utilidad: number | string;
+  utilidad_prev: number | string;
 }
 
 export interface DashboardSummary {
@@ -69,8 +71,13 @@ export function useDashboardSummary(
       const ingresosPrev = Number(row.ingresos_prev);
       const costosPrev = Number(row.costos_prev);
       const gastosPrev = Number(row.gastos_prev);
-      const utilidad = ingresos - costos - gastos;
-      const utilidadPrev = ingresosPrev - costosPrev - gastosPrev;
+      // La utilidad NO se deriva de los tres totales: el informe de Power BI la
+      // saca de la medida [UTILIDAD], que suma `saldo_final` con signo, mientras
+      // que ingresos/costos/gastos vienen de `saldo_final_ajustado` (= ABS). Por
+      // eso el RPC la devuelve calculada aparte y aquí sólo se lee. Ver la
+      // migración 0042_utilidad_con_signo.sql.
+      const utilidad = Number(row.utilidad);
+      const utilidadPrev = Number(row.utilidad_prev);
 
       return {
         periodStart: row.period_start,
