@@ -15,22 +15,34 @@ import type { PresupuestoEjecucion } from '@/src/types/presupuesto.types';
 
 interface OrPresupuestoGaugeCardProps {
   ejecucion: PresupuestoEjecucion;
+  /** Mes resuelto ("Junio 2026"); el período depende de los datos cargados. */
+  periodoLabel?: string;
 }
 
 const MAX_GAUGE_WIDTH = 280;
 
-/** "$882.62 mil" — escala en miles, dos decimales (como el mockup). */
-function formatMil(value: number): string {
-  return `$${(value / 1000).toFixed(2)} mil`;
+/** Naranja de sobre-ejecución (ejecutado > proyectado). */
+const OVER_COLOR = '#C2410C';
+
+/** "$1.06M" / "$882.62k" — los montos de PROYECCION vienen en unidades reales. */
+function formatCompact(value: number): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(2)}k`;
+  return `${sign}$${abs.toFixed(2)}`;
 }
 
 export const OrPresupuestoGaugeCard = memo<OrPresupuestoGaugeCardProps>(
-  ({ ejecucion }) => {
+  ({ ejecucion, periodoLabel }) => {
     const [containerWidth, setContainerWidth] = useState(0);
     const gaugeWidth = Math.min(
       MAX_GAUGE_WIDTH,
       Math.max(0, containerWidth - 32),
     );
+    // El arco se detiene en 100%; sin este texto la sobre-ejecución quedaría
+    // invisible (un mes al 120% se ve igual que uno al 100%).
+    const overExec = ejecucion.pctReal > 100;
 
     return (
       <View
@@ -47,6 +59,11 @@ export const OrPresupuestoGaugeCard = memo<OrPresupuestoGaugeCardProps>(
             Ejecución
           </AtTypography>
           <AtDeltaIndicator value={ejecucion.deltaPct} size="md" />
+          {!!periodoLabel && (
+            <AtTypography variant="caption" color="#8892A4">
+              {periodoLabel}
+            </AtTypography>
+          )}
         </View>
 
         <View className="items-center justify-center">
@@ -74,7 +91,14 @@ export const OrPresupuestoGaugeCard = memo<OrPresupuestoGaugeCardProps>(
                   color="#1A1F36"
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
-                  {formatMil(ejecucion.ejecutado)}
+                  {formatCompact(ejecucion.ejecutado)}
+                </AtTypography>
+                <AtTypography
+                  variant="caption"
+                  color={overExec ? OVER_COLOR : '#8892A4'}
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {`${ejecucion.pctReal.toFixed(1)}% de ${formatCompact(ejecucion.proyectado)}`}
                 </AtTypography>
               </View>
             </View>

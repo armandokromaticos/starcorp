@@ -104,10 +104,15 @@ export function getPresupuestoMock(query: PresupuestoQuery): PresupuestoData {
     totalProyectado > 0
       ? Math.max(0, Math.min(1, totalEjecutado / totalProyectado))
       : 0;
+  const pctReal =
+    totalProyectado > 0
+      ? Math.round((totalEjecutado / totalProyectado) * 10000) / 100
+      : 0;
 
   return {
     tipo,
     periodo,
+    periodoLabel: periodo === 'corriente' ? 'Junio 2026' : 'Mayo 2026',
     empresas,
     totalProyectado,
     totalEjecutado,
@@ -115,6 +120,7 @@ export function getPresupuestoMock(query: PresupuestoQuery): PresupuestoData {
       ejecutado: totalEjecutado,
       proyectado: totalProyectado,
       fraction,
+      pctReal,
       deltaPct: DELTA_PCT[tipo][periodo],
     },
   };

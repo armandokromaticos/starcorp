@@ -103,7 +103,10 @@ export default function PresupuestoScreen() {
         ) : (
           <>
             <View className="px-4">
-              <OrPresupuestoGaugeCard ejecucion={data.ejecucion} />
+              <OrPresupuestoGaugeCard
+                ejecucion={data.ejecucion}
+                periodoLabel={data.periodoLabel}
+              />
             </View>
             <OrPresupuestoList empresas={empresas} />
           </>

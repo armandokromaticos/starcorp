@@ -3,12 +3,12 @@
  *
  * "Reportes más recientes" del dashboard — lista vertical de
  * departamentos → proyectos → tareas (alimentada por NexiaTask).
- * Preview acotado: por departamento se muestran los 2 primeros
- * proyectos, cada uno con sus 3 primeras tareas.
+ * Preview acotado: los 2 primeros departamentos, con su primer
+ * proyecto y las 2 primeras tareas de cada uno (ver constantes MAX_*).
  *
- * Comparte source of truth y componentes con la pantalla /reportes:
- * usa el mismo hook (useNexiataskResponsibilities) y la misma fila
- * de tarea (MlTaskRow). Tap en una tarea navega a /reportes/[taskId].
+ * Comparte source of truth con la pantalla /reportes: usa el mismo
+ * hook (useNexiataskResponsibilities). Tap en una tarea navega a
+ * /reportes/[taskId].
  */
 
 import React, { memo, useMemo } from 'react';
@@ -33,9 +33,13 @@ const CARD_RADIUS = 8;
 const OUTER_CARD_BG = '#FFFFFF';
 const OUTER_CARD_RADIUS = 12;
 const HEADER_TEXT_COLOR = '#1A2440';
-const MAX_DEPARTAMENTOS = 3;
-const MAX_PROYECTOS_POR_DEPTO = 2;
-const MAX_TAREAS_POR_PROYECTO = 3;
+// Topes del preview. Cada MlTaskRow ocupa ~175px (título + pill + card con
+// fecha, semana, seguimiento y objetivo), así que el tope de tareas es lo que
+// manda en el alto de la sección: 3×2×3 daban hasta 18 filas y ~3.100px de
+// scroll en el dashboard. El detalle completo está en /reportes.
+const MAX_DEPARTAMENTOS = 2;
+const MAX_PROYECTOS_POR_DEPTO = 1;
+const MAX_TAREAS_POR_PROYECTO = 2;
 
 interface ProyectoPreview {
   id: string;

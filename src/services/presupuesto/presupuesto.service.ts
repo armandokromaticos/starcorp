@@ -7,14 +7,22 @@
  * `powerbi-execute-query` (inyecta el token Azure del service principal y
  * valida el JWT del usuario).
  *
- * Hechos confirmados contra el dataset (probe 2026-06):
+ * Hechos confirmados contra el dataset (probe 2026-08):
  *   - [TIPO DE MOVIMIENTO] ∈ { "INGRESO", "GASTO", (null) }  → filtramos.
+ *     Las filas con tipo null (705) no traen montos: descartarlas no pierde nada.
  *   - [AÑO] es texto ("2026"); [MES] es nombre en español MAYÚSCULAS.
- *   - Valores en millones; [CONCEPTO]/[COMENTARIO] pueden venir null.
+ *   - Los montos vienen en unidades reales (~1.06M de ingreso ejecutado en
+ *     JUNIO 2026), NO en millones. [CONCEPTO]/[COMENTARIO] pueden venir null.
+ *   - El grano es semanal ([SEMANA] = "JUN 30 - JUL 06"), así que el último
+ *     mes con datos suele estar a medias.
+ *   - La suma del detalle EMPRESA × CENTRO cuadra exacto con el total del mes.
+ *   - [PorcentajeEje] es una razón por fila semanal y NO es agregable: el
+ *     porcentaje se calcula acá sobre los montos ya sumados.
  *
- * Período: "mes corriente" = último (AÑO,MES) con datos; "mes pasado" = el
- * anterior. (El calendario real puede adelantarse a los datos cargados;
- * ver TODO si BI prefiere mes calendario estricto.)
+ * Período: se resuelve contra los datos cargados, no contra el calendario, y
+ * SIN filtrar por tipo, para que Ingresos y Gastos muestren siempre el mismo
+ * mes. "Mes corriente" = último mes completo; "mes pasado" = el anterior.
+ * PresupuestoData.periodoLabel lleva el mes resuelto para mostrarlo en la UI.
  */
 
 import { getAccessToken } from '@/src/config/supabase';
@@ -49,8 +57,22 @@ const MESES = [
   'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
 ];
 
+/**
+ * Semanas cargadas a partir de las cuales damos un mes por completo. PROYECCION
+ * se alimenta semana a semana, así que el último mes casi siempre está a medias
+ * (p. ej. JULIO 2026 con una sola semana: 21 filas y ningún ingreso). Mostrarlo
+ * como "mes corriente" compara media semana contra meses enteros.
+ */
+const MIN_SEMANAS_MES_COMPLETO = 4;
+
 function mesIndex(name: string): number {
   return MESES.indexOf((name || '').trim().toUpperCase());
+}
+
+/** "JUNIO" + "2026" → "Junio 2026". */
+function mesLabel(mes: string, anio: string): string {
+  const m = (mes || '').trim().toUpperCase();
+  return m ? `${m.charAt(0)}${m.slice(1).toLowerCase()} ${anio}` : '';
 }
 
 // ─── Edge Function call ──────────────────────────────────────────
@@ -103,8 +125,16 @@ function round2(n: number): number {
 
 // ─── DAX builders ────────────────────────────────────────────────
 
-/** Totales de EJECUTADO/PROYECTADO por (AÑO,MES) para un tipo — resuelve
- *  el período activo y la variación mes a mes. */
+/**
+ * Totales de EJECUTADO/PROYECTADO por (AÑO,MES) + semanas cargadas del mes —
+ * resuelve el período activo y la variación mes a mes.
+ *
+ * El filtro por tipo va DENTRO de las medidas (CALCULATE), no como filtro de
+ * la tabla: así [Semanas] cuenta las semanas del mes completo y la lista de
+ * meses es la misma para Ingresos y Gastos. Si se filtrara la tabla, un mes
+ * sin ingresos (JULIO 2026) desaparecería solo de la pestaña Ingresos y cada
+ * toggle resolvería un mes distinto.
+ */
 function buildMonthlyTotalsDax(tipo: PresupuestoTipo): string {
   const tipoValue = TIPO_DAX_VALUE[tipo];
   return `
@@ -112,9 +142,9 @@ EVALUATE
 SUMMARIZECOLUMNS(
   'PROYECCION'[AÑO],
   'PROYECCION'[MES],
-  KEEPFILTERS(FILTER(ALL('PROYECCION'[TIPO DE MOVIMIENTO]), 'PROYECCION'[TIPO DE MOVIMIENTO] = "${tipoValue}")),
-  "Ejec", SUM('PROYECCION'[EJECUTADO]),
-  "Proy", SUM('PROYECCION'[PROYECTADO])
+  "Semanas", DISTINCTCOUNT('PROYECCION'[SEMANA]),
+  "Ejec", CALCULATE(SUM('PROYECCION'[EJECUTADO]), 'PROYECCION'[TIPO DE MOVIMIENTO] = "${tipoValue}"),
+  "Proy", CALCULATE(SUM('PROYECCION'[PROYECTADO]), 'PROYECCION'[TIPO DE MOVIMIENTO] = "${tipoValue}")
 )`.trim();
 }
 
@@ -147,6 +177,7 @@ interface MonthTotal {
   anio: string;
   mes: string;
   rank: number;
+  semanas: number;
   ejec: number;
   proy: number;
 }
@@ -160,12 +191,23 @@ function parseMonthTotals(rows: Record<string, unknown>[]): MonthTotal[] {
         anio,
         mes,
         rank: Number(anio) * 100 + (mesIndex(mes) + 1),
+        semanas: num(pick(r, 'Semanas')),
         ejec: num(pick(r, 'Ejec')),
         proy: num(pick(r, 'Proy')),
       };
     })
     .filter((m) => m.anio && mesIndex(m.mes) >= 0)
     .sort((a, b) => b.rank - a.rank); // más reciente primero
+}
+
+/**
+ * Meses utilizables: descarta el mes en curso a medio cargar. Si ninguno llega
+ * al mínimo de semanas (dataset recién sembrado), cae a la lista completa
+ * antes que dejar la pantalla vacía.
+ */
+function mesesCompletos(months: MonthTotal[]): MonthTotal[] {
+  const completos = months.filter((m) => m.semanas >= MIN_SEMANAS_MES_COMPLETO);
+  return completos.length > 0 ? completos : months;
 }
 
 function buildEmpresasFromRows(
@@ -216,21 +258,28 @@ export async function fetchPresupuesto(
 ): Promise<PresupuestoData> {
   return withMock(
     async () => {
-      const months = parseMonthTotals(
-        await executeDax(buildMonthlyTotalsDax(query.tipo)),
+      const months = mesesCompletos(
+        parseMonthTotals(await executeDax(buildMonthlyTotalsDax(query.tipo))),
       );
       if (months.length === 0) {
         return {
           tipo: query.tipo,
           periodo: query.periodo,
+          periodoLabel: '',
           empresas: [],
           totalProyectado: 0,
           totalEjecutado: 0,
-          ejecucion: { ejecutado: 0, proyectado: 0, fraction: 0, deltaPct: 0 },
+          ejecucion: {
+            ejecutado: 0,
+            proyectado: 0,
+            fraction: 0,
+            pctReal: 0,
+            deltaPct: 0,
+          },
         };
       }
 
-      // corriente = mes más reciente; pasado = el anterior.
+      // corriente = último mes completo; pasado = el anterior.
       const targetIdx = query.periodo === 'corriente' ? 0 : 1;
       const target = months[Math.min(targetIdx, months.length - 1)];
       const prev = months[Math.min(targetIdx, months.length - 1) + 1];
@@ -242,6 +291,12 @@ export async function fetchPresupuesto(
 
       const totalProyectado = target.proy;
       const totalEjecutado = target.ejec;
+      // El arco tope en 100%, pero pctReal conserva la sobre-ejecución para
+      // que la UI pueda decirla (JUNIO 2026 gastos: 101,5%).
+      const pctReal =
+        totalProyectado > 0
+          ? round2((totalEjecutado / totalProyectado) * 100)
+          : 0;
       const fraction =
         totalProyectado > 0
           ? Math.max(0, Math.min(1, totalEjecutado / totalProyectado))
@@ -254,6 +309,7 @@ export async function fetchPresupuesto(
       return {
         tipo: query.tipo,
         periodo: query.periodo,
+        periodoLabel: mesLabel(target.mes, target.anio),
         empresas,
         totalProyectado,
         totalEjecutado,
@@ -261,6 +317,7 @@ export async function fetchPresupuesto(
           ejecutado: totalEjecutado,
           proyectado: totalProyectado,
           fraction,
+          pctReal,
           deltaPct,
         },
       };

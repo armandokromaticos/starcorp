@@ -58,6 +58,8 @@ export interface PresupuestoEjecucion {
   proyectado: number;
   /** Proporción ejecutado/proyectado, ya clampeada a 0–1 (relleno naranja). */
   fraction: number;
+  /** % ejecutado real, SIN clampear: puede pasar de 100 (sobre-ejecución). */
+  pctReal: number;
   /** Variación % vs período anterior (badge). */
   deltaPct: number;
 }
@@ -66,6 +68,12 @@ export interface PresupuestoEjecucion {
 export interface PresupuestoData {
   tipo: PresupuestoTipo;
   periodo: PresupuestoPeriodo;
+  /**
+   * Mes concreto que se está mostrando ("Junio 2026"). El período se resuelve
+   * contra los datos cargados en PROYECCION, así que no coincide con el mes
+   * calendario; la UI lo muestra para que no haya ambigüedad.
+   */
+  periodoLabel: string;
   ejecucion: PresupuestoEjecucion;
   empresas: PresupuestoEmpresa[];
   /** Totales del pie ("Total" fijo). */

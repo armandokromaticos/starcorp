@@ -2,9 +2,15 @@
  * asociados.service — Snapshot del Informe Asociados activos.
  *
  * Real path: RPC get_asociados_snapshot (Supabase), que agrupa los empleados
- * activos (Retirement Date IS NULL) de empleados_detail por cliente
- * (Sub Account). Datos sincronizados de PBI empleadosHotel por la edge function
- * pbi-sync-empleados. El color de cada cliente se asigna aquí (la paleta es
+ * activos de empleados_detail por cliente (Sub Account). Datos sincronizados
+ * de PBI empleadosHotel por la edge function pbi-sync-empleados.
+ *
+ * "Activo" = tiene codigoalterno. empleadosHotel nunca trae Retirement Date,
+ * así que ese filtro no descarta a nadie y la tabla arrastra gente que ya no
+ * está vigente (migración 0048). Además la identidad de persona es
+ * codigoalterno, no id_employee: quien atiende varias cuentas tiene una fila
+ * por cliente, y el RPC deduplica quedándose con la asignación vigente
+ * (migración 0049). El color de cada cliente se asigna aquí (la paleta es
  * presentación, no dato del RPC).
  */
 
@@ -87,12 +93,7 @@ async function fetchTrendFromPBI(): Promise<AsociadosTrend> {
 }
 
 export async function getAsociadosTrend(): Promise<AsociadosTrend> {
-  const trend = await withMock(fetchTrendFromPBI, () => getAsociadosTrendMock());
-  // Fallback temporal: mientras HistoricoEmpXCli no esté sincronizado a
-  // historico_emp_cli (RPC vacío), usa el mock para no mostrar la vista vacía.
-  // En cuanto el sync poblé datos reales, estos toman prioridad sin tocar código.
-  if (!trend.months.length || !trend.series.length) {
-    return getAsociadosTrendMock();
-  }
-  return trend;
+  // Sin fallback a mock: si el RPC viene vacío (sync caído), la vista muestra
+  // su estado vacío. Rellenarlo con datos inventados ocultaba la falla.
+  return withMock(fetchTrendFromPBI, () => getAsociadosTrendMock());
 }
