@@ -1,10 +1,14 @@
 // Pulls the entire Power BI 'empleadosHotel' table and upserts it into
 // empleados_detail keyed by id_employee. One row per employee. The Informe
-// Asociados activos reads active employees (Retirement Date IS NULL) from here
-// via the get_asociados_snapshot RPC.
+// Asociados activos lee de aquí vía el RPC get_asociados_snapshot, que toma
+// como vigentes a los que tienen codigoalterno (Retirement Date llega siempre
+// en blanco desde el origen, ver migración 0048).
 //
 // Mirrors pbi-sync-clientes: full-table EVALUATE, dedup by key, chunked upsert,
 // prune rows that kept an older synced_at (gone from the source this run).
+//
+// codigoalterno se rescata de cualquier fila del empleado: sin él la persona no
+// entra al informe, y el origen no siempre lo trae en todas sus filas de área.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -117,6 +121,21 @@ function mapRow(row: Cell, syncedAt: string): MappedRow | null {
 // the CURRENT one rather than an arbitrary historical assignment.
 function currencyKey(m: MappedRow): string {
   return (m.start_date_area ?? "") + "|" + (m.admission_date ?? "");
+}
+
+// codigoalterno is the person's identity and drives who counts as an active
+// associate (RPC get_asociados_snapshot). The source doesn't always fill it on
+// every area row, so if the winning row happens to have it blank the employee
+// would silently drop out of the report. Take it from any row of the employee,
+// preferring the winner's own value. NOT applied to `codigo`: that one is the
+// client code, and guessing it across rows could attach the wrong client.
+function backfillCodigoAlterno(
+  winner: MappedRow,
+  seen: Map<string, string>,
+): MappedRow {
+  if (winner.codigo_alterno) return winner;
+  const fallback = seen.get(winner.id_employee);
+  return fallback ? { ...winner, codigo_alterno: fallback } : winner;
 }
 
 const DAX = `
@@ -246,15 +265,25 @@ Deno.serve(async (req) => {
     // Collapse the area-assignment grain to one row per employee, keeping the
     // most recent assignment (current Area / Sub Account).
     const byId = new Map<string, MappedRow>();
+    const codigoAlternoSeen = new Map<string, string>();
     for (const r of rows) {
       const m = mapRow(r, runIso);
       if (!m) continue;
+      if (m.codigo_alterno && !codigoAlternoSeen.has(m.id_employee)) {
+        codigoAlternoSeen.set(m.id_employee, m.codigo_alterno);
+      }
       const prev = byId.get(m.id_employee);
       if (!prev || currencyKey(m) >= currencyKey(prev)) {
         byId.set(m.id_employee, m);
       }
     }
-    const unique = [...byId.values()];
+
+    let recoveredCodigoAlterno = 0;
+    const unique = [...byId.values()].map((m) => {
+      const filled = backfillCodigoAlterno(m, codigoAlternoSeen);
+      if (filled !== m) recoveredCodigoAlterno++;
+      return filled;
+    });
 
     let upserted = 0;
     for (let i = 0; i < unique.length; i += CHUNK) {
@@ -287,7 +316,9 @@ Deno.serve(async (req) => {
         rows_fetched: rowsFetched,
         rows_upserted: upserted,
         duration_ms: duration,
-        error_message: `table=empleadosHotel; pruned=${deleted}`,
+        error_message:
+          `table=empleadosHotel; pruned=${deleted}; ` +
+          `codigo_alterno_recuperados=${recoveredCodigoAlterno}`,
       })
       .eq("id", logId);
 
@@ -298,6 +329,7 @@ Deno.serve(async (req) => {
       rows_unique: unique.length,
       rows_upserted: upserted,
       rows_pruned: deleted,
+      codigo_alterno_recuperados: recoveredCodigoAlterno,
       duration_ms: duration,
     });
   } catch (err) {
