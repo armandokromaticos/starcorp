@@ -19,15 +19,18 @@ import { MlStatBox } from "@/src/components/molecules/ml-stat-box";
 import { MlTimeFilterBar } from "@/src/components/molecules/ml-time-filter-bar";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
 import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
+import { useCartera } from "@/src/hooks/queries/use-cartera";
 import { useClientMetadata } from "@/src/hooks/queries/use-client-metadata";
 import {
   useDashboardSummary,
   type DashboardSummaryPeriod,
 } from "@/src/hooks/queries/use-dashboard-summary";
 import { useQBCustomerBalance } from "@/src/hooks/queries/use-qb-customer-balance";
+import { useAuthStore } from "@/src/stores/auth.store";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, View } from "@/src/tw";
+import { hasPermission } from "@/src/types/auth.types";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import type { MaterialIcons } from "@expo/vector-icons";
@@ -120,12 +123,31 @@ const ENTRY_INITIAL_METRIC: Record<ClientDetailEntry, MetricKey> = {
  * Métricas que tienen un single propio en `(consolidado)/<categoria>/[clientId]`.
  * Sólo estas pueden actuar como drill-down (tap-de-nuevo navega). El resto
  * sólo cambia el chart al seleccionarse.
+ *
+ * `cartera` no tiene single en el consolidado: redirige al Informe Cartera
+ * (ver CARTERA_INDEX_ROUTE / carteraClientId más abajo).
  */
 const METRIC_REDIRECT_TARGET: Partial<Record<MetricKey, ClientDetailEntry>> = {
   ingreso: "ingresos",
   costo: "costos",
   gastos: "gastos",
 };
+
+const CARTERA_INDEX_ROUTE = "/(tabs)/informes/cartera";
+
+/**
+ * Normaliza un nombre de cliente para comparar el `Quickbook` del master
+ * contra el DisplayName del snapshot de Cartera. Mismo criterio que
+ * useQBCustomerBalance: sin acentos ni puntuación, en mayúsculas.
+ */
+function normalizeName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
 
 interface OrClientDetailProps {
   clientId: string;
@@ -161,11 +183,23 @@ export function OrClientDetail({
   ]);
   const carteraQuery = useQBCustomerBalance(qbCustomerName);
 
+  const user = useAuthStore((s) => s.user);
+  const canSeeCartera = hasPermission(user, "informes.cartera");
+
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(
     ENTRY_INITIAL_METRIC[entryCategory],
   );
   const [drawerVisible, setDrawerVisible] = useState(false);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+
+  // El Informe Cartera identifica al cliente por `${realmId}-${customerId}`,
+  // que aquí no se conoce: se resuelve casando el nombre QB del master
+  // contra el snapshot del informe (misma query, misma caché). Se difiere
+  // hasta que la métrica Cartera está seleccionada para no disparar el
+  // barrido de facturas de QB en cada single de cliente.
+  const carteraSnapshotQuery = useCartera({
+    enabled: canSeeCartera && selectedMetric === "cartera",
+  });
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
@@ -176,6 +210,26 @@ export function OrClientDetail({
   const meta = metaQuery.data;
 
   const cartera = carteraQuery.data ?? null;
+
+  /**
+   * Id del cliente dentro del Informe Cartera. Null cuando el master no
+   * trae `Quickbook`, o cuando ese customer no tiene facturas abiertas
+   * (el snapshot sólo incluye cartera viva) — en ese caso la redirección
+   * cae al index del informe.
+   */
+  const carteraClientId = useMemo(() => {
+    const target = normalizeName(qbCustomerName ?? "");
+    if (!target) return null;
+    const clients = carteraSnapshotQuery.data?.clients ?? [];
+    const named = clients.map((c) => ({ id: c.id, n: normalizeName(c.name) }));
+    const hit =
+      named.find(({ n }) => n === target) ??
+      named.find(({ n }) => n.startsWith(target)) ??
+      named.find(({ n }) => n.includes(target)) ??
+      // Master más largo que el DisplayName ("OKANA RESORT" vs "OKANA").
+      named.find(({ n }) => n.length >= 4 && target.includes(n));
+    return hit?.id ?? null;
+  }, [qbCustomerName, carteraSnapshotQuery.data]);
 
   const metrics = useMemo(() => {
     if (!summary) return [];
@@ -300,8 +354,21 @@ export function OrClientDetail({
 
   const handleMetricPress = useCallback(
     (key: MetricKey) => {
-      const target = METRIC_REDIRECT_TARGET[key];
       const alreadySelected = key === selectedMetric;
+
+      // Cartera sale del consolidado: segundo tap abre el Informe Cartera,
+      // en el detalle del cliente si se pudo resolver su id y si no en el
+      // index del informe.
+      if (key === "cartera" && alreadySelected && canSeeCartera) {
+        router.push(
+          (carteraClientId
+            ? `${CARTERA_INDEX_ROUTE}/${encodeURIComponent(carteraClientId)}`
+            : CARTERA_INDEX_ROUTE) as Parameters<typeof router.push>[0],
+        );
+        return;
+      }
+
+      const target = METRIC_REDIRECT_TARGET[key];
       // Tap inicial → selecciona (cambia chart + activa chevron de redirect).
       // Tap subsecuente en una barra que apunta a OTRA categoría → navega.
       if (alreadySelected && target && target !== entryCategory) {
@@ -314,7 +381,7 @@ export function OrClientDetail({
       }
       setSelectedMetric(key);
     },
-    [selectedMetric, entryCategory, clientId],
+    [selectedMetric, entryCategory, clientId, canSeeCartera, carteraClientId],
   );
 
   return (
@@ -339,6 +406,9 @@ export function OrClientDetail({
         />
         <OrRevenueChartCard
           categoryId={chartCategory}
+          // Margen no es un monto: la card grafica utilidad/ingresos por
+          // bucket en vez de la serie de Utilidad.
+          metricMode={selectedMetric === "margen" ? "margen" : "category"}
           label={
             METRIC_CHART_LABEL[selectedMetric] ?? CATEGORY_LABEL[chartCategory]
           }
@@ -464,7 +534,10 @@ export function OrClientDetail({
           ) : (
             metrics.map((m) => {
               const target = METRIC_REDIRECT_TARGET[m.key];
-              const redirectable = !!target && target !== entryCategory;
+              const redirectable =
+                m.key === "cartera"
+                  ? canSeeCartera
+                  : !!target && target !== entryCategory;
               return (
                 <MlMetricBar
                   key={m.key}

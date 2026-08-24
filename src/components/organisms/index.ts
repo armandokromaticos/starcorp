@@ -23,7 +23,6 @@ export { OrTercerosList } from './or-terceros-list';
 export { OrPowerBIReport } from './or-powerbi-report';
 export { OrPowerBIMetricCard } from './or-powerbi-metric-card';
 export { OrConsolidadoClientList } from './or-consolidado-client-list';
-export { OrClientDetailHeader } from './or-client-detail-header';
 export { OrClientDetailMetrics } from './or-client-detail-metrics';
 export { OrCostGroupsChartCard } from './or-cost-groups-chart-card';
 export { OrThirdPartiesDonutCard } from './or-third-parties-donut-card';

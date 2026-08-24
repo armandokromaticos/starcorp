@@ -15,10 +15,21 @@ export interface ClientMetadata {
   idCentroCosto: string | null;
   /** Raw row from clientes_master.data (PBI ListadoClientes5Stars). */
   clienteData: Record<string, unknown> | null;
-  /** Active employees per centro_costo from PBI empleadosHotel
-   *  (Retirement Date IS NULL). null when the centro_costo isn't in the
-   *  empleadosHotel table. */
+  /**
+   * Asociados vigentes del centro_costo. Misma fuente y mismo corte que el
+   * Informe Asociados activos (empleados_detail: con codigoalterno,
+   * deduplicado por persona con su asignación vigente), así que el número
+   * de esta ficha y el del informe siempre coinciden.
+   *
+   * `0` = el cliente está en empleadosHotel pero nadie tiene código vigente.
+   * `null` = el cliente no aparece en empleadosHotel (la UI muestra "XX").
+   */
   empleadosActivos: number | null;
+  /**
+   * Universo del cliente en empleadosHotel sin el filtro de código. La
+   * diferencia contra `empleadosActivos` es la gente sin codigoalterno
+   * asignado (p. ej. BENCHMARK: 0 de 4).
+   */
   empleadosTotal: number | null;
 }
 
