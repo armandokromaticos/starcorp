@@ -12,9 +12,15 @@
  *   - `daysOverdue` = dueDate - today (positivo = corriente, negativo = vencida).
  *   - QB Customers de distintos realms aparecen como entries separadas.
  *     Si necesitamos merge por nombre, lo hacemos en una segunda fase.
+ *   - Las empresas del grupo se facturan entre sí, así que cada una está
+ *     dada de alta como Customer en el QB de las otras. Esa deuda
+ *     intercompañía se filtra con la tabla `qb_customer_exclusions`
+ *     (match por nombre normalizado, no por customerId: los ids cambian
+ *     entre realms).
  */
 
 import { withMock } from '@/src/services/mock/mock-adapter';
+import { supabase } from '@/src/config/supabase';
 import { getCarteraMock } from '@/src/services/mock/cartera.mock';
 import { SEGMENT_PALETTE as PALETTE } from '@/src/theme/gradients';
 import {
@@ -64,6 +70,29 @@ function parseIsoDate(value: string | undefined): string {
   return match ? match[1] : '';
 }
 
+/**
+ * Clave de match de exclusiones: mayúsculas y solo alfanuméricos, para que
+ * "ONE A SOLUTIONS LLC" y "ONEA SOLUTIONS LLC" caigan en la misma clave.
+ */
+function customerKey(name: string): string {
+  return name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Customers que no son cartera real (las empresas del grupo facturándose
+ * entre sí). Si la tabla no se puede leer se propaga el error en vez de
+ * seguir: es preferible que el informe falle a que los saldos
+ * intercompañía reaparezcan inflando el total sin que se note.
+ */
+async function fetchExcludedCustomerKeys(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('qb_customer_exclusions')
+    .select('customer_name');
+  if (error) throw new Error(`load qb_customer_exclusions: ${error.message}`);
+  const rows = (data ?? []) as { customer_name: string }[];
+  return new Set(rows.map((r) => customerKey(r.customer_name)));
+}
+
 async function fetchRealmInvoices(
   realmId: string,
 ): Promise<QBInvoiceRaw[]> {
@@ -87,7 +116,10 @@ async function fetchRealmInvoices(
 }
 
 async function fetchFromQB(): Promise<CarteraSnapshot> {
-  const { companies } = await qbStatus();
+  const [{ companies }, excludedCustomers] = await Promise.all([
+    qbStatus(),
+    fetchExcludedCustomerKeys(),
+  ]);
   if (companies.length === 0) {
     return { clients: [], updatedAt: todayIso() };
   }
@@ -113,6 +145,7 @@ async function fetchFromQB(): Promise<CarteraSnapshot> {
       const customerId = inv.CustomerRef?.value ?? 'unknown';
       const customerName =
         inv.CustomerRef?.name ?? `Cliente ${customerId.slice(-4)}`;
+      if (excludedCustomers.has(customerKey(customerName))) continue;
       const clientKey = `${company.realmId}-${customerId}`;
 
       let client = clientsMap.get(clientKey);
