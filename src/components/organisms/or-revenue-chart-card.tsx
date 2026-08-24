@@ -46,10 +46,22 @@ interface OrRevenueChartCardProps {
   /** When true the chart series are forced to 0 — used when the selected
    *  metric has no data for this client (e.g. sin cartera). */
   zeroData?: boolean;
+  /**
+   * 'margen' cambia la serie a un ratio: en vez de graficar el monto de
+   * `categoryId` grafica utilidad/ingresos por bucket, con eje, tooltip y
+   * header en porcentaje. El resto de métricas usan 'category'.
+   */
+  metricMode?: 'category' | 'margen';
 }
 
 type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
 type CategoryId = 'ingresos' | 'costos' | 'gastos' | 'utilidad';
+type MetricMode = 'category' | 'margen';
+
+/** Margen en %, 0 cuando no hay base de ingresos (evita Infinity/NaN). */
+function marginPct(utilidad: number, ingresos: number): number {
+  return ingresos !== 0 ? (utilidad / ingresos) * 100 : 0;
+}
 
 // PeriodKey 'today' is shown as "Mes corriente" in the UI; the RPC accepts 'mtd'.
 const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
@@ -61,7 +73,7 @@ const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
 };
 
 export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
-  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride, headerTrend, zeroData }) => {
+  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride, headerTrend, zeroData, metricMode = 'category' }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -80,6 +92,7 @@ export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
           headerValueOverride={headerValueOverride}
           headerTrend={headerTrend}
           zeroData={zeroData}
+          metricMode={metricMode}
         />
       </Pressable>
     );
@@ -93,6 +106,22 @@ function niceCeil(value: number): number {
   const n = value / pow;
   const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
   return nice * pow;
+}
+
+/**
+ * Dominio del eje en modo porcentaje: múltiplos de 10 (mínimo 10) para que
+ * el tick intermedio (`yMax / 2`) también caiga en un entero redondo. La
+ * escala compacta de `niceCeil` salta de 22 a 50 y deja la serie aplastada
+ * contra el piso del chart.
+ */
+function niceCeilPercent(value: number): number {
+  if (value <= 0) return 0;
+  return Math.max(10, Math.ceil(value / 10) * 10);
+}
+
+function niceFloorPercent(value: number): number {
+  if (value >= 0) return 0;
+  return Math.min(-10, Math.floor(value / 10) * 10);
 }
 
 function niceFloor(value: number): number {
@@ -112,7 +141,8 @@ const ConsolidadoChartCard = memo<{
   headerValueOverride?: number | null;
   headerTrend?: 'up' | 'down' | null;
   zeroData?: boolean;
-}>(({ categoryId, label, period, centroCosto, headerValueOverride, headerTrend, zeroData }) => {
+  metricMode?: MetricMode;
+}>(({ categoryId, label, period, centroCosto, headerValueOverride, headerTrend, zeroData, metricMode = 'category' }) => {
   const [view, setView] = useState<ConsolidadoView>('totalizado');
   const rpcPeriod = RPC_PERIOD[period];
   const summary = useDashboardSummary(rpcPeriod, {
@@ -124,14 +154,32 @@ const ConsolidadoChartCard = memo<{
     centroCosto: centroCosto ?? null,
   });
 
+  const isMargen = metricMode === 'margen';
+
   const buckets = useMemo(() => timeseries.data ?? [], [timeseries.data]);
+  // En modo margen la serie es el ratio del bucket, no su monto: cada punto
+  // es utilidad/ingresos de ESE bucket (no un acumulado del periodo).
   const corriente = useMemo(
-    () => buckets.map((b) => (zeroData ? 0 : b[categoryId])),
-    [buckets, categoryId, zeroData],
+    () =>
+      buckets.map((b) =>
+        zeroData
+          ? 0
+          : isMargen
+            ? marginPct(b.utilidad, b.ingresos)
+            : b[categoryId],
+      ),
+    [buckets, categoryId, zeroData, isMargen],
   );
   const historico = useMemo(
-    () => buckets.map((b) => (zeroData ? 0 : prevField(b, categoryId))),
-    [buckets, categoryId, zeroData],
+    () =>
+      buckets.map((b) =>
+        zeroData
+          ? 0
+          : isMargen
+            ? marginPct(b.utilidadPrev, b.ingresosPrev)
+            : prevField(b, categoryId),
+      ),
+    [buckets, categoryId, zeroData, isMargen],
   );
   // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
   // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
@@ -147,11 +195,39 @@ const ConsolidadoChartCard = memo<{
     [buckets],
   );
 
-  const totalCorriente = corriente.reduce((s, v) => s + v, 0);
-  const totalHistorico = historico.reduce((s, v) => s + v, 0);
-  const totalAll = summary.data ? summary.data[categoryId] : 0;
+  // El margen del periodo NO es la suma (ni el promedio) de los margenes
+  // por bucket: se recalcula sobre los totales para que un bucket flaco no
+  // pese igual que uno grande.
+  const margenTotals = useMemo(() => {
+    if (!isMargen) return null;
+    const sum = (pick: (b: (typeof buckets)[number]) => number) =>
+      buckets.reduce((acc, b) => acc + pick(b), 0);
+    return {
+      corriente: marginPct(sum((b) => b.utilidad), sum((b) => b.ingresos)),
+      historico: marginPct(
+        sum((b) => b.utilidadPrev),
+        sum((b) => b.ingresosPrev),
+      ),
+    };
+  }, [buckets, isMargen]);
+
+  const totalCorriente = margenTotals
+    ? margenTotals.corriente
+    : corriente.reduce((s, v) => s + v, 0);
+  const totalHistorico = margenTotals
+    ? margenTotals.historico
+    : historico.reduce((s, v) => s + v, 0);
+  const totalAll = summary.data
+    ? isMargen
+      ? marginPct(summary.data.utilidad, summary.data.ingresos)
+      : summary.data[categoryId]
+    : 0;
+  // Margen: la variación son puntos porcentuales (18% → 21% = 3 pp); el
+  // resto de categorías usa el delta relativo que ya devuelve el RPC.
   const deltaPct = summary.data
-    ? summary.data[`${categoryId}DeltaPercent` as const]
+    ? isMargen
+      ? totalAll - marginPct(summary.data.utilidadPrev, summary.data.ingresosPrev)
+      : summary.data[`${categoryId}DeltaPercent` as const]
     : 0;
 
   const isOverride = headerValueOverride != null;
@@ -183,7 +259,11 @@ const ConsolidadoChartCard = memo<{
             <Skeleton width={140} height={28} />
           ) : (
             <>
-              <AtMetricValue value={headerValue} size="lg" />
+              <AtMetricValue
+                value={headerValue}
+                size="lg"
+                format={isMargen ? 'percent' : 'currency'}
+              />
               {isOverride && headerTrend != null && (
                 <AtIcon
                   name={headerTrend === 'up' ? 'north-east' : 'south-east'}
@@ -192,7 +272,12 @@ const ConsolidadoChartCard = memo<{
                 />
               )}
               {headerDelta != null && (
-                <AtDeltaIndicator value={headerDelta} appearance="dark" size="lg" />
+                <AtDeltaIndicator
+                  value={headerDelta}
+                  appearance="dark"
+                  size="lg"
+                  unit={isMargen ? 'pp' : '%'}
+                />
               )}
             </>
           )}
@@ -207,6 +292,7 @@ const ConsolidadoChartCard = memo<{
           historico={historico}
           view={view}
           xLabels={xLabels}
+          isPercent={isMargen}
         />
       )}
 
@@ -236,18 +322,27 @@ const ConsolidadoChart = memo<{
   historico: number[];
   view: ConsolidadoView;
   xLabels: string[];
-}>(({ corriente, historico, view, xLabels }) => {
+  /** Serie de ratio (Margen): eje y tooltip en % en vez de moneda compacta. */
+  isPercent?: boolean;
+}>(({ corriente, historico, view, xLabels, isPercent = false }) => {
   const { width: screenWidth } = useWindowDimensions();
   const yAxisWidth = 56;
   const chartWidth = screenWidth - 16 * 4 - yAxisWidth;
   const chartHeight = 160;
 
+  const formatValue = useMemo(
+    () => (isPercent ? formatAxisPercent : formatAxisNumber),
+    [isPercent],
+  );
+
   const { yMin, yMax } = useMemo(() => {
     const all = [...corriente, ...historico];
     const peak = Math.max(0, ...all);
     const trough = Math.min(0, ...all);
-    return { yMin: niceFloor(trough), yMax: niceCeil(peak) };
-  }, [corriente, historico]);
+    return isPercent
+      ? { yMin: niceFloorPercent(trough), yMax: niceCeilPercent(peak) }
+      : { yMin: niceFloor(trough), yMax: niceCeil(peak) };
+  }, [corriente, historico, isPercent]);
 
   const yTicks = useMemo(() => {
     if (yMin >= 0) return [yMax, yMax / 2, 0];
@@ -274,16 +369,16 @@ const ConsolidadoChart = memo<{
       lines.push({
         color: '#E8952E',
         label: 'Corriente',
-        value: formatAxisNumber(corriente[activeIndex] ?? 0),
+        value: formatValue(corriente[activeIndex] ?? 0),
       });
     if (showHistorico)
       lines.push({
         color: '#2D4BA0',
         label: 'Histórico',
-        value: formatAxisNumber(historico[activeIndex] ?? 0),
+        value: formatValue(historico[activeIndex] ?? 0),
       });
     return lines;
-  }, [activeIndex, showCorriente, showHistorico, corriente, historico]);
+  }, [activeIndex, showCorriente, showHistorico, corriente, historico, formatValue]);
 
   return (
     <View
@@ -306,7 +401,7 @@ const ConsolidadoChart = memo<{
       >
         {yTicks.map((t, i) => (
           <AtTypography key={i} variant="label" color="#8892A4">
-            {formatAxisNumber(t)}
+            {formatValue(t)}
           </AtTypography>
         ))}
       </View>
@@ -520,4 +615,11 @@ function formatAxisNumber(value: number): string {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+/** Eje/tooltip del margen. Los ticks caen en enteros por construcción del
+ *  dominio; el tooltip (margen real del bucket) lleva un decimal. */
+function formatAxisPercent(value: number): string {
+  if (value === 0) return '0%';
+  return `${value.toFixed(Number.isInteger(value) ? 0 : 1)}%`;
 }

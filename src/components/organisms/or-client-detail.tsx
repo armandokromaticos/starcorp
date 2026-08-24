@@ -406,6 +406,9 @@ export function OrClientDetail({
         />
         <OrRevenueChartCard
           categoryId={chartCategory}
+          // Margen no es un monto: la card grafica utilidad/ingresos por
+          // bucket en vez de la serie de Utilidad.
+          metricMode={selectedMetric === "margen" ? "margen" : "category"}
           label={
             METRIC_CHART_LABEL[selectedMetric] ?? CATEGORY_LABEL[chartCategory]
           }

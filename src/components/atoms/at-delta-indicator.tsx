@@ -17,6 +17,12 @@ interface AtDeltaIndicatorProps {
   absolute?: number;
   size?: 'sm' | 'md' | 'lg';
   appearance?: 'soft' | 'dark';
+  /**
+   * Unidad del delta. '%' (default) para variaciones relativas; 'pp' para
+   * diferencias entre dos porcentajes (ej. Margen: 18% → 21% son 3 pp, no
+   * un 3%), donde rotularlo como % sería incorrecto.
+   */
+  unit?: '%' | 'pp';
 }
 
 const palette = {
@@ -35,7 +41,7 @@ const palette = {
 } as const;
 
 export const AtDeltaIndicator = memo<AtDeltaIndicatorProps>(
-  ({ value, absolute, size = 'md', appearance = 'soft' }) => {
+  ({ value, absolute, size = 'md', appearance = 'soft', unit = '%' }) => {
     const isPositive = value >= 0;
     const arrowIcon = isPositive ? 'north-east' : 'south-east';
     const iconSize = size === 'lg' ? 16 : 12;
@@ -68,7 +74,8 @@ export const AtDeltaIndicator = memo<AtDeltaIndicatorProps>(
             selectable
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {Math.abs(value).toFixed(2)}%
+            {Math.abs(value).toFixed(2)}
+            {unit === 'pp' ? ' pp' : '%'}
           </AtTypography>
         </View>
         {absolute != null && (
