@@ -10,6 +10,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { RefreshControl } from 'react-native';
 import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
@@ -20,6 +21,7 @@ import { MlPolizaAlertRow } from '@/src/components/molecules/ml-poliza-alert-row
 import { MlSectionHeaderLink } from '@/src/components/molecules/ml-section-header-link';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
+import { usePullToRefresh } from '@/src/hooks/use-pull-to-refresh';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
@@ -50,7 +52,8 @@ function buildSubline(vigenciaFin: string, todayIso: string): string {
 export default function SegurosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data, isPending } = useSeguros();
+  const { data, isPending, refetch } = useSeguros();
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
@@ -86,6 +89,14 @@ export default function SegurosScreen() {
   // vista principal — quedan sólo en el histórico.
   const allPolizasCompania = useMemo<PolizaCompania[]>(
     () => empresas.flatMap((e) => e.polizas).filter((p) => !isInactiva(p)),
+    [empresas],
+  );
+
+  // Solo las empresas que tienen algo que mostrar en el informe. Las que
+  // quedaron con todas las polizas inactivas (VENCIDA / CANCELADA) abrian
+  // un detalle vacio en los tres chips — siguen completas en el historico.
+  const empresasConPolizas = useMemo(
+    () => empresas.filter((e) => e.polizas.some((p) => !isInactiva(p))),
     [empresas],
   );
 
@@ -146,6 +157,9 @@ export default function SegurosScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View className="px-4 pt-2">
           <MlSearchBar
@@ -185,7 +199,12 @@ export default function SegurosScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerClassName="gap-3"
               >
-                {empresas.map((empresa) => (
+                {empresasConPolizas.length === 0 && (
+                  <AtTypography variant="caption" color="#8892A4">
+                    Sin compañías con pólizas activas.
+                  </AtTypography>
+                )}
+                {empresasConPolizas.map((empresa) => (
                   <MlCompanyCard
                     key={empresa.id}
                     name={empresa.name}
@@ -265,7 +284,12 @@ export default function SegurosScreen() {
           onItemPress={(id) =>
             router.push({
               pathname: '/(tabs)/informes/seguros/vehiculos',
-              params: { polizaId: id },
+              params: {
+                polizaId: id,
+                status: vehiculosPorVencer.some((v) => v.id === id)
+                  ? 'por_vencer'
+                  : 'vencida',
+              },
             } as never)
           }
           collapsed={collapsed.vehiculos}
@@ -295,7 +319,12 @@ export default function SegurosScreen() {
           onItemPress={(id) =>
             router.push({
               pathname: '/(tabs)/informes/seguros/propiedades',
-              params: { polizaId: id },
+              params: {
+                polizaId: id,
+                status: propiedadesPorVencer.some((p) => p.id === id)
+                  ? 'por_vencer'
+                  : 'vencida',
+              },
             } as never)
           }
           collapsed={collapsed.propiedades}

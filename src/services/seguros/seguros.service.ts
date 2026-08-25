@@ -11,9 +11,11 @@
  *   ≡  Aseguradora           Rich text
  *   ⊙  Broker                Select
  *   #  Costo Total           Number
- *   ⊙  Estado                Select (ACTIVA / INACTIVA)
+ *   ⊙  Estado                Select (ACTIVA / VENCIDA / CANCELADA)
  *   ⊙  Motivo Inactividad    Select (FALTA DE PAGO / AUDITORIA /
  *                                    NO RENOVADA / VENCIDA / CANCELADA)
+ *                            — OPCIONAL: hoy el tablero no la tiene y el
+ *                              motivo viaja dentro de "Estado".
  *   📅 Fin Vigencia          Date
  *   📅 Inicio Vigencia       Date
  *   ↗  LLC                   Relation (→ empresa)
@@ -188,6 +190,26 @@ function parseMotivoInactividad(v: unknown): string | null {
   return t ? t.toUpperCase() : null;
 }
 
+/**
+ * Motivo de inactividad de la póliza.
+ *
+ * El tablero no tiene la columna "Motivo Inactividad": el porqué viene
+ * dentro de "Estado" (VENCIDA / CANCELADA), que `parseEstado` colapsa a
+ * 'inactiva'. Sin esto el badge del histórico dice sólo "Inactiva" y se
+ * pierde la distinción. Si algún día se agrega la columna, esa gana.
+ */
+function resolveMotivoInactividad(row: NormalizedRow): string | null {
+  const explicit = parseMotivoInactividad(
+    pickField(row, COL_MOTIVO_INACTIVIDAD),
+  );
+  if (explicit) return explicit;
+
+  const estado = parseMotivoInactividad(pickField(row, COL_ESTADO));
+  // ACTIVA / INACTIVA describen el estado, no el motivo.
+  if (!estado || estado === 'ACTIVA' || estado === 'INACTIVA') return null;
+  return estado;
+}
+
 /** Acepta "5091,00 US$", "5,091.00 USD", "$1.000.000", number. */
 function parseLooseNumber(input: unknown): number {
   if (typeof input === 'number' && Number.isFinite(input)) return input;
@@ -293,9 +315,7 @@ function buildPolizaCompania(row: NormalizedRow): PolizaCompania {
     })(),
     costo: toNum(pickField(row, COL_COSTO)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
-    motivoInactividad: parseMotivoInactividad(
-      pickField(row, COL_MOTIVO_INACTIVIDAD),
-    ),
+    motivoInactividad: resolveMotivoInactividad(row),
   };
 }
 
@@ -306,9 +326,7 @@ function buildPolizaVehiculo(row: NormalizedRow): PolizaVehiculo {
     asignacion: toStr(pickField(row, COL_ASIGNACION)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
-    motivoInactividad: parseMotivoInactividad(
-      pickField(row, COL_MOTIVO_INACTIVIDAD),
-    ),
+    motivoInactividad: resolveMotivoInactividad(row),
   };
 }
 
@@ -318,9 +336,7 @@ function buildPolizaPropiedad(row: NormalizedRow): PolizaPropiedad {
     nombre: toStr(pickField(row, COL_NOMBRE)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
-    motivoInactividad: parseMotivoInactividad(
-      pickField(row, COL_MOTIVO_INACTIVIDAD),
-    ),
+    motivoInactividad: resolveMotivoInactividad(row),
   };
 }
 
