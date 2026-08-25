@@ -67,6 +67,14 @@ export interface PolizaVehiculo {
   id: string;
   nombre: string;
   asignacion: string;
+  /** LLC dueña de la póliza (columna "LLC" de Notion). */
+  empresaId: string;
+  /** Nombre de la LLC. '' cuando la fila no la trae. */
+  empresaName: string;
+  aseguradora: string;
+  broker: string;
+  numero: string;
+  costo: number;
   vigenciaFin: string;
   estado?: PolizaEstadoNotion;
   motivoInactividad?: string | null;
@@ -92,6 +100,28 @@ export interface SegurosSnapshot {
   propiedades: PolizaPropiedad[];
   updatedAt: string;
   todayIso: string;
+}
+
+/** LLC del carousel de Vehículos. */
+export interface VehiculoLlc {
+  id: string;
+  name: string;
+}
+
+/**
+ * LLCs presentes en un set de pólizas de vehículo, en orden de aparición
+ * y sin repetir. Alimenta el carousel de Vehículos igual que
+ * `SegurosSnapshot.empresas` alimenta el de Compañías.
+ */
+export function llcsDeVehiculos(vehiculos: PolizaVehiculo[]): VehiculoLlc[] {
+  const out: VehiculoLlc[] = [];
+  const seen = new Set<string>();
+  for (const v of vehiculos) {
+    if (seen.has(v.empresaId)) continue;
+    seen.add(v.empresaId);
+    out.push({ id: v.empresaId, name: v.empresaName || 'Sin LLC' });
+  }
+  return out;
 }
 
 /** Umbral de "por vencer" en días. */

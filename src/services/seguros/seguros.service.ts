@@ -11,11 +11,12 @@
  *   ≡  Aseguradora           Rich text
  *   ⊙  Broker                Select
  *   #  Costo Total           Number
- *   ⊙  Estado                Select (ACTIVA / VENCIDA / CANCELADA)
+ *   ⊙  Estado                Select (ACTIVA / INACTIVA)
  *   ⊙  Motivo Inactividad    Select (FALTA DE PAGO / AUDITORIA /
  *                                    NO RENOVADA / VENCIDA / CANCELADA)
- *                            — OPCIONAL: hoy el tablero no la tiene y el
- *                              motivo viaja dentro de "Estado".
+ *                            — OPCIONAL: si el tablero no la tiene, el
+ *                              motivo se deriva de "Estado" (los valores
+ *                              VENCIDA / CANCELADA también son inactivas).
  *   📅 Fin Vigencia          Date
  *   📅 Inicio Vigencia       Date
  *   ↗  LLC                   Relation (→ empresa)
@@ -24,9 +25,10 @@
  *   ↗  Plan Póliza           Relation
  *   ⊙  Tipo de Seguro        Select (discriminador)
  *
- * LLC es una relation. Para mostrar el nombre de la empresa en la UI,
- * el usuario puede agregar un rollup "Empresa" o "LLC nombre" en
- * Notion. Mientras tanto, mostramos un fallback derivado del id.
+ * LLC es una relation: la API sólo devuelve ids de página. Los nombres
+ * salen de un segundo tablero (`NOTION_DB_LLC`, columna "Nombre LLC")
+ * que consultamos en paralelo y cruzamos por id. Un rollup "Empresa" en
+ * el tablero de pólizas, si existe, gana sobre eso.
  */
 
 import { withMock } from '@/src/services/mock/mock-adapter';
@@ -47,6 +49,7 @@ import type {
 } from '@/src/types/seguros.types';
 
 const DB_SEGUROS = process.env.EXPO_PUBLIC_NOTION_DB_SEGUROS;
+const DB_LLC = process.env.EXPO_PUBLIC_NOTION_DB_LLC;
 
 // ─── Mapeo Tipo de Seguro → bucket ─────────────────────────────
 type Bucket = 'compania' | 'vehiculo' | 'propiedad';
@@ -100,6 +103,8 @@ const COL_EMPRESA_NOMBRE = ['Empresa', 'LLC nombre', 'Nombre LLC'];
 const COL_COBERTURA = ['Cobertura', 'Coverage'];
 const COL_PAYROLL = ['Payroll'];
 const COL_ASIGNACION = ['Asignación', 'Asignacion'];
+// Columna título del tablero de LLCs
+const COL_LLC_NOMBRE = ['Nombre LLC', 'Nombre', 'Name'];
 
 // ─── Helpers ───────────────────────────────────────────────────
 function toStr(v: unknown, fallback = ''): string {
@@ -264,9 +269,34 @@ function slugify(v: string, fallback: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/** Id de página Notion sin guiones — las relations y las filas del
+ * tablero de LLCs no siempre usan el mismo formato. */
+function pageKey(id: string): string {
+  return id.replace(/-/g, '').toLowerCase();
+}
+
+/**
+ * Nombres de las LLC indexados por id de página. Sin este mapa el
+ * carousel mostraría "Empresa 34119c" en vez de "BLUE SOLUTION LLC".
+ * Vacío si `EXPO_PUBLIC_NOTION_DB_LLC` no está configurado.
+ */
+async function fetchLlcNames(): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (!DB_LLC) return names;
+  const resp = await notionQueryAll({ database_id: DB_LLC });
+  for (const row of normalizeRows(resp.results)) {
+    const name = toStr(pickField(row, COL_LLC_NOMBRE));
+    if (name) names.set(pageKey(row.id), name);
+  }
+  return names;
+}
+
 /** LLC puede venir como relation (array de ids), o como rich_text con
  * "NOMBRE (url)" cuando el campo fue exportado/importado vía CSV. */
-function resolveEmpresa(row: NormalizedRow): { id: string; name: string } {
+function resolveEmpresa(
+  row: NormalizedRow,
+  llcNames: Map<string, string>,
+): { id: string; name: string } {
   // 1. Si el usuario expone un rollup explícito, usamos ese
   const explicitName = toStr(pickField(row, COL_EMPRESA_NOMBRE));
   if (explicitName) {
@@ -274,10 +304,13 @@ function resolveEmpresa(row: NormalizedRow): { id: string; name: string } {
     return { id: slugify(clean, 'empresa'), name: clean };
   }
 
-  // 2. Relation real: array de ids
+  // 2. Relation real: array de ids → nombre del tablero de LLCs
   const raw = row[COL_LLC[0]];
   if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === 'string') {
-    const short = raw[0].replace(/-/g, '').slice(0, 6);
+    const name = llcNames.get(pageKey(raw[0]));
+    if (name) return { id: slugify(name, 'empresa'), name };
+    // Sin el tablero de LLCs a mano, al menos agrupamos por id.
+    const short = pageKey(raw[0]).slice(0, 6);
     return { id: raw[0], name: `Empresa ${short}` };
   }
 
@@ -291,8 +324,11 @@ function resolveEmpresa(row: NormalizedRow): { id: string; name: string } {
 }
 
 // ─── Normalizers por bucket ────────────────────────────────────
-function buildPolizaCompania(row: NormalizedRow): PolizaCompania {
-  const empresa = resolveEmpresa(row);
+function buildPolizaCompania(
+  row: NormalizedRow,
+  llcNames: Map<string, string>,
+): PolizaCompania {
+  const empresa = resolveEmpresa(row, llcNames);
   const tipo = toStr(pickField(row, COL_TIPO));
   const nombreRaw = toStr(pickField(row, COL_NOMBRE));
   // Cuando el "Nombre" viene vacío, fallback al label legible del tipo
@@ -319,11 +355,24 @@ function buildPolizaCompania(row: NormalizedRow): PolizaCompania {
   };
 }
 
-function buildPolizaVehiculo(row: NormalizedRow): PolizaVehiculo {
+function buildPolizaVehiculo(
+  row: NormalizedRow,
+  llcNames: Map<string, string>,
+): PolizaVehiculo {
+  // Mismo tablero que Compañías: la fila de un vehículo también trae
+  // Aseguradora / Broker / Numero de Poliza / Costo Total / LLC.
+  const empresa = resolveEmpresa(row, llcNames);
   return {
     id: row.id,
     nombre: toStr(pickField(row, COL_NOMBRE)),
     asignacion: toStr(pickField(row, COL_ASIGNACION)),
+    empresaId: empresa.id,
+    // Sin LLC preferimos ocultar el campo antes que pintar "Sin empresa".
+    empresaName: empresa.id === 'sin-empresa' ? '' : empresa.name,
+    aseguradora: toStr(pickField(row, COL_ASEGURADORA)),
+    broker: toStr(pickField(row, COL_BROKER)),
+    numero: toStr(pickField(row, COL_NUMERO)),
+    costo: toNum(pickField(row, COL_COSTO)),
     vigenciaFin: toDate(pickField(row, COL_VIGENCIA_FIN)),
     estado: parseEstado(pickField(row, COL_ESTADO)),
     motivoInactividad: resolveMotivoInactividad(row),
@@ -348,7 +397,12 @@ async function fetchFromNotion(): Promise<SegurosSnapshot> {
     );
   }
 
-  const resp = await notionQueryAll({ database_id: DB_SEGUROS });
+  // En paralelo: el runtime de las edge functions corta a los ~25s, así
+  // que encadenar las dos consultas es pedir un timeout.
+  const [resp, llcNames] = await Promise.all([
+    notionQueryAll({ database_id: DB_SEGUROS }),
+    fetchLlcNames(),
+  ]);
   const rows = normalizeRows(resp.results);
 
   const companiaRows: NormalizedRow[] = [];
@@ -367,7 +421,7 @@ async function fetchFromNotion(): Promise<SegurosSnapshot> {
   // Compañías: agrupar por empresa
   const empresasMap = new Map<string, SeguroEmpresa>();
   for (const r of companiaRows) {
-    const p = buildPolizaCompania(r);
+    const p = buildPolizaCompania(r, llcNames);
     let empresa = empresasMap.get(p.empresaId);
     if (!empresa) {
       empresa = { id: p.empresaId, name: p.empresaName, polizas: [] };
@@ -379,7 +433,7 @@ async function fetchFromNotion(): Promise<SegurosSnapshot> {
   const todayIso = new Date().toISOString().slice(0, 10);
   return {
     empresas: [...empresasMap.values()],
-    vehiculos: vehiculoRows.map(buildPolizaVehiculo),
+    vehiculos: vehiculoRows.map((r) => buildPolizaVehiculo(r, llcNames)),
     propiedades: propiedadRows.map(buildPolizaPropiedad),
     updatedAt: todayIso,
     todayIso,
