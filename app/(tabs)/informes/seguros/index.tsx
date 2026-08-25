@@ -92,6 +92,14 @@ export default function SegurosScreen() {
     [empresas],
   );
 
+  // Solo las empresas que tienen algo que mostrar en el informe. Las que
+  // quedaron con todas las polizas inactivas (VENCIDA / CANCELADA) abrian
+  // un detalle vacio en los tres chips — siguen completas en el historico.
+  const empresasConPolizas = useMemo(
+    () => empresas.filter((e) => e.polizas.some((p) => !isInactiva(p))),
+    [empresas],
+  );
+
   const polizasPorVencer = useMemo(
     () =>
       allPolizasCompania.filter(
@@ -191,7 +199,12 @@ export default function SegurosScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerClassName="gap-3"
               >
-                {empresas.map((empresa) => (
+                {empresasConPolizas.length === 0 && (
+                  <AtTypography variant="caption" color="#8892A4">
+                    Sin compañías con pólizas activas.
+                  </AtTypography>
+                )}
+                {empresasConPolizas.map((empresa) => (
                   <MlCompanyCard
                     key={empresa.id}
                     name={empresa.name}
