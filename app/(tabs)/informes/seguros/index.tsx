@@ -10,6 +10,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { RefreshControl } from 'react-native';
 import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
@@ -20,6 +21,7 @@ import { MlPolizaAlertRow } from '@/src/components/molecules/ml-poliza-alert-row
 import { MlSectionHeaderLink } from '@/src/components/molecules/ml-section-header-link';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
+import { usePullToRefresh } from '@/src/hooks/use-pull-to-refresh';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
@@ -50,7 +52,8 @@ function buildSubline(vigenciaFin: string, todayIso: string): string {
 export default function SegurosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data, isPending } = useSeguros();
+  const { data, isPending, refetch } = useSeguros();
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
@@ -146,6 +149,9 @@ export default function SegurosScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View className="px-4 pt-2">
           <MlSearchBar

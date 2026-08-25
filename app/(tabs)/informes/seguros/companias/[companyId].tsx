@@ -4,7 +4,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView as RNScrollView } from 'react-native';
+import { RefreshControl, ScrollView as RNScrollView } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
+import { usePullToRefresh } from '@/src/hooks/use-pull-to-refresh';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
@@ -32,7 +33,8 @@ export default function SeguroEmpresaDetailScreen() {
     polizaId?: string;
     status?: string;
   }>();
-  const { data } = useSeguros();
+  const { data, refetch } = useSeguros();
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   // Estado inicial del filtro: el que viene del informe (al elegir una póliza
   // concreta) o "Vigente" por defecto.
@@ -100,6 +102,9 @@ export default function SeguroEmpresaDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ rowGap: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View className="px-4 pt-2">
           <MlSearchBar

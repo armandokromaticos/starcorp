@@ -31,6 +31,7 @@ import 'react-native-reanimated';
 
 import '@/src/global.css';
 import { queryClient } from '@/src/config/query-client';
+import { subscribeAppStateFocus } from '@/src/config/query-focus';
 import { OrToast } from '@/src/components/organisms/or-toast';
 import { useAuthStore } from '@/src/stores/auth.store';
 
@@ -53,6 +54,9 @@ export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
 
   useEffect(() => initialize(), [initialize]);
+
+  // Sin este puente, refetchOnWindowFocus no dispara en native.
+  useEffect(() => subscribeAppStateFocus(), []);
 
   const ready = fontsLoaded && authStatus !== 'loading';
 
