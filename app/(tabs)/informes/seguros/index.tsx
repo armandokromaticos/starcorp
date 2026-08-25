@@ -28,9 +28,11 @@ import {
   diffInDays,
   formatVigenciaDate,
   isInactiva,
+  llcsDeVehiculos,
   polizaStatus,
   type PolizaCompania,
   type PolizaStatus,
+  type VehiculoLlc,
 } from '@/src/types/seguros.types';
 
 /** Card blanca que encierra cada categoría de seguros. */
@@ -114,6 +116,13 @@ export default function SegurosScreen() {
         (p) => polizaStatus(p.vigenciaFin, todayIso) === 'vencida',
       ),
     [allPolizasCompania, todayIso],
+  );
+
+  // LLCs con pólizas de vehículo activas — el carousel de la sección,
+  // equivalente al de empresas de Compañías.
+  const vehiculoLlcs = useMemo(
+    () => llcsDeVehiculos(vehiculos.filter((v) => !isInactiva(v))),
+    [vehiculos],
   );
 
   const vehiculosPorVencer = useMemo(
@@ -267,7 +276,14 @@ export default function SegurosScreen() {
             router.push('/(tabs)/informes/seguros/vehiculos' as never)
           }
           onLinkPress={() =>
-            router.push('/(tabs)/informes/seguros/vehiculos' as never)
+            router.push('/(tabs)/informes/seguros/vehiculos/historico' as never)
+          }
+          pills={vehiculoLlcs}
+          onPillPress={(id) =>
+            router.push({
+              pathname: '/(tabs)/informes/seguros/vehiculos',
+              params: { llcId: id },
+            } as never)
           }
           porVencer={vehiculosPorVencer.map<AlertItem>((v) => ({
             id: v.id,
@@ -355,6 +371,9 @@ interface SimpleAlertSectionProps {
   iconName: React.ComponentProps<typeof MlSectionHeaderLink>['iconName'];
   onTitlePress: () => void;
   onLinkPress: () => void;
+  /** Carousel opcional encima de las listas (Vehículos lo usa con sus LLCs). */
+  pills?: VehiculoLlc[];
+  onPillPress?: (id: string) => void;
   porVencer: AlertItem[];
   vencidas: AlertItem[];
   onItemPress: (id: string) => void;
@@ -367,6 +386,8 @@ function SimpleAlertSection({
   iconName,
   onTitlePress,
   onLinkPress,
+  pills,
+  onPillPress,
   porVencer,
   vencidas,
   onItemPress,
@@ -387,6 +408,23 @@ function SimpleAlertSection({
 
       {!collapsed && (
         <>
+          {pills && pills.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-3"
+            >
+              {pills.map((pill) => (
+                <MlCompanyCard
+                  key={pill.id}
+                  name={pill.name}
+                  variant="tile"
+                  onPress={() => onPillPress?.(pill.id)}
+                />
+              ))}
+            </ScrollView>
+          )}
+
           <View className="gap-2">
             <AtTypography variant="bodyBold" color="#1A1F36">
               Pólizas por vencer

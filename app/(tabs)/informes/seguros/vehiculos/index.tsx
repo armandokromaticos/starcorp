@@ -1,40 +1,49 @@
 /**
- * Detalle de Compañía — todas las pólizas de una empresa.
+ * Pólizas de Vehículos — mismo patrón que Compañías.
  *
- * El chip arranca en el primero que tenga resultados (o en el de la
- * póliza objetivo cuando venimos del informe), no siempre en "Vigente".
+ * Carousel de LLCs arriba (tap en una pill filtra el listado), chips
+ * Vigente / Por vencer / Vencido debajo, y sólo las pólizas activas en
+ * Notion. Las que tienen Estado inactivo viven en el Histórico.
+ *
+ * El chip arranca en el primero que tenga resultados para la LLC activa
+ * (o en el de la póliza objetivo), no siempre en "Vigente".
+ *
+ * Al navegar con `polizaId` (desde el informe), abre la LLC de esa
+ * póliza, hace scroll y la resalta; `status` abre el chip donde vive.
+ * `llcId` permite entrar directo a una LLC desde el carousel del informe.
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { RefreshControl, ScrollView as RNScrollView } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
-import { View } from '@/src/tw';
+import { ScrollView, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
-import { MlPolizaDetailCard } from '@/src/components/molecules/ml-poliza-detail-card';
+import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
 import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
+import { MlVehiculoDetailCard } from '@/src/components/molecules/ml-vehiculo-detail-card';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
-import { AtIcon } from '@/src/components/atoms/at-icon';
 import { usePullToRefresh } from '@/src/hooks/use-pull-to-refresh';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import {
   isInactiva,
+  llcsDeVehiculos,
   POLIZA_STATUS_FILTERS,
   polizaStatus,
   type PolizaStatus,
 } from '@/src/types/seguros.types';
 
-export default function SeguroEmpresaDetailScreen() {
+export default function SegurosVehiculosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { companyId, polizaId, status } = useLocalSearchParams<{
-    companyId: string;
+  const { polizaId, status, llcId } = useLocalSearchParams<{
     polizaId?: string;
     status?: string;
+    llcId?: string;
   }>();
   const { data, refetch } = useSeguros();
   const { refreshing, onRefresh } = usePullToRefresh(refetch);
@@ -50,7 +59,57 @@ export default function SeguroEmpresaDetailScreen() {
   const [statusFilter, setStatusFilter] = useState<PolizaStatus | null>(
     paramStatus,
   );
+  const [activeLlcId, setActiveLlcId] = useState<string | null>(null);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+
+  const todayIso = data?.todayIso ?? '';
+
+  // Las inactivas no participan de los chips — viven en el histórico.
+  const activas = useMemo(
+    () => (data?.vehiculos ?? []).filter((p) => !isInactiva(p)),
+    [data],
+  );
+
+  const llcs = useMemo(() => llcsDeVehiculos(activas), [activas]);
+
+  // La LLC de la póliza a la que se navegó manda sobre el `llcId` suelto:
+  // sin eso la card objetivo quedaría filtrada fuera del listado.
+  const targetLlcId = useMemo(
+    () => activas.find((p) => p.id === polizaId)?.empresaId ?? null,
+    [activas, polizaId],
+  );
+
+  const effectiveLlcId =
+    activeLlcId ?? targetLlcId ?? llcId ?? llcs[0]?.id ?? null;
+
+  const deLaLlc = useMemo(
+    () =>
+      activas.filter(
+        (p) => !effectiveLlcId || p.empresaId === effectiveLlcId,
+      ),
+    [activas, effectiveLlcId],
+  );
+
+  // Chip automático: el de la póliza objetivo si venimos del informe, si
+  // no el primero que tenga resultados. Evita abrir en un chip vacío.
+  const autoStatus = useMemo<PolizaStatus>(() => {
+    const target = deLaLlc.find((p) => p.id === polizaId);
+    if (target) return polizaStatus(target.vigenciaFin, todayIso);
+    const withResults = POLIZA_STATUS_FILTERS.find((f) =>
+      deLaLlc.some((p) => polizaStatus(p.vigenciaFin, todayIso) === f.key),
+    );
+    return withResults?.key ?? 'activa';
+  }, [deLaLlc, polizaId, todayIso]);
+
+  const effectiveStatus = statusFilter ?? autoStatus;
+
+  const polizas = useMemo(
+    () =>
+      deLaLlc.filter(
+        (p) => polizaStatus(p.vigenciaFin, todayIso) === effectiveStatus,
+      ),
+    [deLaLlc, todayIso, effectiveStatus],
+  );
 
   // Scroll automático hasta la póliza objetivo (la elegida en el informe).
   const scrollRef = useRef<RNScrollView>(null);
@@ -79,40 +138,6 @@ export default function SeguroEmpresaDetailScreen() {
     [tryScrollToTarget],
   );
 
-  const empresa = useMemo(
-    () => data?.empresas.find((e) => e.id === companyId),
-    [data, companyId],
-  );
-
-  const todayIso = data?.todayIso ?? '';
-
-  // Las INACTIVA no participan de los chips — viven en el histórico.
-  const activas = useMemo(
-    () => (empresa?.polizas ?? []).filter((p) => !isInactiva(p)),
-    [empresa],
-  );
-
-  // Chip automático: el de la póliza objetivo si venimos del informe, si
-  // no el primero que tenga resultados. Evita abrir en un chip vacío.
-  const autoStatus = useMemo<PolizaStatus>(() => {
-    const target = activas.find((p) => p.id === polizaId);
-    if (target) return polizaStatus(target.vigenciaFin, todayIso);
-    const withResults = POLIZA_STATUS_FILTERS.find((f) =>
-      activas.some((p) => polizaStatus(p.vigenciaFin, todayIso) === f.key),
-    );
-    return withResults?.key ?? 'activa';
-  }, [activas, polizaId, todayIso]);
-
-  const effectiveStatus = statusFilter ?? autoStatus;
-
-  const polizasFiltradas = useMemo(
-    () =>
-      activas.filter(
-        (p) => polizaStatus(p.vigenciaFin, todayIso) === effectiveStatus,
-      ),
-    [activas, todayIso, effectiveStatus],
-  );
-
   return (
     <View
       className="flex-1 bg-bg-secondary"
@@ -136,17 +161,32 @@ export default function SeguroEmpresaDetailScreen() {
 
         <View className="px-4">
           <MlBreadcrumb
-            segments={['Informes', 'Seguros', 'Compañías']}
+            segments={['Informes', 'Seguros', 'Vehículos']}
             onBack={() => router.back()}
           />
         </View>
 
-        <View className="flex-row items-center gap-2 px-4">
-          <AtIcon name="account-balance" size="md" color="#1A1F36" />
-          <AtTypography variant="h2" color="#1A1F36">
-            {empresa?.name ?? '—'}
-          </AtTypography>
-        </View>
+        {llcs.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="gap-3 px-4"
+          >
+            {llcs.map((llc) => (
+              <MlCompanyCard
+                key={llc.id}
+                name={llc.name}
+                variant="tile"
+                selected={llc.id === effectiveLlcId}
+                onPress={() => {
+                  setActiveLlcId(llc.id);
+                  // Cada LLC vuelve a abrir en su primer chip con resultados.
+                  setStatusFilter(null);
+                }}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         <MlTimeFilterBar
           fill
@@ -156,14 +196,12 @@ export default function SeguroEmpresaDetailScreen() {
         />
 
         <View className="gap-3 px-4" onLayout={onListLayout}>
-          {polizasFiltradas.length === 0 && (
+          {polizas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
-              {empresa && empresa.polizas.length > 0
-                ? 'No hay pólizas en este estado.'
-                : 'Esta empresa no tiene pólizas registradas.'}
+              No hay pólizas de vehículos en este estado.
             </AtTypography>
           )}
-          {polizasFiltradas.map((p) => (
+          {polizas.map((p) => (
             <View
               key={p.id}
               onLayout={(e) => {
@@ -171,10 +209,9 @@ export default function SeguroEmpresaDetailScreen() {
                 tryScrollToTarget();
               }}
             >
-              <MlPolizaDetailCard
+              <MlVehiculoDetailCard
                 poliza={p}
                 todayIso={todayIso}
-                showEmpresa={false}
                 highlighted={p.id === polizaId}
               />
             </View>
