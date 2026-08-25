@@ -265,7 +265,12 @@ export default function SegurosScreen() {
           onItemPress={(id) =>
             router.push({
               pathname: '/(tabs)/informes/seguros/vehiculos',
-              params: { polizaId: id },
+              params: {
+                polizaId: id,
+                status: vehiculosPorVencer.some((v) => v.id === id)
+                  ? 'por_vencer'
+                  : 'vencida',
+              },
             } as never)
           }
           collapsed={collapsed.vehiculos}
@@ -295,7 +300,12 @@ export default function SegurosScreen() {
           onItemPress={(id) =>
             router.push({
               pathname: '/(tabs)/informes/seguros/propiedades',
-              params: { polizaId: id },
+              params: {
+                polizaId: id,
+                status: propiedadesPorVencer.some((p) => p.id === id)
+                  ? 'por_vencer'
+                  : 'vencida',
+              },
             } as never)
           }
           collapsed={collapsed.propiedades}

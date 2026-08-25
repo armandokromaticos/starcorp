@@ -1,8 +1,13 @@
 /**
- * Lista completa (histórico) de pólizas de Propiedades — Estado=INACTIVA.
+ * Pólizas de Propiedades.
+ *
+ * Arriba las vigentes, filtradas por los chips Vigente / Por vencer /
+ * Vencido (mismo patrón que el detalle de Compañías). Abajo el histórico:
+ * las que tienen Estado inactivo en Notion (VENCIDA / CANCELADA), que no
+ * participan de los chips.
  *
  * Al navegar con `polizaId` (desde el informe), hace scroll y resalta esa
- * póliza, igual que el detalle de Compañías.
+ * póliza; `status` abre el chip donde vive.
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -13,51 +18,88 @@ import { View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
+import { MlTimeFilterBar } from '@/src/components/molecules/ml-time-filter-bar';
 import { MlPropiedadDetailCard } from '@/src/components/molecules/ml-propiedad-detail-card';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { useSeguros } from '@/src/hooks/queries/use-seguros';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
-import { isInactiva } from '@/src/types/seguros.types';
+import {
+  isInactiva,
+  POLIZA_STATUS_FILTERS,
+  polizaStatus,
+  type PolizaStatus,
+} from '@/src/types/seguros.types';
 
 export default function SegurosPropiedadesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { polizaId } = useLocalSearchParams<{ polizaId?: string }>();
+  const { polizaId, status } = useLocalSearchParams<{
+    polizaId?: string;
+    status?: string;
+  }>();
   const { data } = useSeguros();
 
+  // Estado inicial del filtro: el que viene del informe (al elegir una póliza
+  // concreta) o "Vigente" por defecto.
+  const initialStatus =
+    status && POLIZA_STATUS_FILTERS.some((f) => f.key === status)
+      ? (status as PolizaStatus)
+      : 'activa';
+
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<PolizaStatus>(initialStatus);
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
 
   const todayIso = data?.todayIso ?? '';
-  // Pólizas con Estado=INACTIVA en Notion (con su Motivo Inactividad).
-  const propiedadesFiltradas = useMemo(
+
+  // Las inactivas no participan de los chips — viven en el histórico.
+  const vigentes = useMemo(
+    () =>
+      (data?.propiedades ?? []).filter(
+        (p) =>
+          !isInactiva(p) && polizaStatus(p.vigenciaFin, todayIso) === statusFilter,
+      ),
+    [data, todayIso, statusFilter],
+  );
+
+  const inactivas = useMemo(
     () => (data?.propiedades ?? []).filter(isInactiva),
     [data],
   );
 
   // Scroll automático hasta la póliza objetivo (la elegida en el informe).
+  // Las tarjetas viven en dos listas distintas, así que la posición final es
+  // el offset de la sección más el de la tarjeta dentro de ella.
   const scrollRef = useRef<RNScrollView>(null);
-  const listYRef = useRef(0);
-  const listMeasuredRef = useRef(false);
-  const cardYRef = useRef<Record<string, number>>({});
+  const sectionYRef = useRef<Record<string, number>>({});
+  const cardRef = useRef<Record<string, { section: string; y: number }>>({});
   const didScrollRef = useRef(false);
 
   const tryScrollToTarget = useCallback(() => {
-    if (didScrollRef.current || !polizaId || !listMeasuredRef.current) return;
-    const cardY = cardYRef.current[polizaId];
-    if (cardY == null) return;
+    if (didScrollRef.current || !polizaId) return;
+    const card = cardRef.current[polizaId];
+    if (!card) return;
+    const sectionY = sectionYRef.current[card.section];
+    if (sectionY == null) return;
     didScrollRef.current = true;
     scrollRef.current?.scrollTo({
-      y: Math.max(0, listYRef.current + cardY - 16),
+      y: Math.max(0, sectionY + card.y - 16),
       animated: true,
     });
   }, [polizaId]);
 
-  const onListLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      listYRef.current = e.nativeEvent.layout.y;
-      listMeasuredRef.current = true;
+  const onSectionLayout = useCallback(
+    (section: string, e: LayoutChangeEvent) => {
+      sectionYRef.current[section] = e.nativeEvent.layout.y;
+      tryScrollToTarget();
+    },
+    [tryScrollToTarget],
+  );
+
+  const onCardLayout = useCallback(
+    (section: string, id: string, e: LayoutChangeEvent) => {
+      cardRef.current[id] = { section, y: e.nativeEvent.layout.y };
       tryScrollToTarget();
     },
     [tryScrollToTarget],
@@ -88,19 +130,52 @@ export default function SegurosPropiedadesScreen() {
           />
         </View>
 
-        <View className="gap-3 px-4" onLayout={onListLayout}>
-          {propiedadesFiltradas.length === 0 && (
+        <MlTimeFilterBar
+          fill
+          options={POLIZA_STATUS_FILTERS}
+          selectedKey={statusFilter}
+          onSelect={(k) => setStatusFilter(k as PolizaStatus)}
+        />
+
+        <View
+          className="gap-3 px-4"
+          onLayout={(e) => onSectionLayout('vigentes', e)}
+        >
+          {vigentes.length === 0 && (
+            <AtTypography variant="caption" color="#8892A4">
+              No hay pólizas de propiedades en este estado.
+            </AtTypography>
+          )}
+          {vigentes.map((p) => (
+            <View
+              key={p.id}
+              onLayout={(e) => onCardLayout('vigentes', p.id, e)}
+            >
+              <MlPropiedadDetailCard
+                poliza={p}
+                todayIso={todayIso}
+                highlighted={p.id === polizaId}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View
+          className="gap-3 px-4"
+          onLayout={(e) => onSectionLayout('historico', e)}
+        >
+          <AtTypography variant="bodyBold" color="#1A1F36">
+            Histórico
+          </AtTypography>
+          {inactivas.length === 0 && (
             <AtTypography variant="caption" color="#8892A4">
               Sin pólizas de propiedades inactivas.
             </AtTypography>
           )}
-          {propiedadesFiltradas.map((p) => (
+          {inactivas.map((p) => (
             <View
               key={p.id}
-              onLayout={(e) => {
-                cardYRef.current[p.id] = e.nativeEvent.layout.y;
-                tryScrollToTarget();
-              }}
+              onLayout={(e) => onCardLayout('historico', p.id, e)}
             >
               <MlPropiedadDetailCard
                 poliza={p}
