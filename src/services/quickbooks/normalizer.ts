@@ -8,12 +8,12 @@ import type {
   QBReportRow,
   QBTransactionListRaw,
   QBTransactionListRow,
-} from '@/src/types/api.types';
+} from "@/src/types/api.types";
 import type {
   Company,
   CompanyMetrics,
   NormalizedRevenue,
-} from '@/src/types/domain.types';
+} from "@/src/types/domain.types";
 
 interface QBCompanyInfoRaw {
   CompanyInfo?: {
@@ -54,17 +54,32 @@ function findGroupTotal(
   return 0;
 }
 
+/**
+ * Same as findGroupTotal but tries multiple group tag variants.
+ * QB Online sometimes emits different tags depending on company setup.
+ */
+function findGroupTotalAny(
+  rows: QBReportRow[] | undefined,
+  ...groups: string[]
+): number {
+  for (const g of groups) {
+    const v = findGroupTotal(rows, g);
+    if (v !== 0) return v;
+  }
+  return 0;
+}
+
 export function normalizeRevenueFromPnL(
   pnl: QBProfitAndLossRaw | null,
   period: { start: string; end: string },
 ): NormalizedRevenue {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
+  const income = findGroupTotal(pnl?.Rows?.Row, "Income");
   return {
     total: income,
-    currency: pnl?.Header?.Currency ?? 'USD',
+    currency: pnl?.Header?.Currency ?? "USD",
     deltaPercent: 0,
     deltaAbsolute: 0,
-    trend: 'flat',
+    trend: "flat",
     series: [],
     period,
   };
@@ -104,7 +119,9 @@ function toAmount(raw: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function lastColValue(cols: { value: string }[] | undefined): string | undefined {
+function lastColValue(
+  cols: { value: string }[] | undefined,
+): string | undefined {
   if (!cols || cols.length === 0) return undefined;
   return cols[cols.length - 1]?.value;
 }
@@ -123,26 +140,97 @@ function findSectionRow(
 }
 
 /**
+ * Secciones logicas del P&L y los grupos de QB que las componen.
+ *
+ * QB parte el P&L en dos mitades: lo operacional (Income / COGS / Expenses,
+ * que cierra en "Net Operating Income") y lo no operacional (OtherIncome /
+ * OtherExpenses); solo el "Net Income" del final suma las dos.
+ *
+ * Financiero muestra 5 cards y no mas, asi que los bloques Other* no tienen
+ * card propia: se absorben en Ingresos y Egresos. La prioridad es que la
+ * aritmetica cierre en pantalla, no clavar el renglon de QB:
+ *
+ *   ingresos = Income + OtherIncome      (QB titula "Total Income" solo al 1ro)
+ *   egresos  = Expenses + OtherExpenses  (QB titula "Total Expenses" solo al 1ro)
+ *   bruta    = ingresos - costos
+ *   neta     = bruta - egresos
+ *
+ * Con ese reparto `neta` da EXACTO el "Net Income" de QB en las 6 empresas,
+ * porque NetIncome = Income + OtherIncome - COGS - Expenses - OtherExpenses.
+ * Lo que si se separa del reporte es `bruta`: QB calcula su "Gross Profit" sin
+ * OtherIncome, asi que en una empresa con otros ingresos la card queda por
+ * encima de ese renglon (ONEA ago-2025 -> jul-2026: 924.331,85 de diferencia).
+ * Es el precio de que la resta cuadre en pantalla, y es deliberado.
+ *
+ * Magnitudes reales del bloque Other* (ago-2025 -> jul-2026): OtherExpenses
+ * MCS 36.641,10 (Vehicle expenses, Home office, Pending to identify,
+ * Reconciliation Discrepancies) y 5 STARS 1.001,58 -- esta ultima es la
+ * diferencia entre 358.306,73 y 359.308,31; OtherIncome ONEA 924.331,85 y
+ * 5 STARS 212,42; en el resto son centimos.
+ *
+ * Esta tabla es la UNICA fuente de verdad: la usan tanto las cards
+ * (`normalizeMetricsFromPnL`) como el drill-down, para que una card y su
+ * detalle no se puedan separar.
+ */
+export type PnLSection = "Income" | "COGS" | "Expenses";
+
+const SECTION_GROUPS: Record<PnLSection, string[]> = {
+  Income: ["Income", "OtherIncome"],
+  COGS: ["COGS"],
+  Expenses: ["Expenses", "OtherExpenses"],
+};
+
+/** Variantes del tag que QB Online emite segun como este configurada la empresa. */
+const GROUP_ALIASES: Record<string, string[]> = {
+  Income: ["Income", "TotalIncome"],
+  OtherIncome: ["OtherIncome", "TotalOtherIncome", "OtherIncomeExpense"],
+  COGS: ["COGS", "TotalCOGS"],
+  Expenses: ["Expenses", "TotalExpenses"],
+  OtherExpenses: ["OtherExpenses", "TotalOtherExpenses"],
+};
+
+/** Filas hijas de una seccion, concatenando los grupos que la componen. */
+function sectionChildren(
+  pnl: QBProfitAndLossRaw | null,
+  section: PnLSection,
+): RawWithExtras[] {
+  const rows = pnl?.Rows?.Row as RawWithExtras[] | undefined;
+  return SECTION_GROUPS[section].flatMap(
+    (g) => findSectionRow(rows, g)?.Rows?.Row ?? [],
+  );
+}
+
+/** Total de una seccion: suma del total de cada grupo que la compone. */
+function sectionTotal(
+  rows: QBReportRow[] | undefined,
+  section: PnLSection,
+): number {
+  return SECTION_GROUPS[section].reduce(
+    (sum, g) => sum + findGroupTotalAny(rows, ...(GROUP_ALIASES[g] ?? [g])),
+    0,
+  );
+}
+
+/**
  * Flattens immediate descendants of a P&L section (Income, COGS, Expenses)
  * into a list of leaf line items so we can render them in a detail screen.
  */
 export function normalizePnLSection(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: PnLSection,
 ): PnLLineItem[] {
-  const root = findSectionRow(pnl?.Rows?.Row as RawWithExtras[] | undefined, group);
-  const children = root?.Rows?.Row ?? [];
+  const children = sectionChildren(pnl, group);
 
   return children.map((row, idx) => {
-    const label = row.Header?.ColData?.[0]?.value ??
+    const label =
+      row.Header?.ColData?.[0]?.value ??
       row.ColData?.[0]?.value ??
       `Cuenta ${idx + 1}`;
     const amount = row.Summary?.ColData
       ? toAmount(lastColValue(row.Summary.ColData))
       : toAmount(lastColValue(row.ColData));
-    const id = row.Header?.ColData?.[0]?.id ??
-      row.ColData?.[0]?.id ??
-      `${group}-${idx}`;
+    const id =
+      row.Header?.ColData?.[0]?.id ?? row.ColData?.[0]?.id ?? `${group}-${idx}`;
     return {
       id: String(id),
       label,
@@ -168,11 +256,7 @@ export interface PnLCategory extends PnLLineItem {
 }
 
 function rowLabel(row: RawWithExtras, fallback: string): string {
-  return (
-    row.Header?.ColData?.[0]?.value ??
-    row.ColData?.[0]?.value ??
-    fallback
-  );
+  return row.Header?.ColData?.[0]?.value ?? row.ColData?.[0]?.value ?? fallback;
 }
 
 function rowAmount(row: RawWithExtras): number {
@@ -214,13 +298,9 @@ function collectLeaves(
  */
 export function normalizePnLSectionHierarchical(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: PnLSection,
 ): PnLCategory[] {
-  const root = findSectionRow(
-    pnl?.Rows?.Row as RawWithExtras[] | undefined,
-    group,
-  );
-  const children = root?.Rows?.Row ?? [];
+  const children = sectionChildren(pnl, group);
 
   return children.map((row, idx) => {
     const label = rowLabel(row, `Cuenta ${idx + 1}`);
@@ -250,7 +330,7 @@ export function normalizePnLSectionHierarchical(
  */
 export function findPnLLeafById(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: PnLSection,
   leafId: string,
 ): PnLAccount | null {
   const categories = normalizePnLSectionHierarchical(pnl, group);
@@ -274,16 +354,16 @@ export interface QBTransaction {
 
 /** Map QB ColType (or ColTitle fallback) to our normalized fields. */
 const TX_COLUMN_MAP: Record<string, keyof QBTransaction> = {
-  tx_date: 'date',
-  txn_type: 'type',
-  doc_num: 'num',
-  vend_name: 'name',
-  cust_name: 'name',
-  name: 'name',
-  memo: 'memo',
-  subt_nat_amount: 'amount',
-  subt_nat_home_amount: 'amount',
-  amount: 'amount',
+  tx_date: "date",
+  txn_type: "type",
+  doc_num: "num",
+  vend_name: "name",
+  cust_name: "name",
+  name: "name",
+  memo: "memo",
+  subt_nat_amount: "amount",
+  subt_nat_home_amount: "amount",
+  amount: "amount",
 };
 
 function resolveTxField(
@@ -294,12 +374,14 @@ function resolveTxField(
   if (byType) return byType;
   const titleKey = col.ColTitle?.toLowerCase();
   if (!titleKey) return null;
-  if (titleKey.includes('date') || titleKey.includes('fecha')) return 'date';
-  if (titleKey.includes('type') || titleKey.includes('tipo')) return 'type';
-  if (titleKey.includes('num')) return 'num';
-  if (titleKey.includes('name') || titleKey.includes('nombre')) return 'name';
-  if (titleKey.includes('memo') || titleKey.includes('descripci')) return 'memo';
-  if (titleKey.includes('amount') || titleKey.includes('monto')) return 'amount';
+  if (titleKey.includes("date") || titleKey.includes("fecha")) return "date";
+  if (titleKey.includes("type") || titleKey.includes("tipo")) return "type";
+  if (titleKey.includes("num")) return "num";
+  if (titleKey.includes("name") || titleKey.includes("nombre")) return "name";
+  if (titleKey.includes("memo") || titleKey.includes("descripci"))
+    return "memo";
+  if (titleKey.includes("amount") || titleKey.includes("monto"))
+    return "amount";
   return null;
 }
 
@@ -310,19 +392,19 @@ function mapTxRow(
 ): QBTransaction {
   const cols = row.ColData ?? [];
   const tx: QBTransaction = {
-    id: '',
-    date: '',
-    type: '',
-    num: '',
-    name: '',
-    memo: '',
+    id: "",
+    date: "",
+    type: "",
+    num: "",
+    name: "",
+    memo: "",
     amount: 0,
   };
   cols.forEach((cell, i) => {
     const field = resolveTxField(columns[i]);
     if (!field) return;
-    const value = cell.value ?? '';
-    if (field === 'amount') {
+    const value = cell.value ?? "";
+    if (field === "amount") {
       const n = Number(value);
       tx.amount = Number.isFinite(n) ? n : 0;
     } else {
@@ -337,7 +419,7 @@ function mapTxRow(
 /** GeneralLedger antepone una fila "Beginning Balance" en cuentas de
  *  balance; no es una transacción. */
 function isBeginningBalanceRow(row: QBTransactionListRow): boolean {
-  return /beginning balance/i.test(row.ColData?.[0]?.value ?? '');
+  return /beginning balance/i.test(row.ColData?.[0]?.value ?? "");
 }
 
 /** Las transacciones de una cuenta dentro de un reporte GeneralLedger. */
@@ -371,7 +453,7 @@ export function normalizeGeneralLedgerByAccount(
       if (header?.id != null || header?.value) {
         ctx = {
           accountId: String(header.id ?? header.value),
-          accountName: header.value ?? '',
+          accountName: header.value ?? "",
           transactions: [],
         };
         out.push(ctx);
@@ -390,20 +472,27 @@ export function normalizeGeneralLedgerByAccount(
 export function normalizeMetricsFromPnL(
   pnl: QBProfitAndLossRaw | null,
 ): CompanyMetrics {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
-  const cogs = findGroupTotal(pnl?.Rows?.Row, 'COGS');
-  const grossProfit = findGroupTotal(pnl?.Rows?.Row, 'GrossProfit') ||
-    income - cogs;
-  const expenses = findGroupTotal(pnl?.Rows?.Row, 'Expenses');
-  const netIncome = findGroupTotal(pnl?.Rows?.Row, 'NetIncome') ||
-    grossProfit - expenses;
+  const rows = pnl?.Rows?.Row;
+
+  // Las tres primeras salen de SECTION_GROUPS, la misma tabla que consume el
+  // drill-down: si una card y su detalle se separan, el bug esta en esa tabla.
+  const ingresos = sectionTotal(rows, "Income");
+  const costos = sectionTotal(rows, "COGS");
+  const egresos = sectionTotal(rows, "Expenses");
+
+  // Derivadas, NO leidas del reporte: es lo unico que garantiza que en pantalla
+  // se vea neta = bruta - egresos con las 5 cards. Aun asi `utilidadNeta` da el
+  // "Net Income" de QB al centavo; `utilidadBruta` puede quedar por encima de
+  // su "Gross Profit" cuando la empresa tiene OtherIncome (ver arriba).
+  const utilidadBruta = ingresos - costos;
+  const utilidadNeta = utilidadBruta - egresos;
 
   const flat = (value: number) => ({ value, deltaPercent: 0 });
   return {
-    ingresos: flat(income),
-    costos: flat(cogs),
-    egresos: flat(expenses),
-    utilidadBruta: flat(grossProfit),
-    utilidadNeta: flat(netIncome),
+    ingresos: flat(ingresos),
+    costos: flat(costos),
+    egresos: flat(egresos),
+    utilidadBruta: flat(utilidadBruta),
+    utilidadNeta: flat(utilidadNeta),
   };
 }

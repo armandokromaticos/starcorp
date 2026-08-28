@@ -26,6 +26,7 @@ import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
 import {
   normalizePnLSection,
   normalizePnLSectionHierarchical,
+  type PnLSection,
 } from "@/src/services/quickbooks/normalizer";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
@@ -44,7 +45,7 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
 );
 
 interface OrQBSectionDetailProps {
-  group: "Income" | "COGS" | "Expenses";
+  group: PnLSection;
   breadcrumbLabel: string;
   defaultIcon: MaterialIconName;
 }

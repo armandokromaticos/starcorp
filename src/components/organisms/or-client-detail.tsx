@@ -236,8 +236,21 @@ export function OrClientDetail({
     const ingreso = summary.ingresos;
     const costo = summary.costos;
     const gastos = summary.gastos;
-    const utilidadNeta = summary.utilidad;
     const utilidadBruta = ingreso - costo;
+    // Utilidad neta = utilidad bruta - gastos. El RPC la devuelve pre-calculada
+    // (usa saldo_final con signo, no ABS), pero debe ser consistente con la
+    // fórmula. Si difiere en más de $1 (redondeo), se usa la fórmula local y
+    // se emite un warning para detectar discrepancias en el RPC.
+    const utilidadNetaRpc = summary.utilidad;
+    const utilidadNetaCalculada = utilidadBruta - gastos;
+    const diff = Math.abs(utilidadNetaRpc - utilidadNetaCalculada);
+    if (__DEV__ && diff > 1) {
+      console.warn(
+        `[OrClientDetail] utilidad neta inconsistente para "${centroCosto}":`,
+        { utilidadNetaRpc, utilidadNetaCalculada, diff },
+      );
+    }
+    const utilidadNeta = utilidadNetaCalculada;
 
     const margenPct = ingreso !== 0 ? (utilidadNeta / ingreso) * 100 : null;
     const margenPrevPct =
@@ -416,11 +429,7 @@ export function OrClientDetail({
           centroCosto={centroCosto}
           headerValueOverride={carteraSelected ? (cartera ?? 0) : undefined}
           headerTrend={
-            carteraSelected && hasCartera
-              ? cartera > 0
-                ? "up"
-                : "down"
-              : null
+            carteraSelected && hasCartera ? (cartera > 0 ? "up" : "down") : null
           }
           zeroData={carteraSelected && !hasCartera}
         />
