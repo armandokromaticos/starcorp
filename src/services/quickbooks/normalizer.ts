@@ -394,17 +394,21 @@ export function normalizeMetricsFromPnL(
   pnl: QBProfitAndLossRaw | null,
 ): CompanyMetrics {
   const income = findGroupTotal(pnl?.Rows?.Row, "Income");
+  const otherIncome = findGroupTotal(pnl?.Rows?.Row, "OtherIncome");
   const cogs = findGroupTotal(pnl?.Rows?.Row, "COGS");
   const grossProfit =
-    findGroupTotal(pnl?.Rows?.Row, "GrossProfit") || income - cogs;
+    findGroupTotal(pnl?.Rows?.Row, "GrossProfit") ||
+    income + otherIncome - cogs;
   const expenses = findGroupTotal(pnl?.Rows?.Row, "Expenses");
-  const netIncome = grossProfit - expenses;
+  const otherExpenses = findGroupTotal(pnl?.Rows?.Row, "OtherExpenses");
+  const totalEgresos = expenses + otherExpenses;
+  const netIncome = grossProfit - totalEgresos;
 
   const flat = (value: number) => ({ value, deltaPercent: 0 });
   return {
-    ingresos: flat(income),
+    ingresos: flat(income + otherIncome),
     costos: flat(cogs),
-    egresos: flat(expenses),
+    egresos: flat(totalEgresos),
     utilidadBruta: flat(grossProfit),
     utilidadNeta: flat(netIncome),
   };
