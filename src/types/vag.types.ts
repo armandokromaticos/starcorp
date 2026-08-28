@@ -12,6 +12,13 @@
 export interface VagMetric {
   total: number;
   deltaPct: number;
+  /**
+   * Fecha ISO del último dato que alimenta la métrica (max(fecha) de las
+   * mismas filas que suma el total). Cada bloque llega de Power BI a su
+   * propio ritmo, así que la card muestra hasta cuándo hay data. Null
+   * cuando no hay filas o la métrica no la expone (Activos).
+   */
+  ultimaFecha?: string | null;
 }
 
 /** Resumen del hub (4 cards). */

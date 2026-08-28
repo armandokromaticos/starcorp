@@ -125,6 +125,16 @@ export function formatAxisDate(iso: string): string {
 }
 
 /**
+ * Format an ISO date ("2026-06-30") as "30 jun 2026". Parses by parts (not
+ * `new Date`) para no correr el día por zona horaria.
+ */
+export function formatShortDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d} ${MONTH_SHORT_ES[m - 1] ?? ''} ${y}`;
+}
+
+/**
  * ISO date shifted by `days`, parsed/formatted by parts in UTC to avoid
  * timezone day-shifts. Used to turn an exclusive bucket end (e.g. "2026-06-01")
  * into its inclusive last day ("2026-05-31").
