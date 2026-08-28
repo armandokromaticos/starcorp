@@ -8,12 +8,12 @@ import type {
   QBReportRow,
   QBTransactionListRaw,
   QBTransactionListRow,
-} from '@/src/types/api.types';
+} from "@/src/types/api.types";
 import type {
   Company,
   CompanyMetrics,
   NormalizedRevenue,
-} from '@/src/types/domain.types';
+} from "@/src/types/domain.types";
 
 interface QBCompanyInfoRaw {
   CompanyInfo?: {
@@ -58,13 +58,13 @@ export function normalizeRevenueFromPnL(
   pnl: QBProfitAndLossRaw | null,
   period: { start: string; end: string },
 ): NormalizedRevenue {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
+  const income = findGroupTotal(pnl?.Rows?.Row, "Income");
   return {
     total: income,
-    currency: pnl?.Header?.Currency ?? 'USD',
+    currency: pnl?.Header?.Currency ?? "USD",
     deltaPercent: 0,
     deltaAbsolute: 0,
-    trend: 'flat',
+    trend: "flat",
     series: [],
     period,
   };
@@ -104,7 +104,9 @@ function toAmount(raw: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function lastColValue(cols: { value: string }[] | undefined): string | undefined {
+function lastColValue(
+  cols: { value: string }[] | undefined,
+): string | undefined {
   if (!cols || cols.length === 0) return undefined;
   return cols[cols.length - 1]?.value;
 }
@@ -128,21 +130,24 @@ function findSectionRow(
  */
 export function normalizePnLSection(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: "Income" | "COGS" | "Expenses",
 ): PnLLineItem[] {
-  const root = findSectionRow(pnl?.Rows?.Row as RawWithExtras[] | undefined, group);
+  const root = findSectionRow(
+    pnl?.Rows?.Row as RawWithExtras[] | undefined,
+    group,
+  );
   const children = root?.Rows?.Row ?? [];
 
   return children.map((row, idx) => {
-    const label = row.Header?.ColData?.[0]?.value ??
+    const label =
+      row.Header?.ColData?.[0]?.value ??
       row.ColData?.[0]?.value ??
       `Cuenta ${idx + 1}`;
     const amount = row.Summary?.ColData
       ? toAmount(lastColValue(row.Summary.ColData))
       : toAmount(lastColValue(row.ColData));
-    const id = row.Header?.ColData?.[0]?.id ??
-      row.ColData?.[0]?.id ??
-      `${group}-${idx}`;
+    const id =
+      row.Header?.ColData?.[0]?.id ?? row.ColData?.[0]?.id ?? `${group}-${idx}`;
     return {
       id: String(id),
       label,
@@ -168,11 +173,7 @@ export interface PnLCategory extends PnLLineItem {
 }
 
 function rowLabel(row: RawWithExtras, fallback: string): string {
-  return (
-    row.Header?.ColData?.[0]?.value ??
-    row.ColData?.[0]?.value ??
-    fallback
-  );
+  return row.Header?.ColData?.[0]?.value ?? row.ColData?.[0]?.value ?? fallback;
 }
 
 function rowAmount(row: RawWithExtras): number {
@@ -214,7 +215,7 @@ function collectLeaves(
  */
 export function normalizePnLSectionHierarchical(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: "Income" | "COGS" | "Expenses",
 ): PnLCategory[] {
   const root = findSectionRow(
     pnl?.Rows?.Row as RawWithExtras[] | undefined,
@@ -250,7 +251,7 @@ export function normalizePnLSectionHierarchical(
  */
 export function findPnLLeafById(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: "Income" | "COGS" | "Expenses",
   leafId: string,
 ): PnLAccount | null {
   const categories = normalizePnLSectionHierarchical(pnl, group);
@@ -274,16 +275,16 @@ export interface QBTransaction {
 
 /** Map QB ColType (or ColTitle fallback) to our normalized fields. */
 const TX_COLUMN_MAP: Record<string, keyof QBTransaction> = {
-  tx_date: 'date',
-  txn_type: 'type',
-  doc_num: 'num',
-  vend_name: 'name',
-  cust_name: 'name',
-  name: 'name',
-  memo: 'memo',
-  subt_nat_amount: 'amount',
-  subt_nat_home_amount: 'amount',
-  amount: 'amount',
+  tx_date: "date",
+  txn_type: "type",
+  doc_num: "num",
+  vend_name: "name",
+  cust_name: "name",
+  name: "name",
+  memo: "memo",
+  subt_nat_amount: "amount",
+  subt_nat_home_amount: "amount",
+  amount: "amount",
 };
 
 function resolveTxField(
@@ -294,12 +295,14 @@ function resolveTxField(
   if (byType) return byType;
   const titleKey = col.ColTitle?.toLowerCase();
   if (!titleKey) return null;
-  if (titleKey.includes('date') || titleKey.includes('fecha')) return 'date';
-  if (titleKey.includes('type') || titleKey.includes('tipo')) return 'type';
-  if (titleKey.includes('num')) return 'num';
-  if (titleKey.includes('name') || titleKey.includes('nombre')) return 'name';
-  if (titleKey.includes('memo') || titleKey.includes('descripci')) return 'memo';
-  if (titleKey.includes('amount') || titleKey.includes('monto')) return 'amount';
+  if (titleKey.includes("date") || titleKey.includes("fecha")) return "date";
+  if (titleKey.includes("type") || titleKey.includes("tipo")) return "type";
+  if (titleKey.includes("num")) return "num";
+  if (titleKey.includes("name") || titleKey.includes("nombre")) return "name";
+  if (titleKey.includes("memo") || titleKey.includes("descripci"))
+    return "memo";
+  if (titleKey.includes("amount") || titleKey.includes("monto"))
+    return "amount";
   return null;
 }
 
@@ -310,19 +313,19 @@ function mapTxRow(
 ): QBTransaction {
   const cols = row.ColData ?? [];
   const tx: QBTransaction = {
-    id: '',
-    date: '',
-    type: '',
-    num: '',
-    name: '',
-    memo: '',
+    id: "",
+    date: "",
+    type: "",
+    num: "",
+    name: "",
+    memo: "",
     amount: 0,
   };
   cols.forEach((cell, i) => {
     const field = resolveTxField(columns[i]);
     if (!field) return;
-    const value = cell.value ?? '';
-    if (field === 'amount') {
+    const value = cell.value ?? "";
+    if (field === "amount") {
       const n = Number(value);
       tx.amount = Number.isFinite(n) ? n : 0;
     } else {
@@ -337,7 +340,7 @@ function mapTxRow(
 /** GeneralLedger antepone una fila "Beginning Balance" en cuentas de
  *  balance; no es una transacción. */
 function isBeginningBalanceRow(row: QBTransactionListRow): boolean {
-  return /beginning balance/i.test(row.ColData?.[0]?.value ?? '');
+  return /beginning balance/i.test(row.ColData?.[0]?.value ?? "");
 }
 
 /** Las transacciones de una cuenta dentro de un reporte GeneralLedger. */
@@ -371,7 +374,7 @@ export function normalizeGeneralLedgerByAccount(
       if (header?.id != null || header?.value) {
         ctx = {
           accountId: String(header.id ?? header.value),
-          accountName: header.value ?? '',
+          accountName: header.value ?? "",
           transactions: [],
         };
         out.push(ctx);
@@ -390,13 +393,12 @@ export function normalizeGeneralLedgerByAccount(
 export function normalizeMetricsFromPnL(
   pnl: QBProfitAndLossRaw | null,
 ): CompanyMetrics {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
-  const cogs = findGroupTotal(pnl?.Rows?.Row, 'COGS');
-  const grossProfit = findGroupTotal(pnl?.Rows?.Row, 'GrossProfit') ||
-    income - cogs;
-  const expenses = findGroupTotal(pnl?.Rows?.Row, 'Expenses');
-  const netIncome = findGroupTotal(pnl?.Rows?.Row, 'NetIncome') ||
-    grossProfit - expenses;
+  const income = findGroupTotal(pnl?.Rows?.Row, "Income");
+  const cogs = findGroupTotal(pnl?.Rows?.Row, "COGS");
+  const grossProfit =
+    findGroupTotal(pnl?.Rows?.Row, "GrossProfit") || income - cogs;
+  const expenses = findGroupTotal(pnl?.Rows?.Row, "Expenses");
+  const netIncome = grossProfit - expenses;
 
   const flat = (value: number) => ({ value, deltaPercent: 0 });
   return {
