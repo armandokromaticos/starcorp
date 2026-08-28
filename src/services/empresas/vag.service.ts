@@ -30,6 +30,7 @@ import type {
 interface RpcMetric {
   total: number;
   delta_pct: number;
+  ultima_fecha?: string | null;
 }
 
 interface RpcResumen {
@@ -108,6 +109,7 @@ async function fetchResumen(): Promise<VagResumen> {
   const metric = (m: RpcMetric) => ({
     total: Number(m.total),
     deltaPct: Number(m.delta_pct),
+    ultimaFecha: m.ultima_fecha ?? null,
   });
   return {
     activos: metric(r.activos),

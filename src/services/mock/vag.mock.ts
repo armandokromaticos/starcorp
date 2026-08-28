@@ -15,9 +15,13 @@ import type {
 
 const RESUMEN: VagResumen = {
   activos: { total: 100000, deltaPct: 1.87 },
-  movimientos: { total: 100000, deltaPct: 1.87 },
-  cuentasCobrar: { total: 100000000, deltaPct: 1.87 },
-  cuentasPagar: { total: 100000000, deltaPct: 1.87 },
+  movimientos: { total: 100000, deltaPct: 1.87, ultimaFecha: '2026-07-28' },
+  cuentasCobrar: {
+    total: 100000000,
+    deltaPct: 1.87,
+    ultimaFecha: '2026-06-30',
+  },
+  cuentasPagar: { total: 100000000, deltaPct: 1.87, ultimaFecha: '2026-08-01' },
 };
 
 function buildGrupos(prefix: string): VagActivo['gruposMovimientos'] {

@@ -15,8 +15,10 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { formatCurrency } from '@/src/utils/currency';
+import { formatShortDate } from '@/src/utils/date';
 
 const NAVY = '#0F1B4A';
+const MUTED = 'rgba(255,255,255,0.7)';
 
 interface OrVagNavCardProps {
   icon: string;
@@ -24,11 +26,13 @@ interface OrVagNavCardProps {
   title: string;
   total: number;
   deltaPct: number;
+  /** Fecha ISO del último dato cargado; se muestra como "Datos a ...". */
+  ultimaFecha?: string | null;
   onPress: () => void;
 }
 
 export const OrVagNavCard = memo<OrVagNavCardProps>(
-  ({ icon, iconColor, title, total, deltaPct, onPress }) => {
+  ({ icon, iconColor, title, total, deltaPct, ultimaFecha, onPress }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -47,13 +51,23 @@ export const OrVagNavCard = memo<OrVagNavCardProps>(
           </View>
           <AtDeltaIndicator value={deltaPct} size="md" appearance="dark" />
         </View>
-        <AtTypography
-          variant="metricSmall"
-          color="#FFFFFF"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {formatCurrency(total)}
-        </AtTypography>
+        <View className="flex-row items-end justify-between gap-2">
+          <AtTypography
+            variant="metricSmall"
+            color="#FFFFFF"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {formatCurrency(total)}
+          </AtTypography>
+          {ultimaFecha ? (
+            <View className="flex-row items-center gap-1 pb-0.5">
+              <AtIcon name="schedule" size="sm" color={MUTED} />
+              <AtTypography variant="caption" color={MUTED}>
+                {`Datos a ${formatShortDate(ultimaFecha)}`}
+              </AtTypography>
+            </View>
+          ) : null}
+        </View>
       </Pressable>
     );
   },
@@ -66,12 +80,22 @@ interface OrVagNavTileProps {
   title: string;
   total: number;
   deltaPct: number;
+  /** Fecha ISO del último dato cargado; se muestra como "Datos a ...". */
+  ultimaFecha?: string | null;
   actionLabel?: string;
   onPress: () => void;
 }
 
 export const OrVagNavTile = memo<OrVagNavTileProps>(
-  ({ icon, title, total, deltaPct, actionLabel = 'Ver cuentas', onPress }) => {
+  ({
+    icon,
+    title,
+    total,
+    deltaPct,
+    ultimaFecha,
+    actionLabel = 'Ver cuentas',
+    onPress,
+  }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -97,6 +121,15 @@ export const OrVagNavTile = memo<OrVagNavTileProps>(
           {formatCurrency(total)}
         </AtTypography>
         <AtDeltaIndicator value={deltaPct} size="md" appearance="dark" />
+
+        {ultimaFecha ? (
+          <View className="flex-row items-center gap-1">
+            <AtIcon name="schedule" size="sm" color={MUTED} />
+            <AtTypography variant="caption" color={MUTED} numberOfLines={1}>
+              {`Datos a ${formatShortDate(ultimaFecha)}`}
+            </AtTypography>
+          </View>
+        ) : null}
 
         <View
           className="self-stretch"

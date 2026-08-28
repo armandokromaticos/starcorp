@@ -67,6 +67,7 @@ export default function VagHubScreen() {
             title="Movimientos"
             total={resumen.movimientos.total}
             deltaPct={resumen.movimientos.deltaPct}
+            ultimaFecha={resumen.movimientos.ultimaFecha}
             onPress={() => go('movimientos')}
           />
           <View className="flex-row gap-3">
@@ -75,6 +76,7 @@ export default function VagHubScreen() {
               title="Cuentas por cobrar"
               total={resumen.cuentasCobrar.total}
               deltaPct={resumen.cuentasCobrar.deltaPct}
+              ultimaFecha={resumen.cuentasCobrar.ultimaFecha}
               onPress={() => go('cobrar')}
             />
             <OrVagNavTile
@@ -82,6 +84,7 @@ export default function VagHubScreen() {
               title="Cuentas por pagar"
               total={resumen.cuentasPagar.total}
               deltaPct={resumen.cuentasPagar.deltaPct}
+              ultimaFecha={resumen.cuentasPagar.ultimaFecha}
               onPress={() => go('pagar')}
             />
           </View>
