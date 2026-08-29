@@ -33,15 +33,25 @@ Deno.serve(async (req) => {
     const { data: { user }, error: uErr } = await admin.auth.getUser(userJwt);
     if (uErr || !user) return respondJson({ error: "invalid_jwt" }, { status: 401 });
 
-    // Single-admin gate: only the user stored as ADMIN_USER_ID can connect QB.
-    // Empty slot → first caller claims it (race-safe via PK on `key`).
+    // Conectar es cosa de rol: cualquier super_admin puede. ADMIN_USER_ID ya
+    // no es un gate de identidad, es solo el dueño canonico bajo el que se
+    // guardan TODOS los tokens, sin importar quien corra el OAuth. Si cada
+    // quien los guardara bajo su propio id, qb-companies y qb-query (que leen
+    // por ese unico user_id) dejarian de verlos.
+    if (user.app_metadata?.role !== "super_admin") {
+      return respondJson({ error: "not_admin" }, { status: 403 });
+    }
+
     const { data: adminRow } = await admin
       .from("starcorp_vault")
       .select("value")
       .eq("key", "ADMIN_USER_ID")
       .maybeSingle<{ value: string }>();
 
-    if (!adminRow) {
+    // Slot vacio → lo reclama el primero que conecte (race-safe por la PK
+    // en `key`: si otro gano la carrera, se adopta su id como dueño).
+    let ownerId = adminRow?.value;
+    if (!ownerId) {
       const { error: claimErr } = await admin
         .from("starcorp_vault")
         .insert({ key: "ADMIN_USER_ID", value: user.id });
@@ -51,12 +61,13 @@ Deno.serve(async (req) => {
           .select("value")
           .eq("key", "ADMIN_USER_ID")
           .single<{ value: string }>();
-        if (!refetched || refetched.value !== user.id) {
-          return respondJson({ error: "not_admin" }, { status: 403 });
+        if (!refetched) {
+          return respondJson({ error: "claim_failed" }, { status: 500 });
         }
+        ownerId = refetched.value;
+      } else {
+        ownerId = user.id;
       }
-    } else if (adminRow.value !== user.id) {
-      return respondJson({ error: "not_admin" }, { status: 403 });
     }
 
     const { data: vault, error: vErr } = await admin
@@ -72,9 +83,11 @@ Deno.serve(async (req) => {
     crypto.getRandomValues(bytes);
     const nonce = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 
+    // El callback guarda los tokens bajo `qb_oauth_states.user_id`: va el
+    // dueño canonico, no quien inicio el flujo.
     const { error: insErr } = await admin.from("qb_oauth_states").insert({
       nonce,
-      user_id: user.id,
+      user_id: ownerId,
     });
     if (insErr) {
       console.error("nonce insert failed", insErr);

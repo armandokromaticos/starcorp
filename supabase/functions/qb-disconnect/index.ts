@@ -53,16 +53,22 @@ Deno.serve(async (req) => {
       .eq("key", "ADMIN_USER_ID")
       .maybeSingle<{ value: string }>();
 
-    if (!adminRow || adminRow.value !== user.id) {
+    // Desconectar es cosa de rol: cualquier super_admin puede. Lo que se borra
+    // son los tokens del dueño canonico (ADMIN_USER_ID), que es donde viven
+    // todos, no los del que llama.
+    if (user.app_metadata?.role !== "super_admin") {
       return respondJson({ error: "not_admin" }, { status: 403 });
     }
+
+    const ownerId = adminRow?.value;
+    if (!ownerId) return respondJson({ status: "already_disconnected" });
 
     const realmId = await readRealmId(req);
 
     let rowsQuery = admin
       .from("qb_user_tokens")
       .select("realm_id, refresh_token")
-      .eq("user_id", user.id);
+      .eq("user_id", ownerId);
     if (realmId) rowsQuery = rowsQuery.eq("realm_id", realmId);
 
     const { data: rows } = await rowsQuery.returns<
@@ -100,7 +106,7 @@ Deno.serve(async (req) => {
       }
     }));
 
-    let delQuery = admin.from("qb_user_tokens").delete().eq("user_id", user.id);
+    let delQuery = admin.from("qb_user_tokens").delete().eq("user_id", ownerId);
     if (realmId) delQuery = delQuery.eq("realm_id", realmId);
     const { error: delErr } = await delQuery;
     if (delErr) {
@@ -108,12 +114,12 @@ Deno.serve(async (req) => {
       return respondJson({ error: "delete_failed" }, { status: 500 });
     }
 
-    // If admin has no more connected realms, release the admin slot so another
-    // user can claim it on next OAuth init.
+    // Sin realms conectados se libera el slot, para que la proxima conexion
+    // vuelva a fijar dueño (puede ser otro super_admin).
     const { count: remaining } = await admin
       .from("qb_user_tokens")
       .select("realm_id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+      .eq("user_id", ownerId);
     if (!remaining) {
       await admin.from("starcorp_vault").delete().eq("key", "ADMIN_USER_ID");
     }
