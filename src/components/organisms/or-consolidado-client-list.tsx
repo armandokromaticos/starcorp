@@ -6,21 +6,21 @@
  * Renders a friendly empty state when the active filter returns no clients.
  */
 
-import React, { memo, useCallback } from 'react';
-import { View } from '@/src/tw';
-import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
-import { MlConsolidadoClientCard } from '@/src/components/molecules/ml-consolidado-client-card';
-import { MlEmptyState } from '@/src/components/molecules/ml-empty-state';
-import { useConsolidadoClients } from '@/src/hooks/queries/use-consolidado-clients';
-import { useFiltersStore } from '@/src/stores/filters.store';
-import type { ConsolidadoCategoryId } from '@/src/types/domain.types';
+import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
+import { MlConsolidadoClientCard } from "@/src/components/molecules/ml-consolidado-client-card";
+import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
+import { useConsolidadoClients } from "@/src/hooks/queries/use-consolidado-clients";
+import { useFiltersStore } from "@/src/stores/filters.store";
+import { View } from "@/src/tw";
+import type { ConsolidadoCategoryId } from "@/src/types/domain.types";
+import React, { memo, useCallback } from "react";
 
 const AMOUNT_LABEL_BY_CATEGORY: Record<ConsolidadoCategoryId, string> = {
-  ingresos: 'Ingresos',
-  costos: 'Costos',
-  gastos: 'Gastos',
-  utilidad: 'Utilidad',
-  egresos: 'Egresos',
+  ingresos: "Ingresos",
+  costos: "Costos",
+  gastos: "Gastos",
+  utilidad: "Utilidad",
+  egresos: "Egresos",
 };
 
 interface OrConsolidadoClientListProps {
@@ -36,7 +36,7 @@ export const OrConsolidadoClientList = memo<OrConsolidadoClientListProps>(
     const amountLabel = AMOUNT_LABEL_BY_CATEGORY[categoryId];
 
     const goToWidestPeriod = useCallback(
-      () => setActivePeriod('12m'),
+      () => setActivePeriod("12m"),
       [setActivePeriod],
     );
 
@@ -56,13 +56,13 @@ export const OrConsolidadoClientList = memo<OrConsolidadoClientListProps>(
           icon="search-off"
           title={`Sin clientes con ${amountLabel.toLowerCase()} en este periodo`}
           description={
-            periodKey === '12m'
-              ? 'No se encontraron movimientos en los últimos 12 meses.'
-              : 'Probá ampliar el rango desde el selector de arriba.'
+            periodKey === "12m"
+              ? "No se encontraron movimientos en los últimos 12 meses."
+              : "Prueba ampliar el rango desde el selector de arriba."
           }
           action={
-            periodKey !== '12m'
-              ? { label: 'Ver últimos 12 meses', onPress: goToWidestPeriod }
+            periodKey !== "12m"
+              ? { label: "Ver últimos 12 meses", onPress: goToWidestPeriod }
               : undefined
           }
         />
@@ -86,4 +86,4 @@ export const OrConsolidadoClientList = memo<OrConsolidadoClientListProps>(
   },
 );
 
-OrConsolidadoClientList.displayName = 'OrConsolidadoClientList';
+OrConsolidadoClientList.displayName = "OrConsolidadoClientList";

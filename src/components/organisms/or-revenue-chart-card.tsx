@@ -11,10 +11,13 @@ import { useWindowDimensions } from 'react-native';
 import { View, Pressable } from '@/src/tw';
 import { tokens } from '@/src/theme/tokens';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { Skeleton } from '@/src/components/atoms/skeleton';
 import { AreaChart } from '@/src/components/charts/area-chart';
+import { useChartActivePoint } from '@/src/components/charts/use-chart-active-point';
+import { MlChartTooltip } from '@/src/components/molecules/ml-chart-tooltip';
 import {
   useDashboardSummary,
   type DashboardSummaryPeriod,
@@ -24,6 +27,7 @@ import {
   type TimeseriesBucket,
 } from '@/src/hooks/queries/use-dashboard-timeseries';
 import type { PeriodKey } from '@/src/types/domain.types';
+import { formatAxisDate, pickEvenly, shiftIsoDate } from '@/src/utils/date';
 
 interface OrRevenueChartCardProps {
   onPress?: () => void;
@@ -31,10 +35,33 @@ interface OrRevenueChartCardProps {
   label?: string;
   period: PeriodKey;
   centroCosto?: string | null;
+  /** When provided, the big header value (and delta) is replaced with this
+   *  number — used to surface metrics that don't belong to the consolidated
+   *  P&L summary, e.g. QB outstanding balance ("Cartera"). The area chart
+   *  itself keeps showing `categoryId` since cartera has no timeseries. */
+  headerValueOverride?: number | null;
+  /** Arrow rendered next to the override value (e.g. Cartera ascendente o
+   *  descendente). Only shown when `headerValueOverride` is provided. */
+  headerTrend?: 'up' | 'down' | null;
+  /** When true the chart series are forced to 0 — used when the selected
+   *  metric has no data for this client (e.g. sin cartera). */
+  zeroData?: boolean;
+  /**
+   * 'margen' cambia la serie a un ratio: en vez de graficar el monto de
+   * `categoryId` grafica utilidad/ingresos por bucket, con eje, tooltip y
+   * header en porcentaje. El resto de métricas usan 'category'.
+   */
+  metricMode?: 'category' | 'margen';
 }
 
 type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
 type CategoryId = 'ingresos' | 'costos' | 'gastos' | 'utilidad';
+type MetricMode = 'category' | 'margen';
+
+/** Margen en %, 0 cuando no hay base de ingresos (evita Infinity/NaN). */
+function marginPct(utilidad: number, ingresos: number): number {
+  return ingresos !== 0 ? (utilidad / ingresos) * 100 : 0;
+}
 
 // PeriodKey 'today' is shown as "Mes corriente" in the UI; the RPC accepts 'mtd'.
 const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
@@ -46,7 +73,7 @@ const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
 };
 
 export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
-  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto }) => {
+  ({ onPress, categoryId = 'ingresos', label = 'Ingresos', period, centroCosto, headerValueOverride, headerTrend, zeroData, metricMode = 'category' }) => {
     return (
       <Pressable
         onPress={onPress}
@@ -62,6 +89,10 @@ export const OrRevenueChartCard = memo<OrRevenueChartCardProps>(
           label={label}
           period={period}
           centroCosto={centroCosto}
+          headerValueOverride={headerValueOverride}
+          headerTrend={headerTrend}
+          zeroData={zeroData}
+          metricMode={metricMode}
         />
       </Pressable>
     );
@@ -75,6 +106,22 @@ function niceCeil(value: number): number {
   const n = value / pow;
   const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
   return nice * pow;
+}
+
+/**
+ * Dominio del eje en modo porcentaje: múltiplos de 10 (mínimo 10) para que
+ * el tick intermedio (`yMax / 2`) también caiga en un entero redondo. La
+ * escala compacta de `niceCeil` salta de 22 a 50 y deja la serie aplastada
+ * contra el piso del chart.
+ */
+function niceCeilPercent(value: number): number {
+  if (value <= 0) return 0;
+  return Math.max(10, Math.ceil(value / 10) * 10);
+}
+
+function niceFloorPercent(value: number): number {
+  if (value >= 0) return 0;
+  return Math.min(-10, Math.floor(value / 10) * 10);
 }
 
 function niceFloor(value: number): number {
@@ -91,7 +138,11 @@ const ConsolidadoChartCard = memo<{
   label: string;
   period: PeriodKey;
   centroCosto?: string | null;
-}>(({ categoryId, label, period, centroCosto }) => {
+  headerValueOverride?: number | null;
+  headerTrend?: 'up' | 'down' | null;
+  zeroData?: boolean;
+  metricMode?: MetricMode;
+}>(({ categoryId, label, period, centroCosto, headerValueOverride, headerTrend, zeroData, metricMode = 'category' }) => {
   const [view, setView] = useState<ConsolidadoView>('totalizado');
   const rpcPeriod = RPC_PERIOD[period];
   const summary = useDashboardSummary(rpcPeriod, {
@@ -103,37 +154,104 @@ const ConsolidadoChartCard = memo<{
     centroCosto: centroCosto ?? null,
   });
 
-  const buckets = timeseries.data ?? [];
+  const isMargen = metricMode === 'margen';
+
+  const buckets = useMemo(() => timeseries.data ?? [], [timeseries.data]);
+  // En modo margen la serie es el ratio del bucket, no su monto: cada punto
+  // es utilidad/ingresos de ESE bucket (no un acumulado del periodo).
   const corriente = useMemo(
-    () => buckets.map((b) => b[categoryId]),
-    [buckets, categoryId],
+    () =>
+      buckets.map((b) =>
+        zeroData
+          ? 0
+          : isMargen
+            ? marginPct(b.utilidad, b.ingresos)
+            : b[categoryId],
+      ),
+    [buckets, categoryId, zeroData, isMargen],
   );
   const historico = useMemo(
-    () => buckets.map((b) => prevField(b, categoryId)),
-    [buckets, categoryId],
+    () =>
+      buckets.map((b) =>
+        zeroData
+          ? 0
+          : isMargen
+            ? marginPct(b.utilidadPrev, b.ingresosPrev)
+            : prevField(b, categoryId),
+      ),
+    [buckets, categoryId, zeroData, isMargen],
+  );
+  // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
+  // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
+  // derecho del eje siempre muestra el último día cerrado (ej. 31-may para
+  // 1m/3m/12m) en vez del inicio del último bucket (28-may, 8-may, …).
+  const xLabels = useMemo(
+    () =>
+      buckets.map((b, i) =>
+        i === buckets.length - 1
+          ? formatAxisDate(shiftIsoDate(b.end, -1))
+          : formatAxisDate(b.start),
+      ),
+    [buckets],
   );
 
-  const totalCorriente = corriente.reduce((s, v) => s + v, 0);
-  const totalHistorico = historico.reduce((s, v) => s + v, 0);
-  const totalAll = summary.data ? summary.data[categoryId] : 0;
+  // El margen del periodo NO es la suma (ni el promedio) de los margenes
+  // por bucket: se recalcula sobre los totales para que un bucket flaco no
+  // pese igual que uno grande.
+  const margenTotals = useMemo(() => {
+    if (!isMargen) return null;
+    const sum = (pick: (b: (typeof buckets)[number]) => number) =>
+      buckets.reduce((acc, b) => acc + pick(b), 0);
+    return {
+      corriente: marginPct(sum((b) => b.utilidad), sum((b) => b.ingresos)),
+      historico: marginPct(
+        sum((b) => b.utilidadPrev),
+        sum((b) => b.ingresosPrev),
+      ),
+    };
+  }, [buckets, isMargen]);
+
+  const totalCorriente = margenTotals
+    ? margenTotals.corriente
+    : corriente.reduce((s, v) => s + v, 0);
+  const totalHistorico = margenTotals
+    ? margenTotals.historico
+    : historico.reduce((s, v) => s + v, 0);
+  const totalAll = summary.data
+    ? isMargen
+      ? marginPct(summary.data.utilidad, summary.data.ingresos)
+      : summary.data[categoryId]
+    : 0;
+  // Margen: la variación son puntos porcentuales (18% → 21% = 3 pp); el
+  // resto de categorías usa el delta relativo que ya devuelve el RPC.
   const deltaPct = summary.data
-    ? summary.data[`${categoryId}DeltaPercent` as const]
+    ? isMargen
+      ? totalAll - marginPct(summary.data.utilidadPrev, summary.data.ingresosPrev)
+      : summary.data[`${categoryId}DeltaPercent` as const]
     : 0;
 
-  const headerValue =
-    view === 'corriente'
+  const isOverride = headerValueOverride != null;
+  const headerValue = isOverride
+    ? headerValueOverride
+    : view === 'corriente'
       ? totalCorriente
       : view === 'historico'
         ? totalHistorico
         : totalAll;
-  const headerDelta = view === 'historico' ? -deltaPct : deltaPct;
+  // Override values (e.g. Cartera) have no comparable previous period; hide
+  // the delta chip rather than show a misleading delta from `categoryId`.
+  const headerDelta = isOverride
+    ? null
+    : view === 'historico'
+      ? -deltaPct
+      : deltaPct;
 
   const isLoading = summary.isPending || timeseries.isPending;
 
   return (
     <>
       <View className="gap-1">
-        <AtTypography variant="overline" color="#4A5568">
+        <AtTypography variant="captionBold" color="#4A5568">
           {label}
         </AtTypography>
         <View className="flex-row items-center gap-3">
@@ -141,8 +259,26 @@ const ConsolidadoChartCard = memo<{
             <Skeleton width={140} height={28} />
           ) : (
             <>
-              <AtMetricValue value={headerValue} size="lg" />
-              <AtDeltaIndicator value={headerDelta} appearance="dark" />
+              <AtMetricValue
+                value={headerValue}
+                size="lg"
+                format={isMargen ? 'percent' : 'currency'}
+              />
+              {isOverride && headerTrend != null && (
+                <AtIcon
+                  name={headerTrend === 'up' ? 'north-east' : 'south-east'}
+                  size={22}
+                  color={headerTrend === 'up' ? '#22C55E' : '#EF4444'}
+                />
+              )}
+              {headerDelta != null && (
+                <AtDeltaIndicator
+                  value={headerDelta}
+                  appearance="dark"
+                  size="lg"
+                  unit={isMargen ? 'pp' : '%'}
+                />
+              )}
             </>
           )}
         </View>
@@ -155,6 +291,8 @@ const ConsolidadoChartCard = memo<{
           corriente={corriente}
           historico={historico}
           view={view}
+          xLabels={xLabels}
+          isPercent={isMargen}
         />
       )}
 
@@ -177,22 +315,34 @@ function prevField(bucket: TimeseriesBucket, category: CategoryId): number {
   }
 }
 
+const X_AXIS_HEIGHT = 18;
+
 const ConsolidadoChart = memo<{
   corriente: number[];
   historico: number[];
   view: ConsolidadoView;
-}>(({ corriente, historico, view }) => {
+  xLabels: string[];
+  /** Serie de ratio (Margen): eje y tooltip en % en vez de moneda compacta. */
+  isPercent?: boolean;
+}>(({ corriente, historico, view, xLabels, isPercent = false }) => {
   const { width: screenWidth } = useWindowDimensions();
   const yAxisWidth = 56;
   const chartWidth = screenWidth - 16 * 4 - yAxisWidth;
   const chartHeight = 160;
 
+  const formatValue = useMemo(
+    () => (isPercent ? formatAxisPercent : formatAxisNumber),
+    [isPercent],
+  );
+
   const { yMin, yMax } = useMemo(() => {
     const all = [...corriente, ...historico];
     const peak = Math.max(0, ...all);
     const trough = Math.min(0, ...all);
-    return { yMin: niceFloor(trough), yMax: niceCeil(peak) };
-  }, [corriente, historico]);
+    return isPercent
+      ? { yMin: niceFloorPercent(trough), yMax: niceCeilPercent(peak) }
+      : { yMin: niceFloor(trough), yMax: niceCeil(peak) };
+  }, [corriente, historico, isPercent]);
 
   const yTicks = useMemo(() => {
     if (yMin >= 0) return [yMax, yMax / 2, 0];
@@ -203,9 +353,40 @@ const ConsolidadoChart = memo<{
   const showCorriente = view === 'totalizado' || view === 'corriente';
   const showHistorico = view === 'totalizado' || view === 'historico';
   const hasData = corriente.some((v) => v !== 0) || historico.some((v) => v !== 0);
+  const showXAxis = hasData && xLabels.length >= 2;
+
+  const pointCount = corriente.length;
+  const { activeIndex, handlers } = useChartActivePoint(pointCount, chartWidth);
+  const showTooltip = hasData && activeIndex != null && activeIndex < pointCount;
+  const activeX =
+    activeIndex != null && pointCount > 1
+      ? (activeIndex / (pointCount - 1)) * chartWidth
+      : 0;
+  const tooltipLines = useMemo(() => {
+    if (activeIndex == null) return [];
+    const lines: { color: string; label: string; value: string }[] = [];
+    if (showCorriente)
+      lines.push({
+        color: '#E8952E',
+        label: 'Corriente',
+        value: formatValue(corriente[activeIndex] ?? 0),
+      });
+    if (showHistorico)
+      lines.push({
+        color: '#2D4BA0',
+        label: 'Histórico',
+        value: formatValue(historico[activeIndex] ?? 0),
+      });
+    return lines;
+  }, [activeIndex, showCorriente, showHistorico, corriente, historico, formatValue]);
 
   return (
-    <View style={{ height: chartHeight + 8, marginTop: 4 }}>
+    <View
+      style={{
+        height: chartHeight + 8 + (showXAxis ? X_AXIS_HEIGHT : 0),
+        marginTop: 4,
+      }}
+    >
       <View
         style={{
           position: 'absolute',
@@ -220,90 +401,132 @@ const ConsolidadoChart = memo<{
       >
         {yTicks.map((t, i) => (
           <AtTypography key={i} variant="label" color="#8892A4">
-            {formatAxisNumber(t)}
+            {formatValue(t)}
           </AtTypography>
         ))}
       </View>
 
-      <View style={{ marginLeft: yAxisWidth, position: 'relative' }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: chartHeight,
-            justifyContent: 'space-between',
-          }}
-        >
-          {yTicks.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                height: 1,
-                backgroundColor: tokens.color.border.subtle,
-              }}
-            />
-          ))}
-        </View>
-
-        {!hasData && (
+      <View style={{ marginLeft: yAxisWidth }}>
+        <View style={{ position: 'relative', height: chartHeight }}>
           <View
             style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
               height: chartHeight,
-              alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            <AtTypography variant="label" color="#8892A4">
-              Sin datos en este periodo
-            </AtTypography>
+            {yTicks.map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  height: 1,
+                  backgroundColor: tokens.color.border.subtle,
+                }}
+              />
+            ))}
           </View>
-        )}
 
-        {hasData && showCorriente && (
-          <View style={{ position: 'absolute', top: 0, left: 0 }}>
-            <AreaChart
-              data={corriente}
-              width={chartWidth}
-              height={chartHeight}
-              color="#E8952E"
-              smooth={false}
-              strokeWidth={2}
-              strokeOpacity={0.9}
-              gradientId="grad-corriente"
-              yMin={yMin}
-              yMax={yMax}
-              fillGradient={{
-                stops: [
-                  { offset: 0, color: '#F2A24A', opacity: 0.85 },
-                  { offset: 1, color: '#E8952E', opacity: 0.35 },
-                ],
+          {!hasData && (
+            <View
+              style={{
+                height: chartHeight,
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
-          </View>
-        )}
+            >
+              <AtTypography variant="label" color="#8892A4">
+                Sin datos en este periodo
+              </AtTypography>
+            </View>
+          )}
 
-        {hasData && showHistorico && (
-          <View style={{ position: 'absolute', top: 0, left: 0 }}>
-            <AreaChart
-              data={historico}
-              width={chartWidth}
-              height={chartHeight}
-              color="#2D4BA0"
-              smooth={false}
-              strokeWidth={3}
-              strokeOpacity={1}
-              gradientId="grad-historico"
-              yMin={yMin}
-              yMax={yMax}
-              fillGradient={{
-                stops: [
-                  { offset: 0, color: '#5B82E6', opacity: 0.35 },
-                  { offset: 1, color: '#2D4BA0', opacity: 0.05 },
-                ],
+          {hasData && showCorriente && (
+            <View style={{ position: 'absolute', top: 0, left: 0 }}>
+              <AreaChart
+                data={corriente}
+                width={chartWidth}
+                height={chartHeight}
+                color="#E8952E"
+                smooth={false}
+                strokeWidth={2}
+                strokeOpacity={0.9}
+                gradientId="grad-corriente"
+                yMin={yMin}
+                yMax={yMax}
+                activeIndex={activeIndex}
+                fillGradient={{
+                  stops: [
+                    { offset: 0, color: '#F2A24A', opacity: 0.85 },
+                    { offset: 1, color: '#E8952E', opacity: 0.35 },
+                  ],
+                }}
+              />
+            </View>
+          )}
+
+          {hasData && showHistorico && (
+            <View style={{ position: 'absolute', top: 0, left: 0 }}>
+              <AreaChart
+                data={historico}
+                width={chartWidth}
+                height={chartHeight}
+                color="#2D4BA0"
+                smooth={false}
+                strokeWidth={3}
+                strokeOpacity={1}
+                gradientId="grad-historico"
+                yMin={yMin}
+                yMax={yMax}
+                activeIndex={activeIndex}
+                fillGradient={{
+                  stops: [
+                    { offset: 0, color: '#5B82E6', opacity: 0.35 },
+                    { offset: 1, color: '#2D4BA0', opacity: 0.05 },
+                  ],
+                }}
+              />
+            </View>
+          )}
+
+          {hasData && pointCount >= 2 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
               }}
+              {...handlers}
             />
+          )}
+
+          {showTooltip && (
+            <MlChartTooltip
+              x={activeX}
+              plotWidth={chartWidth}
+              title={xLabels[activeIndex!] ?? ''}
+              lines={tooltipLines}
+            />
+          )}
+        </View>
+
+        {showXAxis && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 4,
+            }}
+          >
+            {pickEvenly(xLabels, 6).map((label, i) => (
+              <AtTypography key={`${label}-${i}`} variant="label" color="#8892A4">
+                {label}
+              </AtTypography>
+            ))}
           </View>
         )}
       </View>
@@ -392,4 +615,11 @@ function formatAxisNumber(value: number): string {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+/** Eje/tooltip del margen. Los ticks caen en enteros por construcción del
+ *  dominio; el tooltip (margen real del bucket) lleva un decimal. */
+function formatAxisPercent(value: number): string {
+  if (value === 0) return '0%';
+  return `${value.toFixed(Number.isInteger(value) ? 0 : 1)}%`;
 }

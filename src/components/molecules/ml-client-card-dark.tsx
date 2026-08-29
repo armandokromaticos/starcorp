@@ -25,8 +25,8 @@ export const MlClientCardDark = memo<MlClientCardDarkProps>(
   ({ name, amountLabel = 'Ingresos', amount, deltaPercent, currency = 'USD', onPress }) => {
     const isPositive = deltaPercent >= 0;
     const arrow = isPositive ? '↗' : '↘';
-    const textColor = isPositive ? '#4ADE80' : '#F87171';
-    const pillBg = isPositive ? 'rgba(74, 222, 128, 0.10)' : 'rgba(248, 113, 113, 0.12)';
+    const textColor = isPositive ? '#5CF094' : '#FF1E1E';
+    const pillBg = isPositive ? '#0D1D1F' : '#1B0F1A';
 
     return (
       <Pressable
@@ -52,7 +52,7 @@ export const MlClientCardDark = memo<MlClientCardDarkProps>(
           </View>
 
           <View
-            className="flex-row items-center gap-1 px-2.5 py-1 rounded-md self-start"
+            className="flex-row items-center gap-1 px-2.5 py-1 rounded-lg self-start"
             style={{ backgroundColor: pillBg, borderCurve: 'continuous' }}
           >
             <AtTypography variant="captionBold" color={textColor}>

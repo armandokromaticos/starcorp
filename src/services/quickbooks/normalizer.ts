@@ -6,12 +6,14 @@
 import type {
   QBProfitAndLossRaw,
   QBReportRow,
-} from '@/src/types/api.types';
+  QBTransactionListRaw,
+  QBTransactionListRow,
+} from "@/src/types/api.types";
 import type {
   Company,
   CompanyMetrics,
   NormalizedRevenue,
-} from '@/src/types/domain.types';
+} from "@/src/types/domain.types";
 
 interface QBCompanyInfoRaw {
   CompanyInfo?: {
@@ -52,17 +54,32 @@ function findGroupTotal(
   return 0;
 }
 
+/**
+ * Same as findGroupTotal but tries multiple group tag variants.
+ * QB Online sometimes emits different tags depending on company setup.
+ */
+function findGroupTotalAny(
+  rows: QBReportRow[] | undefined,
+  ...groups: string[]
+): number {
+  for (const g of groups) {
+    const v = findGroupTotal(rows, g);
+    if (v !== 0) return v;
+  }
+  return 0;
+}
+
 export function normalizeRevenueFromPnL(
   pnl: QBProfitAndLossRaw | null,
   period: { start: string; end: string },
 ): NormalizedRevenue {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
+  const income = findGroupTotal(pnl?.Rows?.Row, "Income");
   return {
     total: income,
-    currency: pnl?.Header?.Currency ?? 'USD',
+    currency: pnl?.Header?.Currency ?? "USD",
     deltaPercent: 0,
     deltaAbsolute: 0,
-    trend: 'flat',
+    trend: "flat",
     series: [],
     period,
   };
@@ -102,7 +119,9 @@ function toAmount(raw: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function lastColValue(cols: { value: string }[] | undefined): string | undefined {
+function lastColValue(
+  cols: { value: string }[] | undefined,
+): string | undefined {
   if (!cols || cols.length === 0) return undefined;
   return cols[cols.length - 1]?.value;
 }
@@ -121,26 +140,97 @@ function findSectionRow(
 }
 
 /**
+ * Secciones logicas del P&L y los grupos de QB que las componen.
+ *
+ * QB parte el P&L en dos mitades: lo operacional (Income / COGS / Expenses,
+ * que cierra en "Net Operating Income") y lo no operacional (OtherIncome /
+ * OtherExpenses); solo el "Net Income" del final suma las dos.
+ *
+ * Financiero muestra 5 cards y no mas, asi que los bloques Other* no tienen
+ * card propia: se absorben en Ingresos y Egresos. La prioridad es que la
+ * aritmetica cierre en pantalla, no clavar el renglon de QB:
+ *
+ *   ingresos = Income + OtherIncome      (QB titula "Total Income" solo al 1ro)
+ *   egresos  = Expenses + OtherExpenses  (QB titula "Total Expenses" solo al 1ro)
+ *   bruta    = ingresos - costos
+ *   neta     = bruta - egresos
+ *
+ * Con ese reparto `neta` da EXACTO el "Net Income" de QB en las 6 empresas,
+ * porque NetIncome = Income + OtherIncome - COGS - Expenses - OtherExpenses.
+ * Lo que si se separa del reporte es `bruta`: QB calcula su "Gross Profit" sin
+ * OtherIncome, asi que en una empresa con otros ingresos la card queda por
+ * encima de ese renglon (ONEA ago-2025 -> jul-2026: 924.331,85 de diferencia).
+ * Es el precio de que la resta cuadre en pantalla, y es deliberado.
+ *
+ * Magnitudes reales del bloque Other* (ago-2025 -> jul-2026): OtherExpenses
+ * MCS 36.641,10 (Vehicle expenses, Home office, Pending to identify,
+ * Reconciliation Discrepancies) y 5 STARS 1.001,58 -- esta ultima es la
+ * diferencia entre 358.306,73 y 359.308,31; OtherIncome ONEA 924.331,85 y
+ * 5 STARS 212,42; en el resto son centimos.
+ *
+ * Esta tabla es la UNICA fuente de verdad: la usan tanto las cards
+ * (`normalizeMetricsFromPnL`) como el drill-down, para que una card y su
+ * detalle no se puedan separar.
+ */
+export type PnLSection = "Income" | "COGS" | "Expenses";
+
+const SECTION_GROUPS: Record<PnLSection, string[]> = {
+  Income: ["Income", "OtherIncome"],
+  COGS: ["COGS"],
+  Expenses: ["Expenses", "OtherExpenses"],
+};
+
+/** Variantes del tag que QB Online emite segun como este configurada la empresa. */
+const GROUP_ALIASES: Record<string, string[]> = {
+  Income: ["Income", "TotalIncome"],
+  OtherIncome: ["OtherIncome", "TotalOtherIncome", "OtherIncomeExpense"],
+  COGS: ["COGS", "TotalCOGS"],
+  Expenses: ["Expenses", "TotalExpenses"],
+  OtherExpenses: ["OtherExpenses", "TotalOtherExpenses"],
+};
+
+/** Filas hijas de una seccion, concatenando los grupos que la componen. */
+function sectionChildren(
+  pnl: QBProfitAndLossRaw | null,
+  section: PnLSection,
+): RawWithExtras[] {
+  const rows = pnl?.Rows?.Row as RawWithExtras[] | undefined;
+  return SECTION_GROUPS[section].flatMap(
+    (g) => findSectionRow(rows, g)?.Rows?.Row ?? [],
+  );
+}
+
+/** Total de una seccion: suma del total de cada grupo que la compone. */
+function sectionTotal(
+  rows: QBReportRow[] | undefined,
+  section: PnLSection,
+): number {
+  return SECTION_GROUPS[section].reduce(
+    (sum, g) => sum + findGroupTotalAny(rows, ...(GROUP_ALIASES[g] ?? [g])),
+    0,
+  );
+}
+
+/**
  * Flattens immediate descendants of a P&L section (Income, COGS, Expenses)
  * into a list of leaf line items so we can render them in a detail screen.
  */
 export function normalizePnLSection(
   pnl: QBProfitAndLossRaw | null,
-  group: 'Income' | 'COGS' | 'Expenses',
+  group: PnLSection,
 ): PnLLineItem[] {
-  const root = findSectionRow(pnl?.Rows?.Row as RawWithExtras[] | undefined, group);
-  const children = root?.Rows?.Row ?? [];
+  const children = sectionChildren(pnl, group);
 
   return children.map((row, idx) => {
-    const label = row.Header?.ColData?.[0]?.value ??
+    const label =
+      row.Header?.ColData?.[0]?.value ??
       row.ColData?.[0]?.value ??
       `Cuenta ${idx + 1}`;
     const amount = row.Summary?.ColData
       ? toAmount(lastColValue(row.Summary.ColData))
       : toAmount(lastColValue(row.ColData));
-    const id = row.Header?.ColData?.[0]?.id ??
-      row.ColData?.[0]?.id ??
-      `${group}-${idx}`;
+    const id =
+      row.Header?.ColData?.[0]?.id ?? row.ColData?.[0]?.id ?? `${group}-${idx}`;
     return {
       id: String(id),
       label,
@@ -150,23 +240,259 @@ export function normalizePnLSection(
   });
 }
 
+/** A single leaf account inside a P&L category. */
+export interface PnLAccount {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+/** A first-level category under a P&L section. May contain >=1 accounts. */
+export interface PnLCategory extends PnLLineItem {
+  /** Leaf accounts under this category. Categories with no sub-accounts
+   *  surface themselves as a single account (id/label/amount mirror the
+   *  category) so the UI can render a 1-item accordion uniformly. */
+  accounts: PnLAccount[];
+}
+
+function rowLabel(row: RawWithExtras, fallback: string): string {
+  return row.Header?.ColData?.[0]?.value ?? row.ColData?.[0]?.value ?? fallback;
+}
+
+function rowAmount(row: RawWithExtras): number {
+  return row.Summary?.ColData
+    ? toAmount(lastColValue(row.Summary.ColData))
+    : toAmount(lastColValue(row.ColData));
+}
+
+function rowId(row: RawWithExtras, fallback: string): string {
+  return String(
+    row.Header?.ColData?.[0]?.id ?? row.ColData?.[0]?.id ?? fallback,
+  );
+}
+
+function collectLeaves(
+  rows: RawWithExtras[] | undefined,
+  out: PnLAccount[],
+  pathFallback: string,
+): void {
+  if (!rows) return;
+  rows.forEach((row, idx) => {
+    const hasChildren = (row.Rows?.Row?.length ?? 0) > 0;
+    if (hasChildren) {
+      collectLeaves(row.Rows!.Row, out, `${pathFallback}-${idx}`);
+    } else {
+      out.push({
+        id: rowId(row, `${pathFallback}-${idx}`),
+        label: rowLabel(row, `Cuenta ${idx + 1}`),
+        amount: rowAmount(row),
+      });
+    }
+  });
+}
+
+/**
+ * Hierarchical view of a P&L section: top-level categories with their leaf
+ * accounts. Categories with no sub-accounts include themselves as the only
+ * account so the accordion stays uniform.
+ */
+export function normalizePnLSectionHierarchical(
+  pnl: QBProfitAndLossRaw | null,
+  group: PnLSection,
+): PnLCategory[] {
+  const children = sectionChildren(pnl, group);
+
+  return children.map((row, idx) => {
+    const label = rowLabel(row, `Cuenta ${idx + 1}`);
+    const amount = rowAmount(row);
+    const id = rowId(row, `${group}-${idx}`);
+    const accounts: PnLAccount[] = [];
+    const hasChildren = (row.Rows?.Row?.length ?? 0) > 0;
+    if (hasChildren) {
+      collectLeaves(row.Rows!.Row, accounts, `${group}-${idx}`);
+    }
+    if (accounts.length === 0) {
+      accounts.push({ id, label, amount });
+    }
+    return {
+      id,
+      label,
+      amount,
+      color: SECTION_PALETTE[idx % SECTION_PALETTE.length],
+      accounts,
+    };
+  });
+}
+
+/**
+ * Finds a leaf account anywhere under a P&L section by its QB id. Used by the
+ * level-2 detail screens to resolve an account selected from the accordion.
+ */
+export function findPnLLeafById(
+  pnl: QBProfitAndLossRaw | null,
+  group: PnLSection,
+  leafId: string,
+): PnLAccount | null {
+  const categories = normalizePnLSectionHierarchical(pnl, group);
+  for (const cat of categories) {
+    const hit = cat.accounts.find((a) => a.id === leafId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** One row of a QB TransactionList report (a posting against an account). */
+export interface QBTransaction {
+  id: string;
+  date: string;
+  type: string;
+  num: string;
+  name: string;
+  memo: string;
+  amount: number;
+}
+
+/** Map QB ColType (or ColTitle fallback) to our normalized fields. */
+const TX_COLUMN_MAP: Record<string, keyof QBTransaction> = {
+  tx_date: "date",
+  txn_type: "type",
+  doc_num: "num",
+  vend_name: "name",
+  cust_name: "name",
+  name: "name",
+  memo: "memo",
+  subt_nat_amount: "amount",
+  subt_nat_home_amount: "amount",
+  amount: "amount",
+};
+
+function resolveTxField(
+  col: { ColTitle?: string; ColType?: string } | undefined,
+): keyof QBTransaction | null {
+  if (!col) return null;
+  const byType = col.ColType ? TX_COLUMN_MAP[col.ColType] : undefined;
+  if (byType) return byType;
+  const titleKey = col.ColTitle?.toLowerCase();
+  if (!titleKey) return null;
+  if (titleKey.includes("date") || titleKey.includes("fecha")) return "date";
+  if (titleKey.includes("type") || titleKey.includes("tipo")) return "type";
+  if (titleKey.includes("num")) return "num";
+  if (titleKey.includes("name") || titleKey.includes("nombre")) return "name";
+  if (titleKey.includes("memo") || titleKey.includes("descripci"))
+    return "memo";
+  if (titleKey.includes("amount") || titleKey.includes("monto"))
+    return "amount";
+  return null;
+}
+
+function mapTxRow(
+  columns: { ColTitle?: string; ColType?: string }[],
+  row: QBTransactionListRow,
+  rowIdx: number,
+): QBTransaction {
+  const cols = row.ColData ?? [];
+  const tx: QBTransaction = {
+    id: "",
+    date: "",
+    type: "",
+    num: "",
+    name: "",
+    memo: "",
+    amount: 0,
+  };
+  cols.forEach((cell, i) => {
+    const field = resolveTxField(columns[i]);
+    if (!field) return;
+    const value = cell.value ?? "";
+    if (field === "amount") {
+      const n = Number(value);
+      tx.amount = Number.isFinite(n) ? n : 0;
+    } else {
+      tx[field] = value;
+    }
+    if (!tx.id && cell.id) tx.id = String(cell.id);
+  });
+  if (!tx.id) tx.id = `tx-${rowIdx}-${tx.date}-${tx.num}`;
+  return tx;
+}
+
+/** GeneralLedger antepone una fila "Beginning Balance" en cuentas de
+ *  balance; no es una transacción. */
+function isBeginningBalanceRow(row: QBTransactionListRow): boolean {
+  return /beginning balance/i.test(row.ColData?.[0]?.value ?? "");
+}
+
+/** Las transacciones de una cuenta dentro de un reporte GeneralLedger. */
+export interface QBAccountTransactions {
+  accountId: string;
+  accountName: string;
+  transactions: QBTransaction[];
+}
+
+/**
+ * GeneralLedger multi-cuenta → transacciones agrupadas por cuenta. El
+ * reporte anida las filas bajo secciones cuyo Header trae nombre e id de
+ * la cuenta; las secciones sin id (agrupadores intermedios) heredan el
+ * contexto del padre. OJO: GL devuelve una fila por LÍNEA de asiento.
+ */
+export function normalizeGeneralLedgerByAccount(
+  raw: QBTransactionListRaw | null,
+): QBAccountTransactions[] {
+  if (!raw) return [];
+  const columns = raw.Columns?.Column ?? [];
+  const out: QBAccountTransactions[] = [];
+
+  const walk = (
+    rows: QBTransactionListRow[] | undefined,
+    current: QBAccountTransactions | null,
+  ): void => {
+    if (!rows) return;
+    for (const row of rows) {
+      let ctx = current;
+      const header = row.Header?.ColData?.[0];
+      if (header?.id != null || header?.value) {
+        ctx = {
+          accountId: String(header.id ?? header.value),
+          accountName: header.value ?? "",
+          transactions: [],
+        };
+        out.push(ctx);
+      }
+      if (row.ColData?.length && ctx && !isBeginningBalanceRow(row)) {
+        ctx.transactions.push(mapTxRow(columns, row, ctx.transactions.length));
+      }
+      walk(row.Rows?.Row, ctx);
+    }
+  };
+  walk(raw.Rows?.Row, null);
+
+  return out.filter((acc) => acc.transactions.length > 0);
+}
+
 export function normalizeMetricsFromPnL(
   pnl: QBProfitAndLossRaw | null,
 ): CompanyMetrics {
-  const income = findGroupTotal(pnl?.Rows?.Row, 'Income');
-  const cogs = findGroupTotal(pnl?.Rows?.Row, 'COGS');
-  const grossProfit = findGroupTotal(pnl?.Rows?.Row, 'GrossProfit') ||
-    income - cogs;
-  const expenses = findGroupTotal(pnl?.Rows?.Row, 'Expenses');
-  const netIncome = findGroupTotal(pnl?.Rows?.Row, 'NetIncome') ||
-    grossProfit - expenses;
+  const rows = pnl?.Rows?.Row;
+
+  // Las tres primeras salen de SECTION_GROUPS, la misma tabla que consume el
+  // drill-down: si una card y su detalle se separan, el bug esta en esa tabla.
+  const ingresos = sectionTotal(rows, "Income");
+  const costos = sectionTotal(rows, "COGS");
+  const egresos = sectionTotal(rows, "Expenses");
+
+  // Derivadas, NO leidas del reporte: es lo unico que garantiza que en pantalla
+  // se vea neta = bruta - egresos con las 5 cards. Aun asi `utilidadNeta` da el
+  // "Net Income" de QB al centavo; `utilidadBruta` puede quedar por encima de
+  // su "Gross Profit" cuando la empresa tiene OtherIncome (ver arriba).
+  const utilidadBruta = ingresos - costos;
+  const utilidadNeta = utilidadBruta - egresos;
 
   const flat = (value: number) => ({ value, deltaPercent: 0 });
   return {
-    ingresos: flat(income),
-    costos: flat(cogs),
-    egresos: flat(expenses),
-    utilidadBruta: flat(grossProfit),
-    utilidadNeta: flat(netIncome),
+    ingresos: flat(ingresos),
+    costos: flat(costos),
+    egresos: flat(egresos),
+    utilidadBruta: flat(utilidadBruta),
+    utilidadNeta: flat(utilidadNeta),
   };
 }

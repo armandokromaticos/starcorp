@@ -12,6 +12,25 @@ export interface ClientMetadata {
   nEntries: number;
   firstFecha: string | null;
   lastFecha: string | null;
+  idCentroCosto: string | null;
+  /** Raw row from clientes_master.data (PBI ListadoClientes5Stars). */
+  clienteData: Record<string, unknown> | null;
+  /**
+   * Asociados vigentes del centro_costo. Misma fuente y mismo corte que el
+   * Informe Asociados activos (empleados_detail: con codigoalterno,
+   * deduplicado por persona con su asignación vigente), así que el número
+   * de esta ficha y el del informe siempre coinciden.
+   *
+   * `0` = el cliente está en empleadosHotel pero nadie tiene código vigente.
+   * `null` = el cliente no aparece en empleadosHotel (la UI muestra "XX").
+   */
+  empleadosActivos: number | null;
+  /**
+   * Universo del cliente en empleadosHotel sin el filtro de código. La
+   * diferencia contra `empleadosActivos` es la gente sin codigoalterno
+   * asignado (p. ej. BENCHMARK: 0 de 4).
+   */
+  empleadosTotal: number | null;
 }
 
 interface MetadataRow {
@@ -20,6 +39,10 @@ interface MetadataRow {
   n_entries: number | string;
   first_fecha: string | null;
   last_fecha: string | null;
+  id_centro_costo: string | null;
+  cliente_data: Record<string, unknown> | null;
+  empleados_activos: number | string | null;
+  empleados_total: number | string | null;
 }
 
 export function useClientMetadata(centroCosto: string | null) {
@@ -35,12 +58,18 @@ export function useClientMetadata(centroCosto: string | null) {
         | MetadataRow
         | undefined;
       if (!row) return null;
+      const activos = row.empleados_activos;
+      const total = row.empleados_total;
       return {
         nTerceros: Number(row.n_terceros),
         nCuentas: Number(row.n_cuentas),
         nEntries: Number(row.n_entries),
         firstFecha: row.first_fecha,
         lastFecha: row.last_fecha,
+        idCentroCosto: row.id_centro_costo ?? null,
+        clienteData: row.cliente_data ?? null,
+        empleadosActivos: activos == null ? null : Number(activos),
+        empleadosTotal: total == null ? null : Number(total),
       };
     },
     enabled: !!centroCosto,
