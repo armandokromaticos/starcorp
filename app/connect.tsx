@@ -20,6 +20,7 @@ import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
 import { OrGlobalSearchModal } from '@/src/components/organisms/or-global-search-modal';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import { useAuthStore } from '@/src/stores/auth.store';
 import { useQbStatus } from '@/src/hooks/queries/use-companies';
 import { startQuickBooksOAuth } from '@/src/services/quickbooks/oauth';
 import {
@@ -32,6 +33,10 @@ export default function ConnectScreen() {
   const insets = useSafeAreaInsets();
   const status = useQbStatus();
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+  // Al drawer solo llega el super admin, pero "super admin de la app" y
+  // "dueño de la conexión QB" (ADMIN_USER_ID en starcorp_vault) son cosas
+  // distintas: puede haber varios super admins y un solo dueño.
+  const isSuperAdmin = useAuthStore((s) => s.user?.role === 'super_admin');
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
@@ -129,9 +134,12 @@ export default function ConnectScreen() {
   const isAdmin = status.data?.isAdmin ?? false;
   const companies = status.data?.companies ?? [];
 
-  // Member with data available → bounce into the dashboard.
-  // Admin stays on /connect to manage connections.
-  if (!isAdmin && companies.length > 0) {
+  // Member with data available → bounce into the dashboard: no tiene nada
+  // que gestionar acá y llegó por el gate de (tabs), no a propósito.
+  // El super admin NO rebota aunque no sea el dueño de la conexión: entra
+  // desde el drawer queriendo ver el estado, y rebotarlo dejaba la pantalla
+  // en blanco un instante y lo devolvía al dashboard sin explicación.
+  if (!isAdmin && !isSuperAdmin && companies.length > 0) {
     return <Redirect href="/" />;
   }
 
@@ -152,6 +160,12 @@ export default function ConnectScreen() {
       'Eres el administrador. Podés vincular más compañías o desconectar las que ya no necesitás.';
     canConnect = true;
     ctaLabel = 'Conectar otra empresa';
+  } else if (isSuperAdmin) {
+    title = 'Conexiones activas';
+    subtitle =
+      'Las conexiones las administra otra cuenta. Podés ver el estado de las empresas vinculadas, pero conectar o desconectar solo lo puede hacer esa cuenta.';
+    canConnect = false;
+    ctaLabel = 'Volver a verificar';
   } else {
     title = 'Esperando al administrador';
     subtitle =
@@ -199,8 +213,9 @@ export default function ConnectScreen() {
           </AtTypography>
         </View>
 
-        {/* Empresas vinculadas (solo admin) */}
-        {isAdmin && companies.length > 0 ? (
+        {/* Empresas vinculadas: las ve cualquier super admin; desconectar
+            solo el dueño de la conexión (qb-disconnect responde 403 al resto). */}
+        {companies.length > 0 ? (
           <View className="gap-3" style={{ marginTop: 28 }}>
             <AtTypography variant="overline" color="#8892A4">
               Empresas vinculadas
@@ -234,29 +249,31 @@ export default function ConnectScreen() {
                     {c.reauthRequired ? ' · requiere reconexión' : ''}
                   </AtTypography>
                 </View>
-                <Pressable
-                  onPress={() => confirmDisconnect(c)}
-                  disabled={disconnecting !== null}
-                  accessibilityRole="button"
-                  className="items-center justify-center px-3"
-                  style={{
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    borderCurve: 'continuous',
-                    borderWidth: 1,
-                    borderColor: '#FCA5A5',
-                    minWidth: 100,
-                    opacity: disconnecting !== null ? 0.6 : 1,
-                  }}
-                >
-                  {disconnecting === c.realmId ? (
-                    <ActivityIndicator size="small" color="#B91C1C" />
-                  ) : (
-                    <AtTypography variant="captionBold" color="#B91C1C">
-                      Desconectar
-                    </AtTypography>
-                  )}
-                </Pressable>
+                {isAdmin ? (
+                  <Pressable
+                    onPress={() => confirmDisconnect(c)}
+                    disabled={disconnecting !== null}
+                    accessibilityRole="button"
+                    className="items-center justify-center px-3"
+                    style={{
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderCurve: 'continuous',
+                      borderWidth: 1,
+                      borderColor: '#FCA5A5',
+                      minWidth: 100,
+                      opacity: disconnecting !== null ? 0.6 : 1,
+                    }}
+                  >
+                    {disconnecting === c.realmId ? (
+                      <ActivityIndicator size="small" color="#B91C1C" />
+                    ) : (
+                      <AtTypography variant="captionBold" color="#B91C1C">
+                        Desconectar
+                      </AtTypography>
+                    )}
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </View>
