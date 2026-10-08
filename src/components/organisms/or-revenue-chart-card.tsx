@@ -27,7 +27,12 @@ import {
   type TimeseriesBucket,
 } from '@/src/hooks/queries/use-dashboard-timeseries';
 import type { PeriodKey } from '@/src/types/domain.types';
-import { formatAxisDate, pickEvenly, shiftIsoDate } from '@/src/utils/date';
+import {
+  formatAxisDate,
+  formatMonthLabel,
+  pickEvenly,
+  shiftIsoDate,
+} from '@/src/utils/date';
 
 interface OrRevenueChartCardProps {
   onPress?: () => void;
@@ -54,7 +59,7 @@ interface OrRevenueChartCardProps {
   metricMode?: 'category' | 'margen';
 }
 
-type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
+export type ConsolidadoView = 'totalizado' | 'corriente' | 'historico';
 type CategoryId = 'ingresos' | 'costos' | 'gastos' | 'utilidad';
 type MetricMode = 'category' | 'margen';
 
@@ -184,15 +189,27 @@ const ConsolidadoChartCard = memo<{
   // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
   // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
   // derecho del eje siempre muestra el último día cerrado (ej. 31-may para
-  // 1m/3m/12m) en vez del inicio del último bucket (28-may, 8-may, …).
+  // 1m/3m) en vez del inicio del último bucket (28-may, 8-may, …).
+  // En 12m cada bucket es un mes completo: se rotula solo con el nombre del
+  // mes ("Octubre"); "1 oct" se leía como un día puntual, no como el mes.
+  const isMonthly = period === '12m';
   const xLabels = useMemo(
     () =>
       buckets.map((b, i) =>
-        i === buckets.length - 1
-          ? formatAxisDate(shiftIsoDate(b.end, -1))
-          : formatAxisDate(b.start),
+        isMonthly
+          ? formatMonthLabel(b.start)
+          : i === buckets.length - 1
+            ? formatAxisDate(shiftIsoDate(b.end, -1))
+            : formatAxisDate(b.start),
       ),
-    [buckets],
+    [buckets, isMonthly],
+  );
+  // El eje usa la abreviatura ("Oct") para que 6 nombres quepan en una fila;
+  // el tooltip conserva el nombre completo.
+  const xAxisLabels = useMemo(
+    () =>
+      isMonthly ? buckets.map((b) => formatMonthLabel(b.start, true)) : xLabels,
+    [buckets, isMonthly, xLabels],
   );
 
   // El margen del periodo NO es la suma (ni el promedio) de los margenes
@@ -292,6 +309,7 @@ const ConsolidadoChartCard = memo<{
           historico={historico}
           view={view}
           xLabels={xLabels}
+          xAxisLabels={xAxisLabels}
           isPercent={isMargen}
         />
       )}
@@ -317,14 +335,16 @@ function prevField(bucket: TimeseriesBucket, category: CategoryId): number {
 
 const X_AXIS_HEIGHT = 18;
 
-const ConsolidadoChart = memo<{
+export const ConsolidadoChart = memo<{
   corriente: number[];
   historico: number[];
   view: ConsolidadoView;
   xLabels: string[];
+  /** Rótulos del eje X si difieren del tooltip (ej. "Oct" vs "Octubre"). */
+  xAxisLabels?: string[];
   /** Serie de ratio (Margen): eje y tooltip en % en vez de moneda compacta. */
   isPercent?: boolean;
-}>(({ corriente, historico, view, xLabels, isPercent = false }) => {
+}>(({ corriente, historico, view, xLabels, xAxisLabels = xLabels, isPercent = false }) => {
   const { width: screenWidth } = useWindowDimensions();
   const yAxisWidth = 56;
   const chartWidth = screenWidth - 16 * 4 - yAxisWidth;
@@ -522,7 +542,7 @@ const ConsolidadoChart = memo<{
               marginTop: 4,
             }}
           >
-            {pickEvenly(xLabels, 6).map((label, i) => (
+            {pickEvenly(xAxisLabels, 6).map((label, i) => (
               <AtTypography key={`${label}-${i}`} variant="label" color="#8892A4">
                 {label}
               </AtTypography>
@@ -545,7 +565,7 @@ const TOGGLE_OPTIONS: {
   { key: 'historico', label: 'Histórico', swatch: '#2D4BA0' },
 ];
 
-const ConsolidadoToggleBar = memo<{
+export const ConsolidadoToggleBar = memo<{
   value: ConsolidadoView;
   onChange: (next: ConsolidadoView) => void;
 }>(({ value, onChange }) => (

@@ -1,13 +1,13 @@
 /**
  * /costos/[clientId] — cost groups for one client.
- * Bar chart of level-4 cuenta groups + per-group rows; tap a row drills
+ * Costos trend chart (same card as Ingresos) + per-group rows; tap a row drills
  * down to /costos/[clientId]/[groupId] (terceros).
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlCostGroupAccordionRow } from "@/src/components/molecules/ml-cost-group-accordion-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
-import { OrCostGroupsChartCard } from "@/src/components/organisms/or-cost-groups-chart-card";
+import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCostGroups } from "@/src/hooks/queries/use-cost-groups";
 import { useFiltersStore } from "@/src/stores/filters.store";
@@ -38,10 +38,6 @@ export default function CostosGruposScreen() {
     [setActivePeriod],
   );
 
-  const total = (data ?? []).reduce((s, g) => s + g.amount, 0);
-  const totalPrev = 0; // delta of the totals isn't returned by RPC; left at 0
-  const totalDelta = 0;
-
   return (
     <TmConsolidatedDetail
       breadcrumbs={["Costo", centroCosto || "..."]}
@@ -50,14 +46,15 @@ export default function CostosGruposScreen() {
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
       pinnedContent={
-        !isLoading && data && data.length > 0 ? (
-          <OrCostGroupsChartCard
-            title={centroCosto}
-            total={total}
-            deltaPercent={totalDelta}
-            groups={data}
-          />
-        ) : null
+        // Misma tendencia que Ingresos (Totalizado / Corriente / Histórico)
+        // en vez de barras por grupo: los montos por grupo ya están en la
+        // lista de abajo.
+        <OrRevenueChartCard
+          categoryId="costos"
+          label="Costos"
+          period={activePeriodKey}
+          centroCosto={centroCosto}
+        />
       }
     >
       {isLoading || !data ? (

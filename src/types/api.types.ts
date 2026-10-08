@@ -13,6 +13,15 @@ export interface QBProfitAndLossRaw {
     EndPeriod?: string;
     Currency?: string;
   };
+  /** Con `summarize_column_by` (Days / Week / Month) trae una columna por
+   *  periodo, cada una con StartDate/EndDate en MetaData, más la de "Total". */
+  Columns?: {
+    Column?: {
+      ColTitle?: string;
+      ColType?: string;
+      MetaData?: { Name?: string; Value?: string }[];
+    }[];
+  };
   Rows?: {
     Row?: QBReportRow[];
   };

@@ -1,11 +1,9 @@
 /**
  * /financiero/ingresos — QuickBooks Income section.
  *
- * Mirrors the consolidado terceros screen
- * ((consolidado)/costos/[clientId]/[groupId]):
- *   - Pinned: interactive OrThirdPartiesDonutCard (tap a slice to select)
- *   - Scrollable: OrTercerosList — search bar + rows that highlight/dim in
- *     sync with the donut.
+ * Layout:
+ *   - Pinned: OrQBTrendChartCard (Corriente vs Histórico del Income)
+ *   - Scrollable: OrTercerosList — search bar + one row per Income account.
  *
  * Data comes from the QB P&L "Income" section (one P&L report for the active
  * realm + period). QuickBooks P&L gives no per-customer breakdown, so each
@@ -14,10 +12,7 @@
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
-import {
-  OrThirdPartiesDonutCard,
-  OTROS_TERCERO_ID,
-} from "@/src/components/organisms/or-third-parties-donut-card";
+import { OrQBTrendChartCard } from "@/src/components/organisms/or-qb-trend-chart-card";
 import { OrTercerosList } from "@/src/components/organisms/or-terceros-list";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
@@ -30,14 +25,7 @@ import { View } from "@/src/tw";
 import type { PeriodKey, ThirdParty } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { ScrollView as RNScrollView } from "react-native";
+import React, { useCallback, useMemo } from "react";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
@@ -61,9 +49,9 @@ export default function FinancieroIngresosScreen() {
     [pnl.data],
   );
 
-  // Each Income account → one "tercero" row, so the donut + OrTercerosList
-  // (built for the consolidado terceros screen) can render it as-is.
-  const donutData: ThirdParty[] = useMemo(
+  // Each Income account → one "tercero" row, so OrTercerosList (built for
+  // the consolidado terceros screen) can render it as-is.
+  const rows: ThirdParty[] = useMemo(
     () =>
       items.map((it, i) => {
         const grad = CLIENT_LEGEND_GRADIENTS[
@@ -81,11 +69,6 @@ export default function FinancieroIngresosScreen() {
     [items],
   );
 
-  const total = useMemo(
-    () => donutData.reduce((s, d) => s + d.amount, 0),
-    [donutData],
-  );
-
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
     [setActivePeriod],
@@ -99,17 +82,6 @@ export default function FinancieroIngresosScreen() {
   const isReady = !isLoading && pnl.data != null;
   const isEmpty = isReady && items.length === 0;
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Selecting a slice/row collapses the list to that selection — scroll the
-  // scrollable area back to the top so it stays in view under the pinned donut.
-  const scrollRef = useRef<RNScrollView | null>(null);
-  useEffect(() => {
-    if (selectedId) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-    }
-  }, [selectedId]);
-
   return (
     <TmConsolidatedDetail
       breadcrumbs={["Ingresos", company?.name ?? "Empresa"]}
@@ -117,19 +89,10 @@ export default function FinancieroIngresosScreen() {
       selectedFilter={activePeriodKey}
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
-      scrollRef={scrollRef}
       pinnedContent={
-        isReady && !isEmpty ? (
-          <OrThirdPartiesDonutCard
-            sectionTitle="Ingresos"
-            groupLabel={company?.name ?? "Ingresos"}
-            groupAmount={total}
-            deltaPercent={0}
-            data={donutData}
-            selectedId={selectedId}
-            onSelectChange={setSelectedId}
-          />
-        ) : undefined
+        // Tendencia comparativa (Corriente vs Histórico), igual que en el
+        // consolidado.
+        <OrQBTrendChartCard section="Income" label="Ingresos" />
       }
     >
       {isLoading || pnl.data == null ? (
@@ -152,12 +115,7 @@ export default function FinancieroIngresosScreen() {
           }
         />
       ) : (
-        <OrTercerosList
-          terceros={donutData}
-          selectedId={selectedId}
-          onSelectChange={setSelectedId}
-          otrosId={OTROS_TERCERO_ID}
-        />
+        <OrTercerosList terceros={rows} />
       )}
     </TmConsolidatedDetail>
   );
