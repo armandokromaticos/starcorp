@@ -6,7 +6,6 @@
  * the card aligned to the right and navigates to /clientes.
  */
 
-import { AtDeltaIndicator } from "@/src/components/atoms/at-delta-indicator";
 import { AtMetricValue } from "@/src/components/atoms/at-metric-value";
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { AtStatusBadge } from "@/src/components/atoms/at-status-badge";
@@ -101,11 +100,13 @@ export const OrTopClientsSection = memo<OrTopClientsSectionProps>(
                       {selectedClient.name}
                     </AtTypography>
                     <AtMetricValue value={selectedClient.revenue} size="md" />
-                    <AtDeltaIndicator
-                      value={selectedClient.deltaPercent}
-                      size="sm"
-                      appearance="dark"
-                    />
+                    {/* Participación sobre el total del donut (suma del
+                        top 8), no el crecimiento vs. el periodo anterior. */}
+                    {data.total > 0 && (
+                      <AtTypography variant="captionBold" color="#4A5568">
+                        {`${((selectedClient.revenue / data.total) * 100).toFixed(1)}% del total`}
+                      </AtTypography>
+                    )}
                   </View>
                 )}
 
@@ -124,18 +125,19 @@ export const OrTopClientsSection = memo<OrTopClientsSectionProps>(
                     innerRadius={0.6}
                     padAngle={2}
                     ringSplit={0.22}
-                    centerBackground={{ from: "#2B3B7A", to: "#050C25" }}
                   >
+                    {/* Centro blanco (el fondo de la card): el navy se
+                        confundía con los segmentos azules del anillo. */}
                     <AtTypography
                       variant="metricSmall"
-                      color="#FFFFFF"
+                      color="#1A1F36"
                       selectable
                     >
                       {formatCurrency(data.total, { compact: true })}
                     </AtTypography>
                     <AtTypography
                       variant="caption"
-                      color="rgba(255,255,255,0.75)"
+                      color="#8892A4"
                     >
                       Total
                     </AtTypography>
