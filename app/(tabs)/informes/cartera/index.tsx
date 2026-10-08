@@ -1,7 +1,8 @@
 /**
  * Informe Cartera — pantalla principal.
  *
- * Donut de distribución + tabs de aging + lista de clientes expandibles
+ * Donut de distribución (al tocar un sector pasa a la segmentación por aging
+ * de ese cliente, con "Volver") + tabs de aging + lista de clientes expandibles
  * + filtros en bottom sheet + footer con totales.
  */
 
@@ -22,6 +23,7 @@ import {
   CARTERA_TOTAL_COL_W,
 } from '@/src/components/molecules/ml-cartera-client-row';
 import { MlCarteraTotalFooter } from '@/src/components/molecules/ml-cartera-total-footer';
+import { OrCarteraAgingCard } from '@/src/components/organisms/or-cartera-aging-card';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import {
   OrCarteraFiltersSheet,
@@ -41,6 +43,10 @@ import { donutColorAt, DONUT_MAX_NAMED } from '@/src/utils/donut';
 import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 
 const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
+
+function formatMoney(value: number): string {
+  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export default function CarteraScreen() {
   const insets = useSafeAreaInsets();
@@ -119,6 +125,24 @@ export default function CarteraScreen() {
     }
     return baseClients.filter((c) => c.id === selectedSliceId);
   }, [baseClients, selectedSliceId, otrosClientIds]);
+
+  const selectedSlice = useMemo(
+    () => donutData.find((s) => s.id === selectedSliceId) ?? null,
+    [donutData, selectedSliceId],
+  );
+
+  // Aging del sector seleccionado: el cliente, o la suma de los clientes
+  // agrupados en "Otros" (visibleClients ya está filtrado por el sector).
+  const selectedBuckets = useMemo(() => {
+    const acc = Object.fromEntries(AGING_BUCKETS.map((b) => [b, 0])) as Record<
+      AgingBucket,
+      number
+    >;
+    for (const c of visibleClients) {
+      for (const b of AGING_BUCKETS) acc[b] += c.buckets[b];
+    }
+    return acc;
+  }, [visibleClients]);
 
   // Cuando la lista queda en un único cliente, se muestra expandido con
   // todos los buckets; el header y footer se simplifican a Cliente/Total.
@@ -223,17 +247,29 @@ export default function CarteraScreen() {
         />
 
         <View className="px-4">
-          <OrCarteraDonut
-            title="Distribución cartera por cliente"
-            data={donutData}
-            labelsMode="tap-only"
-            selectedId={selectedSliceId}
-            onSelectChange={setSelectedSliceId}
-            valueFormatter={(v) =>
-              `$${v.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            }
-            emptyHint="Toca un sector para ver el cliente"
-          />
+          {/* Al tocar un sector, el donut cede su lugar a la segmentación
+              por aging de ese cliente (o del grupo "Otros"); "Volver"
+              limpia la selección y regresa al donut. */}
+          {selectedSlice ? (
+            <OrCarteraAgingCard
+              title="Segmentación de la cartera"
+              name={selectedSlice.label}
+              color={selectedSlice.color}
+              buckets={selectedBuckets}
+              valueFormatter={formatMoney}
+              onBack={() => setSelectedSliceId(null)}
+            />
+          ) : (
+            <OrCarteraDonut
+              title="Distribución cartera por cliente"
+              data={donutData}
+              labelsMode="tap-only"
+              selectedId={selectedSliceId}
+              onSelectChange={setSelectedSliceId}
+              valueFormatter={formatMoney}
+              emptyHint="Toca un sector para ver su segmentación"
+            />
+          )}
         </View>
 
         <View className="px-4">
