@@ -8,11 +8,11 @@ import { MlCostGroupRow } from '@/src/components/molecules/ml-cost-group-row';
 import { useCostGroups } from '@/src/hooks/queries/use-cost-groups';
 import { useCompany } from '@/src/hooks/queries/use-company';
 import { useFiltersStore } from '@/src/stores/filters.store';
-import { PERIOD_LABELS } from '@/src/utils/date';
+import { PERIOD_SHORT_LABELS } from '@/src/utils/date';
 import type { PeriodKey } from '@/src/types/domain.types';
 
 const PERIOD_OPTIONS = (['today', '1w', '1m', '3m', '12m'] as PeriodKey[]).map(
-  (key) => ({ key, label: PERIOD_LABELS[key] }),
+  (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
 export default function EgresosGruposScreen() {

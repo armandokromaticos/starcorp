@@ -9,6 +9,8 @@ import React, { memo } from 'react';
 import { Pressable, View } from '@/src/tw';
 import { AtIcon } from '@/src/components/atoms/at-icon';
 import { AtTypography } from '@/src/components/atoms/at-typography';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '@/src/theme/gradients';
 import type { MaterialIcons } from '@expo/vector-icons';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -50,15 +52,29 @@ export const MlEmptyState = memo<MlEmptyStateProps>(
         {action && (
           <Pressable
             onPress={action.onPress}
-            className="bg-navy px-5 py-2.5 rounded-full mt-1"
             style={{
+              borderRadius: 8,
               borderCurve: 'continuous',
-              boxShadow: '0 2px 6px rgba(15, 27, 74, 0.25)',
+              overflow: 'hidden',
+              marginTop: 4,
+              boxShadow: '0 2px 6px rgba(4, 17, 63, 0.35)',
             }}
           >
-            <AtTypography variant="captionBold" color="#FFFFFF">
-              {action.label}
-            </AtTypography>
+            <LinearGradient
+              colors={gradients.buttonBlue.colors}
+              start={gradients.buttonBlue.start}
+              end={gradients.buttonBlue.end}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AtTypography variant="captionBold" color="#FFFFFF">
+                {action.label}
+              </AtTypography>
+            </LinearGradient>
           </Pressable>
         )}
       </View>

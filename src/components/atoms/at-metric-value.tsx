@@ -1,7 +1,7 @@
 /**
  * Atom: AtMetricValue
  *
- * Renders a formatted currency/number value with tabular-nums.
+ * Renders a formatted currency/percent value with tabular-nums.
  * Uses AtTypography internally (eliminates duplicated sizeMap).
  * Migrated to NativeWind.
  */
@@ -17,6 +17,9 @@ interface AtMetricValueProps {
   compact?: boolean;
   color?: string;
   className?: string;
+  /** Currency by default; 'percent' renders e.g. "42.3%" (mismo criterio
+   *  que MlMetricBar, para métricas de ratio como Margen). */
+  format?: 'currency' | 'percent';
 }
 
 const sizeToVariant: Record<string, TypographyVariant> = {
@@ -26,7 +29,15 @@ const sizeToVariant: Record<string, TypographyVariant> = {
 };
 
 export const AtMetricValue = memo<AtMetricValueProps>(
-  ({ value, size = 'lg', currency = 'USD', compact = false, color, className }) => {
+  ({
+    value,
+    size = 'lg',
+    currency = 'USD',
+    compact = false,
+    color,
+    className,
+    format = 'currency',
+  }) => {
     return (
       <AtTypography
         variant={sizeToVariant[size]}
@@ -35,7 +46,9 @@ export const AtMetricValue = memo<AtMetricValueProps>(
         className={className}
         style={{ fontVariant: ['tabular-nums'] }}
       >
-        {formatCurrency(value, { currency, compact })}
+        {format === 'percent'
+          ? `${value.toFixed(1)}%`
+          : formatCurrency(value, { currency, compact })}
       </AtTypography>
     );
   },

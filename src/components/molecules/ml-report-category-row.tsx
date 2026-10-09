@@ -32,7 +32,7 @@ export const MlReportCategoryRow = memo<MlReportCategoryRowProps>(
         onPress={onPress}
         accessibilityRole="radio"
         accessibilityState={{ selected }}
-        className="flex-row items-center gap-3 px-2 py-2 rounded-md"
+        className="flex-row items-center gap-1.5 px-1 py-2 rounded-md"
         style={{
           borderCurve: 'continuous',
           backgroundColor: selected ? 'rgba(15, 27, 74, 0.04)' : 'transparent',
@@ -43,18 +43,18 @@ export const MlReportCategoryRow = memo<MlReportCategoryRowProps>(
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 8,
+            width: 22,
+            height: 22,
+            borderRadius: 5,
             alignItems: 'center',
             justifyContent: 'center',
             borderCurve: 'continuous',
           }}
         >
-          <AtIcon name={icon} size={20} color="#FFFFFF" />
+          <AtIcon name={icon} size={14} color="#FFFFFF" />
         </LinearGradient>
         <AtTypography
-          variant="body"
+          variant="captionBold"
           color={selected ? '#1A1F36' : '#4A5568'}
         >
           {label}

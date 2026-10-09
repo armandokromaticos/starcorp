@@ -8,6 +8,7 @@
  */
 
 import React, { memo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import {
@@ -17,6 +18,7 @@ import {
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
 interface TmConsolidatedListProps {
   breadcrumbs: string[];
@@ -47,12 +49,14 @@ export const TmConsolidatedList = memo<TmConsolidatedListProps>(
     pinnedHeader,
     children,
   }) => {
+    const insets = useSafeAreaInsets();
+    const openGlobalSearch = useGlobalSearchStore((s) => s.open);
     return (
-      <View className="flex-1 bg-bg-primary">
+      <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
         {/* Pinned top */}
         <View className="gap-4 pt-2 pb-3 bg-bg-primary">
           <View className="px-4">
-            <MlSearchBar onMenuPress={onMenuPress} />
+            <MlSearchBar onMenuPress={onMenuPress} onPress={openGlobalSearch} />
           </View>
 
           <MlBreadcrumb

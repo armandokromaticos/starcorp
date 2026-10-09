@@ -1,47 +1,79 @@
 /**
  * Organism: OrTercerosList
  *
- * List of terceros (vendors/suppliers) with search and color dots.
+ * Search bar + scrollable list of terceros (vendors/suppliers).
  * Used in Costos/Gastos → Grupos → Terceros views.
+ *
+ * Each row:
+ *   - Gradient color swatch (AtColorDot with gradientColors)
+ *   - Bold name + amount below in lighter style
+ *   - Soft delta chip (AtDeltaIndicator appearance="soft")
  */
 
 import React, { memo, useState, useMemo } from 'react';
-import { View, ScrollView, TextInput, Pressable } from '@/src/tw';
+import { View, TextInput, Pressable } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtColorDot } from '@/src/components/atoms/at-color-dot';
+import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
 import { AtIcon } from '@/src/components/atoms/at-icon';
-import { AtDivider } from '@/src/components/atoms/at-divider';
-
-export interface TerceroItem {
-  id: string;
-  name: string;
-  color: string;
-  amount: number;
-}
+import { formatCurrency } from '@/src/utils/currency';
+import type { ThirdParty } from '@/src/types/domain.types';
 
 interface OrTercerosListProps {
-  terceros: TerceroItem[];
-  showSearch?: boolean;
+  terceros: ThirdParty[];
   onTerceroPress?: (id: string) => void;
-  className?: string;
+  selectedId?: string | null;
+  onSelectChange?: (id: string | null) => void;
+  /** Id used by the donut for its aggregated "Otros" slice. When this id is
+   *  selected, the first `otrosTopCount` rows are dimmed (they're already
+   *  represented as individual slices) and the rest are highlighted. */
+  otrosId?: string;
+  otrosTopCount?: number;
 }
 
 export const OrTercerosList = memo<OrTercerosListProps>(
-  ({ terceros, showSearch = true, onTerceroPress, className }) => {
+  ({
+    terceros,
+    onTerceroPress,
+    selectedId = null,
+    onSelectChange,
+    otrosId,
+    otrosTopCount = 8,
+  }) => {
+    const topIds = new Set(
+      otrosId ? terceros.slice(0, otrosTopCount).map((t) => t.id) : [],
+    );
     const [searchText, setSearchText] = useState('');
 
     const filtered = useMemo(() => {
+      // Selection takes precedence over text search: when an item is selected
+      // (or the donut's "Otros" bucket), the list collapses to just that
+      // selection so the user sees only the relevant rows.
+      if (selectedId) {
+        if (otrosId && selectedId === otrosId) {
+          return terceros.filter((_, i) => i >= otrosTopCount);
+        }
+        return terceros.filter((t) => t.id === selectedId);
+      }
       if (!searchText.trim()) return terceros;
       const lower = searchText.toLowerCase();
       return terceros.filter((t) => t.name.toLowerCase().includes(lower));
-    }, [terceros, searchText]);
+    }, [terceros, searchText, selectedId, otrosId, otrosTopCount]);
 
     return (
-      <View className={`gap-3 ${className ?? ''}`}>
-        {showSearch && (
+      <View className="gap-4">
+        {/* Search bar — white card, rounded-full, magnifying glass left */}
+        <View className="px-4">
           <View
-            className="flex-row items-center mx-4 px-3 py-2 bg-bg-secondary rounded-md gap-2"
-            style={{ borderCurve: 'continuous' }}
+            className="flex-row items-center bg-bg-card px-4 gap-3"
+            style={{
+              borderRadius: 24,
+              borderCurve: 'continuous',
+              paddingVertical: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+            }}
           >
             <AtIcon name="search" size="sm" color="#8892A4" />
             <TextInput
@@ -49,35 +81,73 @@ export const OrTercerosList = memo<OrTercerosListProps>(
               onChangeText={setSearchText}
               placeholder="Buscar por terceros"
               placeholderTextColor="#8892A4"
-              className="flex-1 text-sm p-0"
-              style={{ fontFamily: 'Roboto_400Regular', color: '#1A1F36' }}
+              className="flex-1 p-0"
+              style={{ fontFamily: 'Roboto_400Regular', fontSize: 14, color: '#1A1F36' }}
             />
           </View>
-        )}
+        </View>
 
-        <ScrollView className="flex-1">
-          {filtered.map((tercero, i) => (
-            <React.Fragment key={tercero.id}>
+        {/* Tercero rows */}
+        <View className="px-4 gap-4">
+          {filtered.map((tercero) => {
+            const isSelected = selectedId === tercero.id;
+            const isOtrosSelected = !!otrosId && selectedId === otrosId;
+            const isInTopBucket = topIds.has(tercero.id);
+            // When the "Otros" slice is selected, the top-N rows (which
+            // already have their own slice in the donut) are dimmed.
+            const inOtrosGroup = isOtrosSelected && !isInTopBucket;
+            const dimmed =
+              (selectedId != null && !isSelected && !isOtrosSelected) ||
+              (isOtrosSelected && isInTopBucket);
+            const highlight = isSelected || inOtrosGroup;
+            return (
               <Pressable
-                onPress={() => onTerceroPress?.(tercero.id)}
-                className="flex-row items-center py-3 px-4 gap-3"
+                key={tercero.id}
+                onPress={() => {
+                  onSelectChange?.(isSelected ? null : tercero.id);
+                  onTerceroPress?.(tercero.id);
+                }}
+                className="flex-row items-center gap-3"
+                style={{
+                  paddingVertical: 6,
+                  paddingHorizontal: highlight ? 8 : 0,
+                  marginHorizontal: highlight ? -8 : 0,
+                  borderRadius: 10,
+                  borderCurve: 'continuous',
+                  backgroundColor: highlight
+                    ? 'rgba(99, 102, 241, 0.08)'
+                    : 'transparent',
+                  borderWidth: highlight ? 1 : 0,
+                  borderColor: highlight
+                    ? 'rgba(99, 102, 241, 0.4)'
+                    : 'transparent',
+                  opacity: dimmed ? 0.45 : 1,
+                }}
               >
-                <AtColorDot color={tercero.color} size="md" shape="square" />
-                <AtTypography variant="body" className="flex-1" numberOfLines={1}>
-                  {tercero.name}
-                </AtTypography>
-                <AtTypography
-                  variant="body"
-                  color="#4A5568"
-                  selectable
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  ${tercero.amount.toLocaleString()}
-                </AtTypography>
+                {/* Gradient color swatch */}
+                <AtColorDot
+                  color={tercero.color}
+                  gradientColors={tercero.gradientColors}
+                  size="lg"
+                  shape="square"
+                />
+
+                {/* Name + amount stacked */}
+                <View className="flex-1 gap-0.5">
+                  <AtTypography variant="bodyBold" numberOfLines={1}>
+                    {tercero.name}
+                  </AtTypography>
+                  <AtTypography variant="caption" color="#8892A4" selectable style={{ fontVariant: ['tabular-nums'] }}>
+                    {formatCurrency(tercero.amount, { currency: 'USD', compact: false })}
+                  </AtTypography>
+                </View>
+
+                {/* Soft delta chip */}
+                <AtDeltaIndicator value={tercero.deltaPercent} size="sm" appearance="soft" />
               </Pressable>
-              {i < filtered.length - 1 && <AtDivider className="mx-4" />}
-            </React.Fragment>
-          ))}
+            );
+          })}
+
           {filtered.length === 0 && (
             <View className="items-center py-8">
               <AtTypography variant="body" color="#8892A4">
@@ -85,7 +155,7 @@ export const OrTercerosList = memo<OrTercerosListProps>(
               </AtTypography>
             </View>
           )}
-        </ScrollView>
+        </View>
       </View>
     );
   },

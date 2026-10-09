@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/src/config/supabase';
 import { queryKeys } from './query-keys';
 import { useFiltersStore } from '@/src/stores/filters.store';
-import { tokens } from '@/src/theme/tokens';
+import { CLIENT_LEGEND_GRADIENTS } from '@/src/theme/gradients';
 import type {
   ConsolidadoCategoryId,
   PeriodKey,
@@ -62,13 +62,17 @@ export function useThirdParties(
       });
       if (error) throw error;
       const rows = (data ?? []) as RpcRow[];
-      const palette = tokens.color.chart;
-      return rows.map((r, i) => ({
-        id: r.nit,
-        name: r.razon_social,
-        color: palette[i % palette.length],
-        amount: Number(r.amount),
-      }));
+      return rows.map((r, i) => {
+        const grad = CLIENT_LEGEND_GRADIENTS[i % CLIENT_LEGEND_GRADIENTS.length];
+        return {
+          id: r.nit,
+          name: r.razon_social,
+          color: grad[0],
+          gradientColors: grad as [string, string],
+          amount: Number(r.amount),
+          deltaPercent: Number(r.delta_percent ?? 0),
+        };
+      });
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,

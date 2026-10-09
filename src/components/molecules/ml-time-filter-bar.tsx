@@ -17,14 +17,57 @@ export interface TimeFilterOption {
 }
 
 interface MlTimeFilterBarProps {
-  options: TimeFilterOption[];
+  options: readonly TimeFilterOption[];
   selectedKey: string;
   onSelect: (key: string) => void;
   className?: string;
+  /**
+   * Reparte las opciones en partes iguales para ocupar todo el ancho
+   * (sin scroll horizontal). Útil cuando hay pocas opciones fijas.
+   */
+  fill?: boolean;
 }
 
 export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
-  ({ options, selectedKey, onSelect, className }) => {
+  ({ options, selectedKey, onSelect, className, fill = false }) => {
+    const pillStyle = {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 999,
+      alignItems: "center",
+    } as const;
+
+    const renderOption = (opt: TimeFilterOption) => {
+      const isSelected = selectedKey === opt.key;
+      return (
+        <Pressable
+          key={opt.key}
+          onPress={() => onSelect(opt.key)}
+          hitSlop={6}
+          className={fill ? "flex-1" : undefined}
+        >
+          {isSelected ? (
+            <LinearGradient
+              colors={gradients.brandOrange.colors}
+              start={gradients.brandOrange.start}
+              end={gradients.brandOrange.end}
+              style={pillStyle}
+            >
+              <AtTypography variant="captionBold" color="#FFFFFF" numberOfLines={1}>
+                {opt.label}
+              </AtTypography>
+            </LinearGradient>
+          ) : (
+            <View style={pillStyle}>
+              <AtTypography variant="captionBold" color="#1A1F36" numberOfLines={1}>
+                {opt.label}
+              </AtTypography>
+            </View>
+          )}
+        </Pressable>
+      );
+    };
+
     return (
       <View className={`px-4 ${className ?? ""}`}>
         <View
@@ -34,45 +77,19 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
             boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
           }}
         >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerClassName="flex-row items-center justify-center gap-4 px-2 grow"
-          >
-            {options.map((opt) => {
-              const isSelected = selectedKey === opt.key;
-              return (
-                <Pressable
-                  key={opt.key}
-                  onPress={() => onSelect(opt.key)}
-                  hitSlop={6}
-                >
-                  {isSelected ? (
-                    <LinearGradient
-                      colors={gradients.brandOrange.colors}
-                      start={gradients.brandOrange.start}
-                      end={gradients.brandOrange.end}
-                      style={{
-                        paddingHorizontal: 20,
-                        paddingVertical: 10,
-                        borderRadius: 999,
-                      }}
-                    >
-                      <AtTypography variant="captionBold" color="#FFFFFF">
-                        {opt.label}
-                      </AtTypography>
-                    </LinearGradient>
-                  ) : (
-                    <View className="px-2 py-2.5">
-                      <AtTypography variant="caption" color="#1A1F36">
-                        {opt.label}
-                      </AtTypography>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          {fill ? (
+            <View className="flex-row items-center gap-1 px-1">
+              {options.map(renderOption)}
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="flex-row items-center justify-center gap-1 px-1 grow"
+            >
+              {options.map(renderOption)}
+            </ScrollView>
+          )}
         </View>
       </View>
     );

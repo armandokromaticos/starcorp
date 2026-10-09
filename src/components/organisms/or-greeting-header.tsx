@@ -16,7 +16,9 @@ interface OrGreetingHeaderProps {
 export const OrGreetingHeader = memo<OrGreetingHeaderProps>(({ name }) => {
   return (
     <View className="px-4 pb-5">
-      <AtTypography variant="h1">Bienvenido, {name}</AtTypography>
+      <AtTypography variant="h1">
+        {name ? `Bienvenido, ${name}` : 'Bienvenido'}
+      </AtTypography>
     </View>
   );
 });

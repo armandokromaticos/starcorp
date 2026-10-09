@@ -32,4 +32,4 @@ Path aliases (see `tsconfig.json`): `@/*` → repo root, `@/src/*`, `@/component
 - QuickBooks `refresh_tokens` are stored in the `starcorp_vault` table; Power BI uses Azure `embedTokens` rendered in `WebView`.
 - All API responses must have TypeScript types defined (see `src/types/api.types.ts`).
 - Components must have skeleton loading states (`src/components/atoms/skeleton.tsx`).
-- SKILL.md mentions NativeWind, but it is **not currently installed** — styling today uses RN `StyleSheet` / theme tokens. Verify before adopting Tailwind classes.
+- **Styling:** NativeWind 5.0 (preview) is installed and in active use. Components mix Tailwind `className` (via the wrappers at `@/src/tw` — `View`, `Pressable`, etc.) with inline `style={{ ... }}` for values not expressible in Tailwind (custom colors, shadows, dynamic values). Prefer design tokens from `src/theme/tokens.ts` over magic numbers. Match the existing styling mechanism of the file you're editing — don't migrate between `className` and `StyleSheet` opportunistically.

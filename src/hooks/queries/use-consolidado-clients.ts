@@ -50,7 +50,13 @@ export function useConsolidadoClients(categoryId: ConsolidadoCategoryId) {
         p_compare: true,
       });
       if (error) throw error;
-      const rows = (data ?? []) as ClientRow[];
+      // El RPC ya descarta los montos exactamente en 0, pero quedan centros
+      // con centavos sueltos (asientos "AJUSTE AL PESO" de $0,01–$0,08 en
+      // centros sin nombre) que en pantalla se leen como $0 y no son
+      // clientes: se ocultan los que redondean a 0.
+      const rows = ((data ?? []) as ClientRow[]).filter(
+        (r) => Math.round(Number(r.amount)) !== 0,
+      );
       const palette = tokens.color.chart;
       return rows.map((r, i) => ({
         id: r.client_id,

@@ -44,12 +44,16 @@ Deno.serve(async (req) => {
       .eq("key", "ADMIN_USER_ID")
       .maybeSingle<{ value: string }>();
 
+    // Administrar la conexion es cosa de rol, no de haber sido quien hizo el
+    // OAuth: cualquier super_admin puede. ADMIN_USER_ID sigue existiendo pero
+    // solo como dueño canonico, el user_id bajo el que se guardan TODOS los
+    // tokens en qb_user_tokens, para no fragmentarlos por persona.
+    const isAdmin = user.app_metadata?.role === "super_admin";
     const hasAdmin = !!adminRow;
-    const isAdmin = hasAdmin && adminRow!.value === user.id;
     const ownerId = adminRow?.value;
 
     if (!ownerId) {
-      return respondJson({ companies: [], hasAdmin: false, isAdmin: false });
+      return respondJson({ companies: [], hasAdmin: false, isAdmin });
     }
 
     const { data, error } = await admin

@@ -12,7 +12,7 @@ export const MlLocationCard = memo<MlLocationCardProps>(
   ({ label = 'Ubicación', value }) => {
     return (
       <View
-        className="flex-row items-center gap-3 bg-navy rounded-lg px-4 py-3 mx-4"
+        className="flex-row items-center gap-3 bg-[#0E173C] rounded-lg px-4 py-3 mx-4"
         style={{ borderCurve: 'continuous' }}
       >
         <AtIcon name="place" size="lg" color="#FFFFFF" />

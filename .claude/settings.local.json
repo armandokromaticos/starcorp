@@ -12,9 +12,17 @@
       "Bash(gh auth:*)",
       "Bash(git -C \"C:/Users/soydc/Kromaticos/starcorp/.claude/worktrees/distracted-noether\" status)",
       "Bash(git -C \"C:/Users/soydc/Kromaticos/starcorp/.claude/worktrees/fervent-visvesvaraya\" status)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__get_edge_function",
+      "mcp__supabase__execute_sql",
+      "Bash(npx eslint *)",
+      "Bash(node report_gaps.mjs)"
     ]
   },
-  "enabledMcpjsonServers": ["figma"],
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "figma",
+    "supabase"
+  ]
 }
