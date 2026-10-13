@@ -1,13 +1,16 @@
 /**
  * Informe Cartera — pantalla principal.
  *
- * Donut de distribución + tabs de aging + lista de clientes expandibles
- * + filtros en bottom sheet + footer con totales.
+ * Donut de distribución (al tocar un sector filtra la lista y muestra nombre
+ * y % del sector) + tabs de aging + lista de clientes expandibles (al tocar un
+ * cliente, el donut cede su lugar a la segmentación por aging de ese cliente,
+ * con "Volver") + filtros en bottom sheet + footer con totales.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, TextInput, View } from '@/src/tw';
+import { ScrollView as RNScrollView } from 'react-native';
+import { Pressable, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
@@ -22,6 +25,7 @@ import {
   CARTERA_TOTAL_COL_W,
 } from '@/src/components/molecules/ml-cartera-client-row';
 import { MlCarteraTotalFooter } from '@/src/components/molecules/ml-cartera-total-footer';
+import { OrCarteraAgingCard } from '@/src/components/organisms/or-cartera-aging-card';
 import { OrCarteraDonut } from '@/src/components/organisms/or-cartera-donut';
 import {
   OrCarteraFiltersSheet,
@@ -41,6 +45,10 @@ import { donutColorAt, DONUT_MAX_NAMED } from '@/src/utils/donut';
 import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 
 const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
+
+function formatMoney(value: number): string {
+  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export default function CarteraScreen() {
   const insets = useSafeAreaInsets();
@@ -120,6 +128,34 @@ export default function CarteraScreen() {
     return baseClients.filter((c) => c.id === selectedSliceId);
   }, [baseClients, selectedSliceId, otrosClientIds]);
 
+  // Cliente tocado en la lista: su segmentación por aging reemplaza al donut
+  // mientras la fila esté abierta. Si sale de la lista (filtro, búsqueda o
+  // sector), vuelve el donut.
+  const chartClient = useMemo(
+    () => visibleClients.find((c) => c.id === expandedClientId) ?? null,
+    [visibleClients, expandedClientId],
+  );
+
+  const handleSliceChange = (id: string | null) => {
+    setSelectedSliceId(id);
+    setExpandedClientId(null);
+  };
+
+  const scrollRef = useRef<RNScrollView>(null);
+  const chartY = useRef(0);
+  const toggleClient = (id: string) => {
+    const opening = expandedClientId !== id;
+    setExpandedClientId(opening ? id : null);
+    // La gráfica aparece arriba, donde estaba el donut: si el cliente estaba
+    // más abajo en la lista, se sube para que se vea.
+    if (opening) {
+      scrollRef.current?.scrollTo({
+        y: Math.max(chartY.current - 12, 0),
+        animated: true,
+      });
+    }
+  };
+
   // Cuando la lista queda en un único cliente, se muestra expandido con
   // todos los buckets; el header y footer se simplifican a Cliente/Total.
   const isSingleClient = visibleClients.length === 1;
@@ -160,7 +196,8 @@ export default function CarteraScreen() {
       className="flex-1 bg-bg-secondary"
       style={{ paddingTop: insets.top }}
     >
-      <ScrollView
+      <RNScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ rowGap: 20, paddingBottom: 96 + insets.bottom }}
         keyboardShouldPersistTaps="handled"
@@ -222,18 +259,36 @@ export default function CarteraScreen() {
           onChange={setSelectedBucket}
         />
 
-        <View className="px-4">
-          <OrCarteraDonut
-            title="Distribución cartera por cliente"
-            data={donutData}
-            labelsMode="tap-only"
-            selectedId={selectedSliceId}
-            onSelectChange={setSelectedSliceId}
-            valueFormatter={(v) =>
-              `$${v.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            }
-            emptyHint="Toca un sector para ver el cliente"
-          />
+        <View
+          className="px-4"
+          onLayout={(e) => {
+            chartY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          {/* Tocar un sector lo resalta (nombre + %) y filtra la lista; tocar
+              un cliente de la lista cambia el donut por su segmentación por
+              aging, y "Volver" cierra la fila y regresa al donut. */}
+          {chartClient ? (
+            <OrCarteraAgingCard
+              title="Segmentación de la cartera"
+              name={chartClient.name}
+              color={chartClient.color}
+              buckets={chartClient.buckets}
+              valueFormatter={formatMoney}
+              onBack={() => setExpandedClientId(null)}
+            />
+          ) : (
+            <OrCarteraDonut
+              title="Distribución cartera por cliente"
+              data={donutData}
+              labelsMode="tap-only"
+              selectedId={selectedSliceId}
+              onSelectChange={handleSliceChange}
+              valueFormatter={formatMoney}
+              showPercentInBanner
+              emptyHint="Toca un sector para filtrar la lista"
+            />
+          )}
         </View>
 
         <View className="px-4">
@@ -313,9 +368,7 @@ export default function CarteraScreen() {
                 buckets={c.buckets}
                 total={c.total}
                 expanded={isSingleClient || expandedClientId === c.id}
-                onToggle={() =>
-                  setExpandedClientId((cur) => (cur === c.id ? null : c.id))
-                }
+                onToggle={() => toggleClient(c.id)}
                 onOpenDetail={() =>
                   router.push(`/(tabs)/informes/cartera/${c.id}` as never)
                 }
@@ -323,7 +376,7 @@ export default function CarteraScreen() {
             ))}
           </View>
         </View>
-      </ScrollView>
+      </RNScrollView>
 
       <View
         className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"

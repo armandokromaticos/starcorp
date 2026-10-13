@@ -4,8 +4,9 @@
  * Shared detail screen for the QB P&L sections /financiero/{costos,egresos}.
  * (Ingresos has its own screen at app/(tabs)/financiero/ingresos.tsx.)
  * Reads the active QB realm + period, fetches a single P&L report, extracts
- * the requested section group, and renders a donut chart card + flat row
- * list (una fila por cuenta hoja, con flecha — sin acordeón).
+ * the requested section group, and renders a pinned trend card (Corriente vs
+ * Histórico) + flat row list (una fila por cuenta hoja, con flecha — sin
+ * acordeón; tocarla navega al detalle).
  *
  * Level-2 drill-down (terceros) is wired for COGS and Expenses:
  *   /financiero/{costos,egresos}/[groupId]
@@ -15,11 +16,7 @@ import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlClientRow } from "@/src/components/molecules/ml-client-row";
 import { MlCostGroupAccordionRow } from "@/src/components/molecules/ml-cost-group-accordion-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
-import {
-  OrThirdPartiesDonutCard,
-  OTROS_TERCERO_ID,
-} from "@/src/components/organisms/or-third-parties-donut-card";
-import { DONUT_MAX_NAMED } from "@/src/utils/donut";
+import { OrQBTrendChartCard } from "@/src/components/organisms/or-qb-trend-chart-card";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCompanies } from "@/src/hooks/queries/use-companies";
 import { useQBProfitAndLoss } from "@/src/hooks/queries/use-qb-profit-and-loss";
@@ -32,11 +29,11 @@ import { useFiltersStore } from "@/src/stores/filters.store";
 import { useQBStore } from "@/src/stores/qb.store";
 import { CLIENT_LEGEND_GRADIENTS } from "@/src/theme/gradients";
 import { View } from "@/src/tw";
-import type { PeriodKey, ThirdParty } from "@/src/types/domain.types";
+import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import type { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
@@ -78,8 +75,7 @@ export function OrQBSectionDetail({
   );
 
   // Cuentas hoja de la sección — una fila plana por cada una, con flecha
-  // que navega directo al detalle (sin acordeón). Ordenadas desc por monto
-  // para que el donut (top-N + "Otros") y la lista cuenten lo mismo.
+  // que navega directo al detalle (sin acordeón). Ordenadas desc por monto.
   const leafAccounts = useMemo(
     () =>
       categories
@@ -88,7 +84,6 @@ export function OrQBSectionDetail({
     [categories],
   );
 
-  const total = items.reduce((s, it) => s + it.amount, 0);
   const groups = items.map((it) => ({
     id: it.id,
     label: it.label,
@@ -105,26 +100,6 @@ export function OrQBSectionDetail({
         ? "/financiero/egresos"
         : null;
 
-  // ThirdParty shape required by OrThirdPartiesDonutCard. Mismo dataset que
-  // la lista (cuentas hoja) para que la selección conecte donut ↔ lista.
-  const donutData: ThirdParty[] = useMemo(
-    () =>
-      leafAccounts.map((leaf, i) => {
-        const grad = CLIENT_LEGEND_GRADIENTS[
-          i % CLIENT_LEGEND_GRADIENTS.length
-        ] as [string, string];
-        return {
-          id: leaf.id,
-          name: leaf.label,
-          color: grad[0],
-          gradientColors: grad,
-          amount: leaf.amount,
-          deltaPercent: 0,
-        };
-      }),
-    [leafAccounts],
-  );
-
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
     [setActivePeriod],
@@ -133,23 +108,6 @@ export function OrQBSectionDetail({
     () => setActivePeriod("12m"),
     [setActivePeriod],
   );
-
-  // Selected donut slice — tapping a segment shows its % in the donut center
-  // Y filtra la lista de abajo; tocar una fila selecciona su segmento, y
-  // tocarla de nuevo navega al detalle.
-  const [selectedTerceroId, setSelectedTerceroId] = useState<string | null>(
-    null,
-  );
-
-  // Lista visible según la selección: una cuenta puntual, el bucket
-  // "Otros" (las cuentas fuera del top-N del donut), o todas.
-  const visibleLeaves = useMemo(() => {
-    if (!selectedTerceroId) return leafAccounts;
-    if (selectedTerceroId === OTROS_TERCERO_ID) {
-      return leafAccounts.slice(DONUT_MAX_NAMED);
-    }
-    return leafAccounts.filter((l) => l.id === selectedTerceroId);
-  }, [leafAccounts, selectedTerceroId]);
 
   const isLoading = pnl.isLoading;
 
@@ -161,18 +119,9 @@ export function OrQBSectionDetail({
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
       pinnedContent={
-        !isLoading && items.length > 0 ? (
-          <OrThirdPartiesDonutCard
-            sectionTitle={breadcrumbLabel}
-            groupLabel={company?.name ?? breadcrumbLabel}
-            groupAmount={total}
-            deltaPercent={0}
-            data={donutData}
-            selectedId={selectedTerceroId}
-            onSelectChange={setSelectedTerceroId}
-            emptyHint="Toca un sector para filtrar las cuentas"
-          />
-        ) : null
+        // Tendencia comparativa (Corriente vs Histórico), igual que en el
+        // consolidado.
+        <OrQBTrendChartCard section={group} label={breadcrumbLabel} />
       }
     >
       {isLoading ? (
@@ -196,14 +145,9 @@ export function OrQBSectionDetail({
         />
       ) : accountRoutePrefix ? (
         <View className="gap-2">
-          {visibleLeaves.map((leaf) => {
-            // Color estable por posición en la lista completa, para que
-            // coincida con el donut aunque la lista esté filtrada.
-            const originalIdx = leafAccounts.findIndex(
-              (l) => l.id === leaf.id,
-            );
+          {leafAccounts.map((leaf, i) => {
             const gradientColors = CLIENT_LEGEND_GRADIENTS[
-              originalIdx % CLIENT_LEGEND_GRADIENTS.length
+              i % CLIENT_LEGEND_GRADIENTS.length
             ] as [string, string];
             return (
               <MlCostGroupAccordionRow
@@ -212,17 +156,11 @@ export function OrQBSectionDetail({
                 amount={leaf.amount}
                 deltaPercent={null}
                 gradientColors={gradientColors}
-                onPress={() => {
-                  // Primer tap: selecciona (resalta el segmento y filtra).
-                  // Tap sobre la fila ya seleccionada: navega al detalle.
-                  if (selectedTerceroId !== leaf.id) {
-                    setSelectedTerceroId(leaf.id);
-                    return;
-                  }
+                onPress={() =>
                   router.push(
                     `${accountRoutePrefix}/${encodeURIComponent(leaf.id)}` as never,
-                  );
-                }}
+                  )
+                }
               />
             );
           })}

@@ -2,14 +2,14 @@
  * /gastos/[clientId] — gasto groups for one client. Mirrors costos/[clientId].
  *
  * Layout:
- *   - Pinned: OrCostGroupsChartCard (section title + bar chart card)
+ *   - Pinned: OrRevenueChartCard (gastos trend, same card as Ingresos)
  *   - Scrollable: MlCostGroupAccordionRow list with placeholder sub-items
  */
 
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
 import { MlCostGroupAccordionRow } from "@/src/components/molecules/ml-cost-group-accordion-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
-import { OrCostGroupsChartCard } from "@/src/components/organisms/or-cost-groups-chart-card";
+import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { TmConsolidatedDetail } from "@/src/components/templates/tm-consolidated-detail";
 import { useCostGroups } from "@/src/hooks/queries/use-cost-groups";
 import { useFiltersStore } from "@/src/stores/filters.store";
@@ -40,9 +40,6 @@ export default function GastosGruposScreen() {
     [setActivePeriod],
   );
 
-  const total = (data ?? []).reduce((s, g) => s + g.amount, 0);
-  const totalDelta = 0; // delta of the totals isn't returned by RPC; left at 0
-
   return (
     <TmConsolidatedDetail
       breadcrumbs={["Gasto", centroCosto || "..."]}
@@ -51,15 +48,15 @@ export default function GastosGruposScreen() {
       onFilterSelect={handleFilterSelect}
       onBack={() => router.back()}
       pinnedContent={
-        !isLoading && data && data.length > 0 ? (
-          <OrCostGroupsChartCard
-            sectionTitle="Gastos administrativos"
-            title={centroCosto}
-            total={total}
-            deltaPercent={totalDelta}
-            groups={data}
-          />
-        ) : null
+        // Misma tendencia que Ingresos (Totalizado / Corriente / Histórico)
+        // en vez de barras por grupo: los montos por grupo ya están en la
+        // lista de abajo.
+        <OrRevenueChartCard
+          categoryId="gastos"
+          label="Gastos"
+          period={activePeriodKey}
+          centroCosto={centroCosto}
+        />
       }
     >
       {isLoading || !data ? (

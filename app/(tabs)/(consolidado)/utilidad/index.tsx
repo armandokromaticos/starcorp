@@ -3,30 +3,24 @@
  *
  * Layout: pinned top (search + breadcrumb + filter + selected-client chart),
  * scrollable bottom (client list). Tapping a client row swaps the chart to
- * that client's utilidad timeseries.
+ * that client's utilidad trend (Totalizado / Corriente / Histórico).
  */
 
-import { AtDeltaIndicator } from "@/src/components/atoms/at-delta-indicator";
-import { AtMetricValue } from "@/src/components/atoms/at-metric-value";
 import { AtSkeleton } from "@/src/components/atoms/at-skeleton";
-import { AtTypography } from "@/src/components/atoms/at-typography";
 import { MlBreadcrumb } from "@/src/components/molecules/ml-breadcrumb";
 import { MlClientRow } from "@/src/components/molecules/ml-client-row";
 import { MlEmptyState } from "@/src/components/molecules/ml-empty-state";
 import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
 import { MlTimeFilterBar } from "@/src/components/molecules/ml-time-filter-bar";
 import { AtIcon } from "@/src/components/atoms/at-icon";
-import { OrAreaChart } from "@/src/components/organisms/or-area-chart";
 import { OrDrawer } from "@/src/components/organisms/or-drawer";
+import { OrRevenueChartCard } from "@/src/components/organisms/or-revenue-chart-card";
 import { useConsolidadoClients } from "@/src/hooks/queries/use-consolidado-clients";
-import type { DashboardSummaryPeriod } from "@/src/hooks/queries/use-dashboard-summary";
-import { useDashboardTimeseries } from "@/src/hooks/queries/use-dashboard-timeseries";
 import { useFiltersStore } from "@/src/stores/filters.store";
 import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, TextInput, View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
-import { formatAxisDate, PERIOD_SHORT_LABELS } from "@/src/utils/date";
-import { formatCurrency } from "@/src/utils/currency";
+import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,19 +29,10 @@ const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
   (key) => ({ key, label: PERIOD_SHORT_LABELS[key] }),
 );
 
-const RPC_PERIOD: Record<PeriodKey, DashboardSummaryPeriod> = {
-  today: "mtd",
-  "1w": "1w",
-  "1m": "1m",
-  "3m": "3m",
-  "12m": "12m",
-};
-
 export default function UtilidadConsolidadaScreen() {
   const insets = useSafeAreaInsets();
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
-  const rpcPeriod = RPC_PERIOD[activePeriodKey];
 
   const { data, isLoading } = useConsolidadoClients("utilidad");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -63,10 +48,6 @@ export default function UtilidadConsolidadaScreen() {
   }, [data, query]);
 
   const selected = data?.[selectedIndex];
-  const timeseries = useDashboardTimeseries(rpcPeriod, {
-    compare: false,
-    centroCosto: selected?.id ?? null,
-  });
 
   const handleFilterSelect = useCallback(
     (key: string) => setActivePeriod(key as PeriodKey),
@@ -75,23 +56,6 @@ export default function UtilidadConsolidadaScreen() {
   const goToWidestPeriod = useCallback(
     () => setActivePeriod("12m"),
     [setActivePeriod],
-  );
-
-  const series = useMemo(() => {
-    const buckets = timeseries.data ?? [];
-    if (buckets.length === 0) return [];
-    return [
-      {
-        data: buckets.map((b) => b.utilidad),
-        color: selected?.color ?? "#2D4BA0",
-        fillOpacity: 0.35,
-      },
-    ];
-  }, [timeseries.data, selected]);
-
-  const xLabels = useMemo(
-    () => (timeseries.data ?? []).map((b) => formatAxisDate(b.start)),
-    [timeseries.data],
   );
 
   const isPending = isLoading && !data;
@@ -123,48 +87,14 @@ export default function UtilidadConsolidadaScreen() {
             <AtSkeleton width="100%" height={220} borderRadius={14} />
           </View>
         ) : isEmpty ? null : selected ? (
-          <View
-            className="gap-3 bg-bg-card mx-4 p-4 rounded-lg"
-            style={{
-              borderCurve: "continuous",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
-            }}
-          >
-            <View className="gap-1">
-              <AtTypography variant="bodyBold">{selected.name}</AtTypography>
-              <View className="flex-row items-center gap-3">
-                <AtMetricValue value={selected.amount} size="md" />
-                <AtDeltaIndicator
-                  value={selected.deltaPercent}
-                  size="sm"
-                  appearance="dark"
-                />
-              </View>
-            </View>
-            {timeseries.isPending && series.length === 0 ? (
-              <AtSkeleton width="100%" height={160} borderRadius={8} />
-            ) : series.length === 0 ? (
-              <View
-                style={{
-                  height: 160,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <AtTypography variant="caption" color="#8892A4">
-                  Sin datos en este periodo
-                </AtTypography>
-              </View>
-            ) : (
-              <OrAreaChart
-                series={series}
-                height={160}
-                xLabels={xLabels}
-                interactive
-                formatValue={(v) => formatCurrency(v, { compact: true })}
-              />
-            )}
-          </View>
+          // Misma card que Ingresos/Costos/Gastos: Totalizado (ambas series),
+          // Corriente o Histórico del cliente seleccionado.
+          <OrRevenueChartCard
+            categoryId="utilidad"
+            label={selected.name}
+            period={activePeriodKey}
+            centroCosto={selected.id}
+          />
         ) : null}
 
         {!isPending && !isEmpty ? (

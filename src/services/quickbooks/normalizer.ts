@@ -211,6 +211,77 @@ function sectionTotal(
   );
 }
 
+/** One period column of a P&L section (P&L pedido con summarize_column_by). */
+export interface PnLSeriesPoint {
+  /** Fechas ISO inclusivas de la columna, tal como las manda QB. */
+  start: string;
+  end: string;
+  amount: number;
+}
+
+function findGroupRowAny(
+  rows: QBReportRow[] | undefined,
+  groups: string[],
+): QBReportRow | undefined {
+  if (!rows) return undefined;
+  for (const row of rows) {
+    if (row.group && groups.includes(row.group) && row.Summary?.ColData) {
+      return row;
+    }
+    const nested = findGroupRowAny(row.Rows?.Row, groups);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+/**
+ * Serie por columna de una sección del P&L: suma, columna a columna, el
+ * Summary de cada grupo de SECTION_GROUPS (misma tabla que las cards, así la
+ * suma de la serie da el total de la card). Solo se toman las columnas con
+ * StartDate/EndDate; la de "Total" y la del nombre de cuenta se descartan.
+ */
+export function normalizePnLSectionSeries(
+  pnl: QBProfitAndLossRaw | null,
+  section: PnLSection,
+): PnLSeriesPoint[] {
+  const columns = pnl?.Columns?.Column ?? [];
+  const meta = (
+    col: (typeof columns)[number],
+    name: string,
+  ): string | undefined =>
+    col.MetaData?.find((m) => m.Name === name)?.Value ?? undefined;
+
+  const periodCols = columns
+    .map((col, idx) => ({
+      idx,
+      start: meta(col, "StartDate"),
+      end: meta(col, "EndDate"),
+      key: meta(col, "ColKey"),
+    }))
+    .filter(
+      (c) =>
+        c.start &&
+        c.end &&
+        c.key?.toLowerCase() !== "total" &&
+        columns[c.idx]?.ColTitle !== "Total",
+    );
+  if (periodCols.length === 0) return [];
+
+  const rows = pnl?.Rows?.Row;
+  const sectionRows = SECTION_GROUPS[section]
+    .map((g) => findGroupRowAny(rows, GROUP_ALIASES[g] ?? [g]))
+    .filter((r): r is QBReportRow => r != null);
+
+  return periodCols.map((c) => ({
+    start: c.start!.slice(0, 10),
+    end: c.end!.slice(0, 10),
+    amount: sectionRows.reduce(
+      (sum, r) => sum + toAmount(r.Summary?.ColData?.[c.idx]?.value),
+      0,
+    ),
+  }));
+}
+
 /**
  * Flattens immediate descendants of a P&L section (Income, COGS, Expenses)
  * into a list of leaf line items so we can render them in a detail screen.

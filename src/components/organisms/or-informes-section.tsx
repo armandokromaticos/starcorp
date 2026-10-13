@@ -14,7 +14,7 @@ import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
 import { AtStatusBadge } from '@/src/components/atoms/at-status-badge';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AreaChart } from '@/src/components/charts/area-chart';
-import { BarChart } from '@/src/components/charts/bar-chart';
+import { OrAgingBarChart } from '@/src/components/organisms/or-aging-bar-chart';
 import { DonutChart } from '@/src/components/charts/donut-chart';
 import { GaugeChart } from '@/src/components/charts/gauge-chart';
 import { MlReportCategoryRow } from '@/src/components/molecules/ml-report-category-row';
@@ -36,7 +36,7 @@ import {
   MONTO_BUCKET_COLOR,
   type MontoBucket,
 } from '@/src/types/pagos.types';
-import { formatCompact, formatNumber } from '@/src/utils/number';
+import { formatNumber } from '@/src/utils/number';
 import { formatCurrency } from '@/src/utils/currency';
 import { tokens } from '@/src/theme/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -132,32 +132,6 @@ function compactMoney(value: number): string {
   if (value >= 1000) return `$${Math.round(value / 1000)}k`;
   return `$${Math.round(value)}`;
 }
-
-/**
- * Rampa de severidad de aging: corriente (verde) → 91+ (rojo).
- * Pasos diferenciados (verde → amarillo → naranja → naranja intenso → rojo)
- * para que cada bucket se distinga; tonos alineados a la paleta del proyecto.
- */
-const AGING_BUCKET_COLOR: Record<AgingBucket, string> = {
-  corriente: '#3FB97A',
-  '0-30': '#F2C94C',
-  '31-60': '#F2994A',
-  '61-90': '#E8602E',
-  '91+': '#D7443E',
-};
-
-/**
- * Etiquetas compactas del eje X solo para la mini-gráfica del dashboard:
- * sin espacios alrededor del guion para que quepan en una sola línea.
- * (Las etiquetas largas de `AGING_BUCKET_LABEL` se usan en la lista/tabs.)
- */
-const AGING_BUCKET_SHORT_LABEL: Record<AgingBucket, string> = {
-  corriente: 'Corriente',
-  '0-30': '1-30',
-  '31-60': '31-60',
-  '61-90': '61-90',
-  '91+': '+91',
-};
 
 function niceCeil(value: number): number {
   if (value <= 0) return 0;
@@ -437,7 +411,7 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                       borderRadius={12}
                     />
                   ) : isCartera && carteraAgg ? (
-                    <ReportBucketChart
+                    <OrAgingBarChart
                       buckets={carteraAgg.buckets}
                       width={chartWidth}
                     />
@@ -509,119 +483,6 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
   },
 );
 OrInformesSection.displayName = 'OrInformesSection';
-
-/**
- * Bar chart de aging para Cartera: una barra por bucket
- * (corriente / 0-30 / 31-60 / 61-90 / 91+), coloreada por severidad.
- */
-const ReportBucketChart = memo<{
-  buckets: Record<AgingBucket, number>;
-  width: number;
-}>(({ buckets, width }) => {
-  const yAxisWidth = 36;
-  const chartWidth = Math.max(40, width - yAxisWidth);
-  const chartHeight = 110;
-
-  const values = useMemo(
-    () => AGING_BUCKETS.map((b) => buckets[b]),
-    [buckets],
-  );
-  const yMax = useMemo(() => niceCeil(Math.max(...values, 0)), [values]);
-  const yTicks = useMemo(() => [yMax, yMax / 2, 0], [yMax]);
-  const barData = useMemo(
-    () =>
-      AGING_BUCKETS.map((b) => ({
-        value: buckets[b],
-        color: AGING_BUCKET_COLOR[b],
-      })),
-    [buckets],
-  );
-
-  return (
-    <View style={{ width, height: chartHeight + 22 }}>
-      {/* Y-axis labels */}
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          height: chartHeight,
-          width: yAxisWidth - 4,
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          zIndex: 1,
-        }}
-      >
-        {yTicks.map((t, i) => (
-          <AtTypography key={i} variant="label" color="#8892A4">
-            {t === 0 ? '0' : formatCompact(t)}
-          </AtTypography>
-        ))}
-      </View>
-
-      <View style={{ marginLeft: yAxisWidth, position: 'relative' }}>
-        {/* Dashed grid lines */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: chartHeight,
-            justifyContent: 'space-between',
-          }}
-        >
-          {yTicks.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                height: 1,
-                borderTopWidth: 1,
-                borderTopColor: tokens.color.border.default,
-                borderStyle: 'dashed',
-              }}
-            />
-          ))}
-        </View>
-
-        {/* Bars */}
-        <View style={{ position: 'absolute', top: 0, left: 0 }}>
-          <BarChart
-            data={barData}
-            width={chartWidth}
-            height={chartHeight}
-            gap={10}
-          />
-        </View>
-
-        {/* X-axis bucket labels */}
-        <View
-          style={{
-            position: 'absolute',
-            top: chartHeight + 4,
-            left: 0,
-            right: 0,
-            flexDirection: 'row',
-          }}
-        >
-          {AGING_BUCKETS.map((b) => (
-            <View key={b} style={{ flex: 1, alignItems: 'center' }}>
-              <AtTypography
-                variant="label"
-                color="#8892A4"
-                numberOfLines={1}
-                style={{ fontSize: 10, lineHeight: 14, letterSpacing: 0 }}
-              >
-                {AGING_BUCKET_SHORT_LABEL[b]}
-              </AtTypography>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-});
-ReportBucketChart.displayName = 'ReportBucketChart';
 
 /**
  * Doble línea para Asociados: Histórico (total activo por mes, navy) y

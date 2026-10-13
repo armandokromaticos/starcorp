@@ -92,7 +92,7 @@ interface MappedRow {
   cuenta: string;
   nombre_cuenta: string | null;
   centro_costo_codigo: string | null;
-  centro_costo_nombre: string | null;
+  centro_costo_nombre: string;
   nit: string | null;
   razon_social: string | null;
   detalle: string | null;
@@ -131,6 +131,32 @@ function cyrb53(str: string, seed: number): number {
 function hashRow(canonical: string): string {
   return cyrb53(canonical, 0).toString(16).padStart(14, "0") +
     cyrb53(canonical, 0x9e3779b9).toString(16).padStart(14, "0");
+}
+
+// Los RPCs del consolidado agrupan y filtran por centro_costo_nombre, así que
+// un asiento sin nombre quedaba fuera de la lista de clientes pero dentro del
+// total del dashboard (centros nuevos como 2031/2032 que aún no tienen nombre
+// en el ERP). Se rotula con un nombre de reemplazo para que la lista cuadre
+// con el total. El hash se calcula con el valor crudo: cuando el ERP le ponga
+// nombre, el asiento cambia de hash y el prune borra la versión rotulada.
+// Misma lógica que el backfill de la migración 0053.
+//
+// El nombre real se guarda en mayúsculas: en 2025-08 el ERP pasó varios
+// centros de "Kalahari Pocono" a "KALAHARI POCONO" (mismo código), y como los
+// RPCs agrupan por nombre exacto la historia previa quedaba en otro grupo
+// (Great Wolf salía +124% contra un año anterior al que le faltaba julio).
+// Misma normalización que la migración 0055.
+function centroDisplayName(
+  nombre: string | null,
+  codigo: string | null,
+  detalle: string | null,
+): string {
+  const nom = nombre != null ? String(nombre).trim() : "";
+  if (nom) return nom.toUpperCase();
+  const cod = codigo != null ? String(codigo).trim() : "";
+  if (cod) return `Centro ${cod} (sin nombre)`;
+  if (detalle === "Cierre periodo fiscal") return "Cierre periodo fiscal";
+  return "Sin centro de costo";
 }
 
 function mapRow(row: Cell, syncedAt: string): MappedRow | null {
@@ -176,7 +202,7 @@ function mapRow(row: Cell, syncedAt: string): MappedRow | null {
     cuenta,
     nombre_cuenta,
     centro_costo_codigo: centro_codigo,
-    centro_costo_nombre: centro_nombre,
+    centro_costo_nombre: centroDisplayName(centro_nombre, centro_codigo, detalle),
     nit,
     razon_social,
     detalle,

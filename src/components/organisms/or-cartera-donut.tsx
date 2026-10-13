@@ -39,6 +39,8 @@ interface OrCarteraDonutProps {
   labelsMode?: 'floating' | 'tap-only';
   /** Cómo formatear el valor en el banner inferior (tap-only). */
   valueFormatter?: (value: number) => string;
+  /** tap-only: agrega el % del slice junto al valor del banner inferior. */
+  showPercentInBanner?: boolean;
   /** Hint cuando no hay slice seleccionado en modo tap-only. */
   emptyHint?: string;
   /**
@@ -127,7 +129,8 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
     onSelectChange,
     labelsMode = 'floating',
     valueFormatter,
-    emptyHint = 'Toca un sector para ver detalle',
+    showPercentInBanner = false,
+    emptyHint ='Toca un sector para ver detalle',
     externalSelection = null,
   }) => {
     const isTapOnly = labelsMode === 'tap-only';
@@ -330,6 +333,9 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
                   {valueFormatter
                     ? valueFormatter(data[selectedIndex].value)
                     : data[selectedIndex].value.toLocaleString('es-VE')}
+                  {showPercentInBanner && selectedPct != null
+                    ? ` · ${selectedPct.toFixed(1)}%`
+                    : ''}
                 </AtTypography>
               </Pressable>
             ) : external ? (

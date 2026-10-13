@@ -124,6 +124,22 @@ export function formatAxisDate(iso: string): string {
   return `${d} ${MONTH_SHORT_ES[(m ?? 1) - 1] ?? ''}`;
 }
 
+const MONTH_LONG_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/**
+ * Nombre del mes de una fecha ISO, para rotular buckets mensuales sin día
+ * ("1 oct" sugiere un punto en el tiempo, no el mes completo).
+ * `short`: "Oct" (eje X); por defecto "Octubre" (tooltip).
+ */
+export function formatMonthLabel(iso: string, short = false): string {
+  const m = Number(iso.slice(5, 7));
+  const name = MONTH_LONG_ES[m - 1] ?? '';
+  return short ? name.slice(0, 3) : name;
+}
+
 /**
  * Format an ISO date ("2026-06-30") as "30 jun 2026". Parses by parts (not
  * `new Date`) para no correr el día por zona horaria.

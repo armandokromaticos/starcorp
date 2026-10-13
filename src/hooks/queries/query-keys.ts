@@ -31,6 +31,8 @@ export const queryKeys = {
   qbCustomerBalance: (name: string) => ['qb', 'customerBalance', name] as const,
   qbProfitAndLoss: (start: string, end: string) =>
     ['qb', 'profitAndLoss', start, end] as const,
+  qbProfitAndLossByColumn: (start: string, end: string, summarize: string) =>
+    ['qb', 'profitAndLoss', start, end, 'by', summarize] as const,
   qbGeneralLedger: (accountIds: string, start: string, end: string) =>
     ['qb', 'generalLedger', accountIds, start, end] as const,
   dashboardSummary: (

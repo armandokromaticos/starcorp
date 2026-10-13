@@ -46,7 +46,11 @@ export function useTopClients(limit = 8) {
         p_compare: true,
       });
       if (error) throw error;
-      const rows = (data ?? []) as TopClientRow[];
+      // Un centro con asientos en el periodo pero que suman 0 no es un
+      // cliente con ingreso: se descarta para que no ocupe un puesto del top.
+      const rows = ((data ?? []) as TopClientRow[]).filter(
+        (r) => Number(r.revenue) > 0,
+      );
       const palette = tokens.color.chart;
       return rows.map((r, i) => ({
         id: r.centro_costo,
