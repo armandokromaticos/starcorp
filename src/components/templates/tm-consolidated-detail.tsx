@@ -6,13 +6,16 @@
  */
 
 import React, { memo } from 'react';
-import { ScrollView, View } from '@/src/tw';
+import { ScrollView as RNScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlTimeFilterBar, type TimeFilterOption } from '@/src/components/molecules/ml-time-filter-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
 interface TmConsolidatedDetailProps {
   breadcrumbs: string[];
@@ -24,6 +27,10 @@ interface TmConsolidatedDetailProps {
   onFilterSelect: (key: string) => void;
   onBack?: () => void;
   onMenuPress?: () => void;
+  /** Rendered between the top filter bar and the scrollable area — stays pinned. */
+  pinnedContent?: React.ReactNode;
+  /** Optional ref to the inner ScrollView (for scrollTo etc.). */
+  scrollRef?: React.RefObject<RNScrollView | null>;
   children: React.ReactNode;
 }
 
@@ -38,47 +45,58 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
     onFilterSelect,
     onBack,
     onMenuPress,
+    pinnedContent,
+    scrollRef,
     children,
   }) => {
+    const insets = useSafeAreaInsets();
+    const openGlobalSearch = useGlobalSearchStore((s) => s.open);
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        className="flex-1 bg-bg-primary"
-        contentContainerClassName="gap-4 pb-12"
-      >
-        <View className="px-4 pt-2">
-          <MlSearchBar onMenuPress={onMenuPress} />
+      <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
+        {/* Pinned top: search + breadcrumb + filter + optional pinned slot */}
+        <View className="gap-4 pt-2">
+          <View className="px-4">
+            <MlSearchBar onMenuPress={onMenuPress} onPress={openGlobalSearch} />
+          </View>
+
+          <MlBreadcrumb segments={breadcrumbs} onBack={onBack} className="px-4" />
+
+          <MlTimeFilterBar
+            options={filterOptions}
+            selectedKey={selectedFilter}
+            onSelect={onFilterSelect}
+          />
+
+          {metricValue != null && (
+            <View className="px-4 gap-1">
+              {metricLabel && (
+                <AtTypography variant="caption" color="#8892A4">
+                  {metricLabel}
+                </AtTypography>
+              )}
+              <View className="flex-row items-center gap-3">
+                <AtMetricValue value={metricValue} size="lg" />
+                {deltaPercent != null && (
+                  <AtDeltaIndicator value={deltaPercent} size="sm" />
+                )}
+              </View>
+            </View>
+          )}
+
+          {pinnedContent}
         </View>
 
-        <MlBreadcrumb segments={breadcrumbs} onBack={onBack} className="px-4" />
-
-        <MlTimeFilterBar
-          options={filterOptions}
-          selectedKey={selectedFilter}
-          onSelect={onFilterSelect}
-        />
-
-        {/* Metric header */}
-        {metricValue != null && (
-          <View className="px-4 gap-1">
-            {metricLabel && (
-              <AtTypography variant="caption" color="#8892A4">
-                {metricLabel}
-              </AtTypography>
-            )}
-            <View className="flex-row items-center gap-3">
-              <AtMetricValue value={metricValue} size="lg" />
-              {deltaPercent != null && (
-                <AtDeltaIndicator value={deltaPercent} size="sm" />
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Content slots: chart, stats, category rows, etc. */}
-        {children}
-      </ScrollView>
+        {/* Scrollable area */}
+        <RNScrollView
+          ref={scrollRef}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 48, gap: 16 }}
+        >
+          {children}
+        </RNScrollView>
+      </View>
     );
   },
 );

@@ -29,6 +29,19 @@ export function formatCurrency(
 }
 
 /**
+ * Format with two decimals and es-AR separators: $17.958,25
+ * (Informe Presupuesto: columnas Proyectado/Ejecutado).
+ */
+export function formatMoney2(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  const abs = new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(value));
+  return `${sign}$${abs}`;
+}
+
+/**
  * Format as compact currency: $1.4M, $38k
  */
 function formatCompactCurrency(

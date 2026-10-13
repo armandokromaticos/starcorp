@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from './query-keys';
 import { useFiltersStore } from '@/src/stores/filters.store';
-import { mockCompanyMetrics } from '@/src/services/mock/data.mock';
 import {
   qbQuery,
   QBNotConnectedError,
@@ -23,26 +22,24 @@ export function useCompanyMetrics(companyId: string | undefined) {
   return useQuery<CompanyMetrics | undefined>({
     queryKey: queryKeys.companyMetrics(period.key, companyId ?? ''),
     queryFn: async () => {
-      if (!companyId) return undefined;
+      // Las empresas provienen de QuickBooks (useCompanies → realmId), así que
+      // companyId siempre es un realmId. Un id no-realm no tiene métricas.
+      if (!companyId || !isRealmId(companyId)) return undefined;
 
-      if (isRealmId(companyId)) {
-        try {
-          const pnl = await qbQuery<QBProfitAndLossRaw>(
-            'reports/ProfitAndLoss',
-            { start_date: period.start, end_date: period.end },
-            companyId,
-          );
-          return normalizeMetricsFromPnL(pnl);
-        } catch (e) {
-          if (
-            e instanceof QBNotConnectedError ||
-            e instanceof QBReauthRequiredError
-          ) return undefined;
-          throw e;
-        }
+      try {
+        const pnl = await qbQuery<QBProfitAndLossRaw>(
+          'reports/ProfitAndLoss',
+          { start_date: period.start, end_date: period.end },
+          companyId,
+        );
+        return normalizeMetricsFromPnL(pnl);
+      } catch (e) {
+        if (
+          e instanceof QBNotConnectedError ||
+          e instanceof QBReauthRequiredError
+        ) return undefined;
+        throw e;
       }
-
-      return mockCompanyMetrics[companyId];
     },
     enabled: !!companyId,
     staleTime: 5 * 60 * 1000,

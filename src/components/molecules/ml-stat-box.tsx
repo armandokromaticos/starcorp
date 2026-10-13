@@ -5,45 +5,56 @@
  * Used in client detail (Empleados, Lider, Vigencia).
  */
 
-import React, { memo } from 'react';
-import { View } from '@/src/tw';
-import { AtTypography } from '@/src/components/atoms/at-typography';
-import { AtIcon } from '@/src/components/atoms/at-icon';
-import type { MaterialIcons } from '@expo/vector-icons';
+import { AtIcon } from "@/src/components/atoms/at-icon";
+import { AtTypography } from "@/src/components/atoms/at-typography";
+import { View } from "@/src/tw";
+import type { MaterialIcons } from "@expo/vector-icons";
+import React, { memo } from "react";
 
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 interface MlStatBoxProps {
   icon: MaterialIconName;
   value: string | number;
   label: string;
   iconColor?: string;
-  variant?: 'light' | 'dark';
+  variant?: "light" | "dark";
   className?: string;
 }
 
 export const MlStatBox = memo<MlStatBoxProps>(
-  ({ icon, value, label, iconColor = '#1A2B6D', variant = 'light', className }) => {
-    const isDark = variant === 'dark';
+  ({
+    icon,
+    value,
+    label,
+    iconColor = "#1A2B6D",
+    variant = "light",
+    className,
+  }) => {
+    const isDark = variant === "dark";
     return (
       <View
-        className={`items-center gap-2 p-4 rounded-lg flex-1 ${className ?? ''}`}
+        className={`items-center justify-between p-4 rounded-lg flex-1 ${className ?? ""}`}
         style={{
-          borderCurve: 'continuous',
-          backgroundColor: isDark ? '#0F1B2E' : '#F5F5F7',
+          borderCurve: "continuous",
+          backgroundColor: isDark ? "#0E173C" : "#F5F5F7",
         }}
       >
-        <AtIcon name={icon} size="lg" color={iconColor} />
-        <AtTypography
-          variant="h3"
-          color={isDark ? '#FFFFFF' : '#1A1F36'}
-          selectable
-        >
-          {String(value)}
-        </AtTypography>
+        <View className="items-center gap-2">
+          <AtIcon name={icon} size="lg" color={iconColor} />
+          <AtTypography
+            variant="captionBold"
+            color={isDark ? "#FFFFFF" : "#1A1F36"}
+            selectable
+            style={{ textAlign: "center" }}
+          >
+            {String(value)}
+          </AtTypography>
+        </View>
         <AtTypography
           variant="caption"
-          color={isDark ? 'rgba(255,255,255,0.75)' : '#8892A4'}
+          color={isDark ? "rgba(255,255,255,0.75)" : "#8892A4"}
+          style={{ textAlign: "center", marginTop: 4 }}
         >
           {label}
         </AtTypography>
@@ -52,4 +63,4 @@ export const MlStatBox = memo<MlStatBoxProps>(
   },
 );
 
-MlStatBox.displayName = 'MlStatBox';
+MlStatBox.displayName = "MlStatBox";

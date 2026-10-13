@@ -6,6 +6,7 @@
  */
 
 import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
+import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, View } from "@/src/tw";
 import React, { memo } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +20,7 @@ interface TmFinancieroProps {
 export const TmFinanciero = memo<TmFinancieroProps>(
   ({ title = "Financiero", onMenuPress, children }) => {
     const insets = useSafeAreaInsets();
+    const openGlobalSearch = useGlobalSearchStore((s) => s.open);
     return (
       <View
         className="flex-1 bg-bg-secondary"
@@ -31,7 +33,7 @@ export const TmFinanciero = memo<TmFinancieroProps>(
           contentContainerClassName="gap-4 pb-12"
         >
           <View className="px-4 pt-2">
-            <MlSearchBar onMenuPress={onMenuPress} />
+            <MlSearchBar onMenuPress={onMenuPress} onPress={openGlobalSearch} />
           </View>
 
           {/* Content: company carousel, metric cards, sections */}

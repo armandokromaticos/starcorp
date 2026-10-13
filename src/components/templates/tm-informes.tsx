@@ -7,6 +7,7 @@
 
 import { AtTypography } from "@/src/components/atoms/at-typography";
 import { MlSearchBar } from "@/src/components/molecules/ml-search-bar";
+import { useGlobalSearchStore } from "@/src/stores/global-search.store";
 import { ScrollView, View } from "@/src/tw";
 import React, { memo } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,7 @@ interface TmInformesProps {
 export const TmInformes = memo<TmInformesProps>(
   ({ title = "Informes", onMenuPress, children, className }) => {
     const insets = useSafeAreaInsets();
+    const openGlobalSearch = useGlobalSearchStore((s) => s.open);
     return (
       <View
         className="flex-1 bg-bg-secondary"
@@ -33,7 +35,7 @@ export const TmInformes = memo<TmInformesProps>(
           contentContainerClassName="gap-4 pb-12"
         >
           <View className="px-4 pt-2">
-            <MlSearchBar onMenuPress={onMenuPress} />
+            <MlSearchBar onMenuPress={onMenuPress} onPress={openGlobalSearch} />
           </View>
 
           <View className="px-4">

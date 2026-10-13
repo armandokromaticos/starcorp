@@ -18,19 +18,22 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
-          node-version: 20.x
+          node-version: 22.x
           cache: npm
 
+      # packager: npm — el repo usa package-lock.json. El default (yarn)
+      # instala el CLI con `yarn global add`, que es el paso que venia
+      # fallando en el runner.
       - name: Setup Expo
-        uses: expo/expo-github-action@v7
+        uses: expo/expo-github-action@v9
         with:
-          expo-version: latest
           eas-version: latest
+          packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies

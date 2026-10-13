@@ -12,6 +12,8 @@ import { Pressable, ScrollView, View } from '@/src/tw';
 import { AtStatusBadge } from '@/src/components/atoms/at-status-badge';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { MlCompanyCard } from '@/src/components/molecules/ml-company-card';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '@/src/theme/gradients';
 
 export interface CompanySummary {
   id: string;
@@ -66,15 +68,28 @@ export const OrFinancieroSection = memo<OrFinancieroSectionProps>(
         <View className="items-end px-4">
           <Pressable
             onPress={onViewAll}
-            className="bg-navy px-6 py-3 rounded-lg"
             style={{
+              borderRadius: 8,
               borderCurve: 'continuous',
-              boxShadow: '0 2px 6px rgba(15, 27, 74, 0.25)',
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(4, 17, 63, 0.35)',
             }}
           >
-            <AtTypography variant="captionBold" color="#FFFFFF">
-              {ctaLabel}
-            </AtTypography>
+            <LinearGradient
+              colors={gradients.buttonBlue.colors}
+              start={gradients.buttonBlue.start}
+              end={gradients.buttonBlue.end}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AtTypography variant="captionBold" color="#FFFFFF">
+                {ctaLabel}
+              </AtTypography>
+            </LinearGradient>
           </Pressable>
         </View>
       </View>

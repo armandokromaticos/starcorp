@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDeltaIndicator } from '@/src/components/atoms/at-delta-indicator';
+import { AtIcon } from '@/src/components/atoms/at-icon';
 import { formatCurrency } from '@/src/utils/currency';
 
 interface MlConsolidadoClientCardProps {
@@ -17,19 +18,22 @@ export const MlConsolidadoClientCard = memo<MlConsolidadoClientCardProps>(
     return (
       <Pressable
         onPress={onPress}
-        className="bg-navy rounded-lg px-4 py-3 mx-4"
-        style={{ borderCurve: 'continuous' }}
+        className="rounded-lg px-4 py-3 mx-4"
+        style={{ borderCurve: 'continuous', backgroundColor: '#0A1432' }}
       >
         <View className="flex-row justify-between items-start">
           <View className="flex-1 gap-1">
-            <AtTypography variant="bodyBold" color="#FFFFFF" numberOfLines={1}>
-              {name} {'\u2192'}
-            </AtTypography>
+            <View className="flex-row items-center gap-1">
+              <AtTypography variant="bodyBold" color="#FFFFFF" numberOfLines={1}>
+                {name}
+              </AtTypography>
+              <AtIcon name="arrow-forward" size={14} color="rgba(255,255,255,0.7)" />
+            </View>
             <AtTypography variant="captionBold" color="#FFFFFF">
               {amountLabel}: {formatCurrency(amount)}
             </AtTypography>
           </View>
-          <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />
+          <AtDeltaIndicator value={deltaPercent} size="md" appearance="dark" />
         </View>
       </Pressable>
     );

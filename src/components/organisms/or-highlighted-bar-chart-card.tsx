@@ -26,10 +26,18 @@ export interface HighlightedBarChartPoint {
 interface OrHighlightedBarChartCardProps {
   title: string;
   amount: number;
-  deltaPercent: number;
+  /** Null/undefined = sin comparativo: el chip de delta no se renderiza. */
+  deltaPercent?: number | null;
   bars: HighlightedBarChartPoint[];
   highlightedId?: string;
+  /** Multiple bar IDs to mark — used by 'dot' mode when one selection in the
+   *  list maps to several bars (e.g. all invoices for one vendor). */
+  highlightedIds?: string[];
   highlightLabel?: string;
+  /** 'pill' renders a labeled chip above the (single) highlighted bar — the
+   *  default. 'dot' renders a small circular indicator on every highlighted
+   *  bar instead. */
+  highlightMode?: 'pill' | 'dot';
   height?: number;
   className?: string;
 }
@@ -41,15 +49,23 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
     deltaPercent,
     bars,
     highlightedId,
+    highlightedIds,
     highlightLabel = 'Hoy',
+    highlightMode = 'pill',
     height = 180,
     className,
   }) => {
+    // Use magnitude so negative-valued series (e.g. QB expense transactions
+    // returned as negatives) still render visible bars.
     const maxValue = useMemo(
-      () => Math.max(...bars.map((b) => b.value), 1),
+      () => Math.max(...bars.map((b) => Math.abs(b.value)), 1),
       [bars],
     );
-    const resolvedHighlighted = highlightedId ?? bars[0]?.id;
+    const highlightSet = useMemo(() => {
+      const set = new Set<string>(highlightedIds ?? []);
+      if (highlightedId) set.add(highlightedId);
+      return set;
+    }, [highlightedId, highlightedIds]);
 
     return (
       <View
@@ -67,22 +83,24 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
           </AtTypography>
           <View className="flex-row items-center gap-3">
             <AtMetricValue value={amount} size="lg" />
-            <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />
+            {deltaPercent != null && (
+              <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />
+            )}
           </View>
         </View>
 
         <View style={{ height }} className="flex-row items-end gap-2 pt-4">
           {bars.map((bar, i) => {
-            const barHeight = (bar.value / maxValue) * (height - 24);
+            const barHeight = (Math.abs(bar.value) / maxValue) * (height - 24);
             const gradient = BAR_GRADIENTS[i % BAR_GRADIENTS.length];
-            const isHighlighted = bar.id === resolvedHighlighted;
+            const isHighlighted = highlightSet.has(bar.id);
             return (
               <View
                 key={bar.id}
                 className="flex-1 items-center justify-end"
                 style={{ height }}
               >
-                {isHighlighted && (
+                {isHighlighted && highlightMode === 'pill' && (
                   <View
                     className="rounded-full px-2.5 py-0.5 mb-1"
                     style={{ backgroundColor: '#1A2B6D', borderCurve: 'continuous' }}
@@ -92,8 +110,19 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
                     </AtTypography>
                   </View>
                 )}
+                {isHighlighted && highlightMode === 'dot' && (
+                  <View
+                    className="mb-1.5"
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#1A2B6D',
+                    }}
+                  />
+                )}
                 <LinearGradient
-                  colors={gradient}
+                  colors={gradient as readonly [string, string, ...string[]]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={{

@@ -8,10 +8,16 @@
  *
  * Pass `centerBackground` to fill the hole with a radial navy gradient
  * (the "bubble" behind the total in the top clients card).
+ *
+ * La selección por toque NO usa el `onPress` de los `Path` de
+ * react-native-svg: en Android no dispara de forma fiable. En su lugar se
+ * superpone una capa transparente con el responder de RN (mismo patrón que
+ * `use-chart-active-point`) y se resuelve el sector por geometría.
  */
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
 import { View } from 'react-native';
+import type { GestureResponderEvent } from 'react-native';
 import Svg, {
   Path,
   G,
@@ -43,6 +49,10 @@ interface DonutChartProps {
   ringSplit?: number;
   centerBackground?: DonutCenterBackground;
   children?: React.ReactNode;
+  /** Called with the slice index when a slice is tapped. */
+  onSlicePress?: (index: number) => void;
+  /** Index of the currently selected slice (for visual emphasis). */
+  selectedIndex?: number | null;
 }
 
 function polarToCartesian(
@@ -91,6 +101,8 @@ export const DonutChart = memo<DonutChartProps>(
     ringSplit = 0.22,
     centerBackground,
     children,
+    onSlicePress,
+    selectedIndex = null,
   }) => {
     const cx = size / 2;
     const cy = size / 2;
@@ -115,6 +127,10 @@ export const DonutChart = memo<DonutChartProps>(
         return {
           startAngle,
           endAngle,
+          // Límites sin `padAngle`: el hit-test cubre también los huecos
+          // entre sectores, para que no haya franjas muertas al tocar.
+          hitStart: currentAngle - sliceAngle,
+          hitEnd: currentAngle,
           outerTop: base,
           outerBottom: darkenHex(base, 0.82),
           innerTop: inner,
@@ -124,6 +140,56 @@ export const DonutChart = memo<DonutChartProps>(
         };
       });
     }, [data, padAngle]);
+
+    /**
+     * Sector bajo el dedo, o null si el toque cae fuera del anillo (hueco
+     * central o esquinas del cuadrado). Ángulos en la convención del donut:
+     * 0° arriba, creciendo en sentido horario.
+     */
+    const sliceAt = useCallback(
+      (x: number, y: number): number | null => {
+        if (slices.length === 0) return null;
+
+        const dx = x - cx;
+        const dy = y - cy;
+        const r = Math.sqrt(dx * dx + dy * dy);
+        if (r < holeR || r > outerR) return null;
+
+        const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 450) % 360;
+        const i = slices.findIndex(
+          (s) => angle >= s.hitStart && angle < s.hitEnd,
+        );
+        // Los ángulos acumulados pueden quedarse una milésima por debajo de
+        // 360: el borde final pertenece al último sector.
+        return i >= 0 ? i : slices.length - 1;
+      },
+      [slices, cx, cy, holeR, outerR],
+    );
+
+    // Sector donde empezó el toque: sólo se confirma la selección si el dedo
+    // se levanta sobre el mismo sector (así un scroll que arranca encima del
+    // donut no dispara el filtro).
+    const pressedSlice = useRef<number | null>(null);
+
+    const touchHandlers = useMemo(() => {
+      if (!onSlicePress) return null;
+      return {
+        onStartShouldSetResponder: (e: GestureResponderEvent) => {
+          const i = sliceAt(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          pressedSlice.current = i;
+          return i != null;
+        },
+        onResponderTerminationRequest: () => true,
+        onResponderRelease: (e: GestureResponderEvent) => {
+          const i = sliceAt(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          if (i != null && i === pressedSlice.current) onSlicePress(i);
+          pressedSlice.current = null;
+        },
+        onResponderTerminate: () => {
+          pressedSlice.current = null;
+        },
+      };
+    }, [onSlicePress, sliceAt]);
 
     return (
       <View style={{ width: size, height: size }}>
@@ -182,6 +248,9 @@ export const DonutChart = memo<DonutChartProps>(
                   s.endAngle,
                 )}
                 fill={`url(#${s.innerGradId})`}
+                opacity={
+                  selectedIndex == null || selectedIndex === i ? 1 : 0.4
+                }
               />
             ))}
           </G>
@@ -200,6 +269,9 @@ export const DonutChart = memo<DonutChartProps>(
                   s.endAngle,
                 )}
                 fill={`url(#${s.outerGradId})`}
+                opacity={
+                  selectedIndex == null || selectedIndex === i ? 1 : 0.4
+                }
               />
             ))}
           </G>
@@ -209,8 +281,12 @@ export const DonutChart = memo<DonutChartProps>(
           )}
         </Svg>
 
+        {/* El contenido central cubre todo el cuadrado del donut: sin
+            `pointerEvents="none"` se traga los toques sobre el anillo en
+            cuanto aparece (p. ej. al mostrar el % del sector elegido). */}
         {children && (
           <View
+            pointerEvents="none"
             style={{
               position: 'absolute',
               top: 0,
@@ -223,6 +299,20 @@ export const DonutChart = memo<DonutChartProps>(
           >
             {children}
           </View>
+        )}
+
+        {/* Capa de toque, siempre encima del resto. */}
+        {touchHandlers && (
+          <View
+            {...touchHandlers}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+          />
         )}
       </View>
     );

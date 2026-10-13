@@ -1,29 +1,53 @@
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { Redirect, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useQbStatus } from "@/src/hooks/queries/use-companies";
-import { startQuickBooksOAuth } from "@/src/services/quickbooks/oauth";
+/**
+ * Conexión QuickBooks — gestión de conexiones (admin) / espera (miembros).
+ *
+ * Integrada al design system de la app: header con menú (drawer) +
+ * breadcrumb, cards del sistema y botón gradiente. Conserva la lógica:
+ * gate de admin único (ADMIN_USER_ID en starcorp_vault), polling para
+ * miembros en espera y redirect de miembros con datos al dashboard.
+ */
+
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, View } from '@/src/tw';
+import { AtIcon } from '@/src/components/atoms/at-icon';
+import { AtTypography } from '@/src/components/atoms/at-typography';
+import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
+import { MlGradientButton } from '@/src/components/molecules';
+import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
+import { OrDrawer } from '@/src/components/organisms/or-drawer';
+import { OrGlobalSearchModal } from '@/src/components/organisms/or-global-search-modal';
+import { useGlobalSearchStore } from '@/src/stores/global-search.store';
+import { useAuthStore } from '@/src/stores/auth.store';
+import { useQbStatus } from '@/src/hooks/queries/use-companies';
+import { startQuickBooksOAuth } from '@/src/services/quickbooks/oauth';
 import {
   disconnectQuickBooks,
   type QBConnectedCompany,
-} from "@/src/services/quickbooks/client";
+} from '@/src/services/quickbooks/client';
 
 export default function ConnectScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const status = useQbStatus();
+  const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+  // Al drawer solo llega el super admin, pero "super admin de la app" y
+  // "dueño de la conexión QB" (ADMIN_USER_ID en starcorp_vault) son cosas
+  // distintas: puede haber varios super admins y un solo dueño.
+  const isSuperAdmin = useAuthStore((s) => s.user?.role === 'super_admin');
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // El redirect de miembros usa isAdmin: decidirlo con datos frescos, no
+  // con el cache (un status viejo con isAdmin=false rebotaba la pantalla).
+  const [statusChecked, setStatusChecked] = useState(false);
+  const refetchStatus = status.refetch;
+  useEffect(() => {
+    refetchStatus().finally(() => setStatusChecked(true));
+  }, [refetchStatus]);
 
   // Members waiting for the admin to connect: poll every 10s so the screen
   // self-advances once the admin completes OAuth on their device.
@@ -42,20 +66,20 @@ export default function ConnectScreen() {
     setError(null);
     try {
       const result = await startQuickBooksOAuth();
-      if (result.type !== "success") {
-        setError("Conexión cancelada.");
+      if (result.type !== 'success') {
+        setError('Conexión cancelada.');
         return;
       }
       const refreshed = await status.refetch();
       if (refreshed.data && refreshed.data.companies.length > 0) {
-        router.replace("/");
+        router.replace('/');
         return;
       }
-      setError("No se detectaron compañías conectadas. Intenta de nuevo.");
+      setError('No se detectaron compañías conectadas. Intenta de nuevo.');
     } catch (err) {
       const msg = (err as Error).message;
-      if (msg.includes("not_admin") || msg.includes("403")) {
-        setError("Otro usuario ya está registrado como admin.");
+      if (msg.includes('not_admin') || msg.includes('403')) {
+        setError('Otro usuario ya está registrado como admin.');
         await status.refetch();
         return;
       }
@@ -67,13 +91,13 @@ export default function ConnectScreen() {
 
   function confirmDisconnect(company: QBConnectedCompany) {
     Alert.alert(
-      "Desconectar empresa",
+      'Desconectar empresa',
       `¿Seguro que querés desconectar "${company.name ?? company.realmId}"? Tu equipo dejará de ver sus datos.`,
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: "Desconectar",
-          style: "destructive",
+          text: 'Desconectar',
+          style: 'destructive',
           onPress: () => handleDisconnect(company.realmId),
         },
       ],
@@ -81,7 +105,7 @@ export default function ConnectScreen() {
   }
 
   async function handleDisconnect(realmId?: string) {
-    setDisconnecting(realmId ?? "all");
+    setDisconnecting(realmId ?? 'all');
     setError(null);
     try {
       await disconnectQuickBooks(realmId);
@@ -93,9 +117,14 @@ export default function ConnectScreen() {
     }
   }
 
-  if (status.isPending) {
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
+  if (status.isPending || !statusChecked) {
     return (
-      <View style={styles.centerFill}>
+      <View className="flex-1 bg-bg-secondary items-center justify-center">
         <ActivityIndicator color="#20307E" />
       </View>
     );
@@ -105,9 +134,12 @@ export default function ConnectScreen() {
   const isAdmin = status.data?.isAdmin ?? false;
   const companies = status.data?.companies ?? [];
 
-  // Member with data available → bounce into the dashboard.
-  // Admin stays on /connect to manage connections.
-  if (!isAdmin && companies.length > 0) {
+  // Member with data available → bounce into the dashboard: no tiene nada
+  // que gestionar acá y llegó por el gate de (tabs), no a propósito.
+  // El super admin NO rebota aunque no sea el dueño de la conexión: entra
+  // desde el drawer queriendo ver el estado, y rebotarlo dejaba la pantalla
+  // en blanco un instante y lo devolvía al dashboard sin explicación.
+  if (!isAdmin && !isSuperAdmin && companies.length > 0) {
     return <Redirect href="/" />;
   }
 
@@ -117,180 +149,163 @@ export default function ConnectScreen() {
   let ctaLabel: string;
 
   if (!hasAdmin) {
-    title = "Conecta tu QuickBooks";
+    title = 'Conecta tu QuickBooks';
     subtitle =
-      "Sé el primero en conectar. Como administrador, conectarás QuickBooks para que tu equipo pueda ver los datos.";
+      'Sé el primero en conectar. Como administrador, conectarás QuickBooks para que tu equipo pueda ver los datos.';
     canConnect = true;
-    ctaLabel = "Conectar QuickBooks";
+    ctaLabel = 'Conectar QuickBooks';
   } else if (isAdmin) {
-    title = "Conexiones activas";
+    title = 'Conexiones activas';
     subtitle =
-      "Eres el administrador. Podés vincular más compañías o desconectar las que ya no necesitás.";
+      'Eres el administrador. Podés vincular más compañías o desconectar las que ya no necesitás.';
     canConnect = true;
-    ctaLabel = "Conectar otra empresa";
-  } else {
-    title = "Esperando al administrador";
+    ctaLabel = 'Conectar otra empresa';
+  } else if (isSuperAdmin) {
+    title = 'Conexiones activas';
     subtitle =
-      "Tu administrador todavía no conecta QuickBooks. Vuelve a intentarlo en unos minutos.";
+      'Las conexiones las administra otra cuenta. Podés ver el estado de las empresas vinculadas, pero conectar o desconectar solo lo puede hacer esa cuenta.';
     canConnect = false;
-    ctaLabel = "Volver a verificar";
+    ctaLabel = 'Volver a verificar';
+  } else {
+    title = 'Esperando al administrador';
+    subtitle =
+      'Tu administrador todavía no conecta QuickBooks. Vuelve a intentarlo en unos minutos.';
+    canConnect = false;
+    ctaLabel = 'Volver a verificar';
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.heroBlock}>
-          <Image
-            source={require("@/assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
+    <View className="flex-1 bg-bg-secondary" style={{ paddingTop: insets.top }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-4 pt-2 pb-8"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header: menú + buscador + foto de perfil */}
+        <MlSearchBar
+          onMenuPress={() => setDrawerVisible(true)}
+          onPress={openGlobalSearch}
+        />
+
+        <View style={{ marginTop: 20 }}>
+          <MlBreadcrumb
+            segments={['Conexión QuickBooks']}
+            onBack={handleBack}
           />
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
 
-        {isAdmin && companies.length > 0 ? (
-          <View style={styles.companiesBlock}>
-            <Text style={styles.sectionLabel}>Empresas vinculadas</Text>
+        {/* Hero */}
+        <View className="items-center" style={{ marginTop: 32 }}>
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={{ width: 84, height: 84, borderRadius: 16, marginBottom: 20 }}
+            resizeMode="contain"
+          />
+          <AtTypography variant="h2" color="#20307E" style={{ textAlign: 'center' }}>
+            {title}
+          </AtTypography>
+          <AtTypography
+            variant="body"
+            color="#4A5568"
+            style={{ textAlign: 'center', marginTop: 10, paddingHorizontal: 8 }}
+          >
+            {subtitle}
+          </AtTypography>
+        </View>
+
+        {/* Empresas vinculadas: las ve cualquier super admin; desconectar
+            solo el dueño de la conexión (qb-disconnect responde 403 al resto). */}
+        {companies.length > 0 ? (
+          <View className="gap-3" style={{ marginTop: 28 }}>
+            <AtTypography variant="overline" color="#8892A4">
+              Empresas vinculadas
+            </AtTypography>
             {companies.map((c) => (
-              <View key={c.realmId} style={styles.companyRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.companyName}>
-                    {c.name ?? `Empresa ${c.realmId.slice(-4)}`}
-                  </Text>
-                  <Text style={styles.companyMeta}>
-                    realm {c.realmId}
-                    {c.reauthRequired ? " · requiere reconexión" : ""}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.disconnectBtn}
-                  disabled={disconnecting !== null}
-                  onPress={() => confirmDisconnect(c)}
+              <View
+                key={c.realmId}
+                className="bg-bg-card flex-row items-center gap-3 p-4"
+                style={{ borderRadius: 14, borderCurve: 'continuous' }}
+              >
+                <View
+                  className="items-center justify-center"
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 8,
+                    borderCurve: 'continuous',
+                    backgroundColor: '#F6F8FA',
+                    borderWidth: 1,
+                    borderColor: 'rgba(0,0,0,0.08)',
+                  }}
                 >
-                  {disconnecting === c.realmId ? (
-                    <ActivityIndicator color="#B91C1C" />
-                  ) : (
-                    <Text style={styles.disconnectTxt}>Desconectar</Text>
-                  )}
-                </TouchableOpacity>
+                  <AtIcon name="business" size="md" color="#1A2B6D" />
+                </View>
+                <View className="flex-1">
+                  <AtTypography variant="bodyBold" color="#1A1F36" numberOfLines={1}>
+                    {c.name ?? `Empresa ${c.realmId.slice(-4)}`}
+                  </AtTypography>
+                  <AtTypography variant="caption" color="#8892A4" numberOfLines={1}>
+                    realm {c.realmId}
+                    {c.reauthRequired ? ' · requiere reconexión' : ''}
+                  </AtTypography>
+                </View>
+                {isAdmin ? (
+                  <Pressable
+                    onPress={() => confirmDisconnect(c)}
+                    disabled={disconnecting !== null}
+                    accessibilityRole="button"
+                    className="items-center justify-center px-3"
+                    style={{
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderCurve: 'continuous',
+                      borderWidth: 1,
+                      borderColor: '#FCA5A5',
+                      minWidth: 100,
+                      opacity: disconnecting !== null ? 0.6 : 1,
+                    }}
+                  >
+                    {disconnecting === c.realmId ? (
+                      <ActivityIndicator size="small" color="#B91C1C" />
+                    ) : (
+                      <AtTypography variant="captionBold" color="#B91C1C">
+                        Desconectar
+                      </AtTypography>
+                    )}
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </View>
         ) : null}
 
-        <View style={styles.actionBlock}>
-          <TouchableOpacity
-            style={[styles.cta, busy && styles.ctaDisabled]}
-            disabled={busy}
+        {/* CTA */}
+        <View style={{ marginTop: 28 }}>
+          <MlGradientButton
+            label={ctaLabel}
             onPress={canConnect ? handleConnect : () => status.refetch()}
-          >
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.ctaText}>{ctaLabel}</Text>
-            )}
-          </TouchableOpacity>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            loading={busy}
+          />
+          {error ? (
+            <AtTypography
+              variant="caption"
+              color="#E53E3E"
+              style={{ textAlign: 'center', marginTop: 12 }}
+            >
+              {error}
+            </AtTypography>
+          ) : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+
+      <OrDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        activeSection="qb"
+      />
+      {/* Fuera de (tabs) el modal de búsqueda global no está montado por
+          el layout; se monta aquí para que el buscador funcione. */}
+      <OrGlobalSearchModal />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F6F8FA" },
-  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 32 },
-  centerFill: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F6F8FA",
-  },
-  heroBlock: { alignItems: "center", marginTop: 32 },
-  logo: { width: 96, height: 96, marginBottom: 24 },
-  title: {
-    fontFamily: "Roboto_700Bold",
-    fontSize: 26,
-    color: "#20307E",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontFamily: "Roboto_400Regular",
-    fontSize: 15,
-    color: "#4B5563",
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  companiesBlock: { marginTop: 32 },
-  sectionLabel: {
-    fontFamily: "Roboto_500Medium",
-    fontSize: 13,
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 12,
-  },
-  companyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  companyName: {
-    fontFamily: "Roboto_500Medium",
-    fontSize: 15,
-    color: "#1F2937",
-  },
-  companyMeta: {
-    fontFamily: "Roboto_400Regular",
-    fontSize: 12,
-    color: "#9CA3AF",
-    marginTop: 2,
-  },
-  disconnectBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    minWidth: 100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disconnectTxt: {
-    color: "#B91C1C",
-    fontFamily: "Roboto_500Medium",
-    fontSize: 13,
-  },
-  actionBlock: { marginTop: 32 },
-  cta: {
-    backgroundColor: "#E8952E",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 56,
-  },
-  ctaDisabled: { opacity: 0.7 },
-  ctaText: {
-    color: "#fff",
-    fontFamily: "Roboto_700Bold",
-    fontSize: 16,
-  },
-  error: {
-    marginTop: 16,
-    color: "#B91C1C",
-    fontFamily: "Roboto_400Regular",
-    fontSize: 14,
-    textAlign: "center",
-  },
-});

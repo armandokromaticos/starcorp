@@ -6,6 +6,11 @@
  * - QueryClientProvider (TanStack Query)
  * - Roboto fonts via expo-font
  * - Global CSS (NativeWind/Tailwind)
+ *
+ * Gate de sesión: las rutas de la app solo son accesibles con una
+ * sesión Supabase real (no anónima); si no la hay — o el usuario está
+ * a mitad del flujo de recuperación de contraseña — se muestra el
+ * grupo (auth). Ver src/stores/auth.store.ts.
  */
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -13,6 +18,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -25,6 +31,9 @@ import 'react-native-reanimated';
 
 import '@/src/global.css';
 import { queryClient } from '@/src/config/query-client';
+import { subscribeAppStateFocus } from '@/src/config/query-focus';
+import { OrToast } from '@/src/components/organisms/or-toast';
+import { useAuthStore } from '@/src/stores/auth.store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,13 +49,26 @@ export default function RootLayout() {
     Roboto_700Bold,
   });
 
-  if (fontsLoaded) {
+  const authStatus = useAuthStore((s) => s.status);
+  const passwordRecovery = useAuthStore((s) => s.passwordRecovery);
+  const initialize = useAuthStore((s) => s.initialize);
+
+  useEffect(() => initialize(), [initialize]);
+
+  // Sin este puente, refetchOnWindowFocus no dispara en native.
+  useEffect(() => subscribeAppStateFocus(), []);
+
+  const ready = fontsLoaded && authStatus !== 'loading';
+
+  if (ready) {
     SplashScreen.hideAsync();
   }
 
-  if (!fontsLoaded) {
+  if (!ready) {
     return null;
   }
+
+  const isSignedIn = authStatus === 'signedIn' && !passwordRecovery;
 
   return (
     <SafeAreaProvider>
@@ -57,17 +79,23 @@ export default function RootLayout() {
               headerShown: false,
             }}
           >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="connect" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="modal"
-              options={{ presentation: 'modal', title: 'Modal', headerShown: true }}
-            />
-            <Stack.Screen
-              name="settings"
-              options={{ presentation: 'modal', title: 'Configuración', headerShown: true }}
-            />
+            <Stack.Protected guard={isSignedIn}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="connect" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="modal"
+                options={{ presentation: 'modal', title: 'Modal', headerShown: true }}
+              />
+              <Stack.Screen
+                name="settings"
+                options={{ presentation: 'modal', title: 'Configuración', headerShown: true }}
+              />
+            </Stack.Protected>
+            <Stack.Protected guard={!isSignedIn}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
           </Stack>
+          <OrToast />
           <StatusBar style="auto" />
         </ThemeProvider>
       </QueryClientProvider>

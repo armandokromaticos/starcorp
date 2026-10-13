@@ -63,7 +63,7 @@ export const MlPeriodDropdown = memo<MlPeriodDropdownProps>(({ className }) => {
           onPress={() => setOpen(false)}
         >
           <View
-            className="bg-bg-card rounded-lg py-2 w-56"
+            className="bg-bg-card rounded-lg py-2 w-56 overflow-hidden"
             style={{
               borderCurve: 'continuous',
               boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
