@@ -25,7 +25,8 @@ import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 import { donutColorAt } from '@/src/utils/donut';
 
 function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CarteraClientDetailScreen() {

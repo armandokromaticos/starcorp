@@ -18,7 +18,8 @@ import {
 } from '@/src/types/cartera.types';
 
 function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Anchos de columna compartidos con el header de la lista

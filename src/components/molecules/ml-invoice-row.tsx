@@ -12,7 +12,8 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDivider } from '@/src/components/atoms/at-divider';
 
 function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Ancho de la columna de monto, compartido con el encabezado "Monto"

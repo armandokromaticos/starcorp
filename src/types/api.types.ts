@@ -104,6 +104,18 @@ export interface QBTransactionListRow {
   group?: string;
 }
 
+// QB Aged Receivable Detail report — secciones por bucket de vencimiento
+// (Header.ColData[0].value = "Current" | "1 - 30 days past due" | ...),
+// cada una con sus líneas de transacción (Invoice, Payment, CreditMemo,
+// etc.) ya netas en "Open Balance". Misma forma de fila que TransactionList.
+export interface QBAgedReceivableDetailRaw {
+  Header?: { ReportName?: string };
+  Columns?: {
+    Column?: { ColTitle?: string; ColType?: string }[];
+  };
+  Rows?: { Row?: QBTransactionListRow[] };
+}
+
 // ─── Power BI Raw Types ───────────────────────────────────────
 
 export interface PBIQueryResultRaw {
@@ -174,31 +186,6 @@ export interface QBAccountRaw {
 export interface QBAccountQueryResponse {
   QueryResponse?: {
     Account?: QBAccountRaw[];
-    startPosition?: number;
-    maxResults?: number;
-    totalCount?: number;
-  };
-  intuit_tid?: string;
-}
-
-// ─── QuickBooks Invoice Raw ───────────────────────────────────
-
-export interface QBInvoiceRaw {
-  Id: string;
-  DocNumber?: string;
-  TxnDate?: string;
-  DueDate?: string;
-  Balance?: number;
-  TotalAmt?: number;
-  CustomerRef?: { value: string; name?: string };
-  PrivateNote?: string;
-  CustomerMemo?: { value?: string };
-  CurrencyRef?: { value: string };
-}
-
-export interface QBInvoiceQueryResponse {
-  QueryResponse?: {
-    Invoice?: QBInvoiceRaw[];
     startPosition?: number;
     maxResults?: number;
     totalCount?: number;
