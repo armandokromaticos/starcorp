@@ -189,10 +189,10 @@ const ConsolidadoChartCard = memo<{
   // Cada bucket se rotula por su fecha de inicio, salvo el último, que se
   // rotula con el cierre del periodo (fin exclusivo − 1 día). Así el borde
   // derecho del eje siempre muestra el último día cerrado (ej. 31-may para
-  // 1m/3m) en vez del inicio del último bucket (28-may, 8-may, …).
-  // En 12m cada bucket es un mes completo: se rotula solo con el nombre del
-  // mes ("Octubre"); "1 oct" se leía como un día puntual, no como el mes.
-  const isMonthly = period === '12m';
+  // 1m) en vez del inicio del último bucket (28-may, …).
+  // En 3m/12m cada bucket es un mes completo: se rotula solo con el nombre
+  // del mes ("Octubre"); "1 oct" se leía como un día puntual, no como el mes.
+  const isMonthly = period === '3m' || period === '12m';
   const xLabels = useMemo(
     () =>
       buckets.map((b, i) =>

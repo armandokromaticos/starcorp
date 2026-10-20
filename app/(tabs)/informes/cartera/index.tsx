@@ -1,14 +1,16 @@
 /**
  * Informe Cartera — pantalla principal.
  *
- * Donut de distribución (al tocar un sector pasa a la segmentación por aging
- * de ese cliente, con "Volver") + tabs de aging + lista de clientes expandibles
- * + filtros en bottom sheet + footer con totales.
+ * Donut de distribución (al tocar un sector filtra la lista y muestra nombre
+ * y % del sector) + tabs de aging + lista de clientes expandibles (al tocar un
+ * cliente, el donut cede su lugar a la segmentación por aging de ese cliente,
+ * con "Volver") + filtros en bottom sheet + footer con totales.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, TextInput, View } from '@/src/tw';
+import { ScrollView as RNScrollView } from 'react-native';
+import { Pressable, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { MlBreadcrumb } from '@/src/components/molecules/ml-breadcrumb';
@@ -45,7 +47,8 @@ import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
 
 function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CarteraScreen() {
@@ -80,25 +83,35 @@ export default function CarteraScreen() {
       .map((c, i) => ({ ...c, color: donutColorAt(i) }));
   }, [data, filters, search]);
 
+  // Un cliente puede netear en 0 o a favor (nota de crédito sin factura
+  // abierta, o crédito mayor al saldo pendiente): no tiene sentido como
+  // sector del donut, así que se excluye solo de esta vista (sigue en la
+  // lista y en el total general).
+  const donutClients = useMemo(
+    () => baseClients.filter((c) => c.total > 0),
+    [baseClients],
+  );
+
   // Clientes agrupados bajo el sector "Otros" del donut (los que quedan
-  // fuera del top MAX_DONUT_SLICES). Vacío cuando no hay agrupación.
+  // fuera del top MAX_DONUT_SLICES, dentro de los que sí tienen saldo
+  // positivo). Vacío cuando no hay agrupación.
   const otrosClientIds = useMemo(() => {
-    if (baseClients.length <= MAX_DONUT_SLICES) return [];
-    return baseClients.slice(MAX_DONUT_SLICES).map((c) => c.id);
-  }, [baseClients]);
+    if (donutClients.length <= MAX_DONUT_SLICES) return [];
+    return donutClients.slice(MAX_DONUT_SLICES).map((c) => c.id);
+  }, [donutClients]);
 
   const donutData = useMemo(() => {
-    if (!baseClients.length) return [];
-    if (baseClients.length <= MAX_DONUT_SLICES) {
-      return baseClients.map((c) => ({
+    if (!donutClients.length) return [];
+    if (donutClients.length <= MAX_DONUT_SLICES) {
+      return donutClients.map((c) => ({
         id: c.id,
         value: c.total,
         color: c.color,
         label: c.name,
       }));
     }
-    const top = baseClients.slice(0, MAX_DONUT_SLICES);
-    const rest = baseClients.slice(MAX_DONUT_SLICES);
+    const top = donutClients.slice(0, MAX_DONUT_SLICES);
+    const rest = donutClients.slice(MAX_DONUT_SLICES);
     return [
       ...top.map((c) => ({
         id: c.id,
@@ -113,7 +126,7 @@ export default function CarteraScreen() {
         label: 'Otros',
       },
     ];
-  }, [baseClients]);
+  }, [donutClients]);
 
   // Lista filtrada por el sector seleccionado en el donut. El sector
   // "Otros" agrupa varios clientes; un sector normal corresponde a uno.
@@ -126,23 +139,33 @@ export default function CarteraScreen() {
     return baseClients.filter((c) => c.id === selectedSliceId);
   }, [baseClients, selectedSliceId, otrosClientIds]);
 
-  const selectedSlice = useMemo(
-    () => donutData.find((s) => s.id === selectedSliceId) ?? null,
-    [donutData, selectedSliceId],
+  // Cliente tocado en la lista: su segmentación por aging reemplaza al donut
+  // mientras la fila esté abierta. Si sale de la lista (filtro, búsqueda o
+  // sector), vuelve el donut.
+  const chartClient = useMemo(
+    () => visibleClients.find((c) => c.id === expandedClientId) ?? null,
+    [visibleClients, expandedClientId],
   );
 
-  // Aging del sector seleccionado: el cliente, o la suma de los clientes
-  // agrupados en "Otros" (visibleClients ya está filtrado por el sector).
-  const selectedBuckets = useMemo(() => {
-    const acc = Object.fromEntries(AGING_BUCKETS.map((b) => [b, 0])) as Record<
-      AgingBucket,
-      number
-    >;
-    for (const c of visibleClients) {
-      for (const b of AGING_BUCKETS) acc[b] += c.buckets[b];
+  const handleSliceChange = (id: string | null) => {
+    setSelectedSliceId(id);
+    setExpandedClientId(null);
+  };
+
+  const scrollRef = useRef<RNScrollView>(null);
+  const chartY = useRef(0);
+  const toggleClient = (id: string) => {
+    const opening = expandedClientId !== id;
+    setExpandedClientId(opening ? id : null);
+    // La gráfica aparece arriba, donde estaba el donut: si el cliente estaba
+    // más abajo en la lista, se sube para que se vea.
+    if (opening) {
+      scrollRef.current?.scrollTo({
+        y: Math.max(chartY.current - 12, 0),
+        animated: true,
+      });
     }
-    return acc;
-  }, [visibleClients]);
+  };
 
   // Cuando la lista queda en un único cliente, se muestra expandido con
   // todos los buckets; el header y footer se simplifican a Cliente/Total.
@@ -184,7 +207,8 @@ export default function CarteraScreen() {
       className="flex-1 bg-bg-secondary"
       style={{ paddingTop: insets.top }}
     >
-      <ScrollView
+      <RNScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ rowGap: 20, paddingBottom: 96 + insets.bottom }}
         keyboardShouldPersistTaps="handled"
@@ -246,18 +270,23 @@ export default function CarteraScreen() {
           onChange={setSelectedBucket}
         />
 
-        <View className="px-4">
-          {/* Al tocar un sector, el donut cede su lugar a la segmentación
-              por aging de ese cliente (o del grupo "Otros"); "Volver"
-              limpia la selección y regresa al donut. */}
-          {selectedSlice ? (
+        <View
+          className="px-4"
+          onLayout={(e) => {
+            chartY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          {/* Tocar un sector lo resalta (nombre + %) y filtra la lista; tocar
+              un cliente de la lista cambia el donut por su segmentación por
+              aging, y "Volver" cierra la fila y regresa al donut. */}
+          {chartClient ? (
             <OrCarteraAgingCard
               title="Segmentación de la cartera"
-              name={selectedSlice.label}
-              color={selectedSlice.color}
-              buckets={selectedBuckets}
+              name={chartClient.name}
+              color={chartClient.color}
+              buckets={chartClient.buckets}
               valueFormatter={formatMoney}
-              onBack={() => setSelectedSliceId(null)}
+              onBack={() => setExpandedClientId(null)}
             />
           ) : (
             <OrCarteraDonut
@@ -265,9 +294,10 @@ export default function CarteraScreen() {
               data={donutData}
               labelsMode="tap-only"
               selectedId={selectedSliceId}
-              onSelectChange={setSelectedSliceId}
+              onSelectChange={handleSliceChange}
               valueFormatter={formatMoney}
-              emptyHint="Toca un sector para ver su segmentación"
+              showPercentInBanner
+              emptyHint="Toca un sector para filtrar la lista"
             />
           )}
         </View>
@@ -349,9 +379,7 @@ export default function CarteraScreen() {
                 buckets={c.buckets}
                 total={c.total}
                 expanded={isSingleClient || expandedClientId === c.id}
-                onToggle={() =>
-                  setExpandedClientId((cur) => (cur === c.id ? null : c.id))
-                }
+                onToggle={() => toggleClient(c.id)}
                 onOpenDetail={() =>
                   router.push(`/(tabs)/informes/cartera/${c.id}` as never)
                 }
@@ -359,7 +387,7 @@ export default function CarteraScreen() {
             ))}
           </View>
         </View>
-      </ScrollView>
+      </RNScrollView>
 
       <View
         className="absolute left-0 right-0 bottom-0 px-4 pt-1 bg-bg-secondary"
