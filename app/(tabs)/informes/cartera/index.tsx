@@ -47,7 +47,8 @@ import { OTROS_SEGMENT_COLOR } from '@/src/theme/gradients';
 const MAX_DONUT_SLICES = DONUT_MAX_NAMED;
 
 function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CarteraScreen() {
@@ -82,25 +83,35 @@ export default function CarteraScreen() {
       .map((c, i) => ({ ...c, color: donutColorAt(i) }));
   }, [data, filters, search]);
 
+  // Un cliente puede netear en 0 o a favor (nota de crédito sin factura
+  // abierta, o crédito mayor al saldo pendiente): no tiene sentido como
+  // sector del donut, así que se excluye solo de esta vista (sigue en la
+  // lista y en el total general).
+  const donutClients = useMemo(
+    () => baseClients.filter((c) => c.total > 0),
+    [baseClients],
+  );
+
   // Clientes agrupados bajo el sector "Otros" del donut (los que quedan
-  // fuera del top MAX_DONUT_SLICES). Vacío cuando no hay agrupación.
+  // fuera del top MAX_DONUT_SLICES, dentro de los que sí tienen saldo
+  // positivo). Vacío cuando no hay agrupación.
   const otrosClientIds = useMemo(() => {
-    if (baseClients.length <= MAX_DONUT_SLICES) return [];
-    return baseClients.slice(MAX_DONUT_SLICES).map((c) => c.id);
-  }, [baseClients]);
+    if (donutClients.length <= MAX_DONUT_SLICES) return [];
+    return donutClients.slice(MAX_DONUT_SLICES).map((c) => c.id);
+  }, [donutClients]);
 
   const donutData = useMemo(() => {
-    if (!baseClients.length) return [];
-    if (baseClients.length <= MAX_DONUT_SLICES) {
-      return baseClients.map((c) => ({
+    if (!donutClients.length) return [];
+    if (donutClients.length <= MAX_DONUT_SLICES) {
+      return donutClients.map((c) => ({
         id: c.id,
         value: c.total,
         color: c.color,
         label: c.name,
       }));
     }
-    const top = baseClients.slice(0, MAX_DONUT_SLICES);
-    const rest = baseClients.slice(MAX_DONUT_SLICES);
+    const top = donutClients.slice(0, MAX_DONUT_SLICES);
+    const rest = donutClients.slice(MAX_DONUT_SLICES);
     return [
       ...top.map((c) => ({
         id: c.id,
@@ -115,7 +126,7 @@ export default function CarteraScreen() {
         label: 'Otros',
       },
     ];
-  }, [baseClients]);
+  }, [donutClients]);
 
   // Lista filtrada por el sector seleccionado en el donut. El sector
   // "Otros" agrupa varios clientes; un sector normal corresponde a uno.
