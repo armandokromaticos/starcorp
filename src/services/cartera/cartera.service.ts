@@ -34,6 +34,12 @@
  *     intercompañía se filtra con la tabla `qb_customer_exclusions`
  *     (match por nombre normalizado, no por customerId: los ids cambian
  *     entre realms).
+ *   - Esa misma tabla también permite exclusiones puntuales por
+ *     `client_id` (`${realmId}-${customerId}`, ver 0058) para el caso de
+ *     un cliente externo real que aparece en dos tarjetas con el mismo
+ *     nombre (otra empresa del grupo le factura también, o hay un
+ *     duplicado/sub-cliente en el mismo QB) y solo una de ellas debe
+ *     ocultarse sin tocar el saldo real de la otra.
  *   - El nombre de cliente del reporte viene calificado por jerarquía de
  *     sub-cliente ("PATRIOT LLC:URBN BRISTOL"): se usa solo el último
  *     segmento, igual que mostraba el path de Invoice antes.
@@ -191,19 +197,32 @@ function buildColumnIndex(
   return idx;
 }
 
+interface QBExclusions {
+  /** Nombres (normalizados) excluidos en todos los realms: intercompañía. */
+  names: Set<string>;
+  /** `${realmId}-${customerId}` excluidos puntualmente, sin importar el nombre. */
+  clientIds: Set<string>;
+}
+
 /**
  * Customers que no son cartera real (las empresas del grupo facturándose
- * entre sí). Si la tabla no se puede leer se propaga el error en vez de
- * seguir: es preferible que el informe falle a que los saldos
- * intercompañía reaparezcan inflando el total sin que se note.
+ * entre sí, o tarjetas puntuales ocultadas por `client_id`). Si la tabla no
+ * se puede leer se propaga el error en vez de seguir: es preferible que el
+ * informe falle a que los saldos intercompañía reaparezcan inflando el
+ * total sin que se note.
  */
-async function fetchExcludedCustomerKeys(): Promise<Set<string>> {
+async function fetchExclusions(): Promise<QBExclusions> {
   const { data, error } = await supabase
     .from('qb_customer_exclusions')
-    .select('customer_name');
+    .select('customer_name, client_id');
   if (error) throw new Error(`load qb_customer_exclusions: ${error.message}`);
-  const rows = (data ?? []) as { customer_name: string }[];
-  return new Set(rows.map((r) => customerKey(r.customer_name)));
+  const rows = (data ?? []) as { customer_name: string; client_id: string | null }[];
+  return {
+    names: new Set(
+      rows.filter((r) => !r.client_id).map((r) => customerKey(r.customer_name)),
+    ),
+    clientIds: new Set(rows.filter((r) => r.client_id).map((r) => r.client_id!)),
+  };
 }
 
 interface RealmAgedReceivable {
@@ -246,9 +265,9 @@ async function fetchRealmAgedReceivable(
 }
 
 async function fetchFromQB(): Promise<CarteraSnapshot> {
-  const [{ companies }, excludedCustomers] = await Promise.all([
+  const [{ companies }, exclusions] = await Promise.all([
     qbStatus(),
-    fetchExcludedCustomerKeys(),
+    fetchExclusions(),
   ]);
   if (companies.length === 0) {
     return { clients: [], updatedAt: todayIso() };
@@ -328,7 +347,8 @@ async function fetchFromQB(): Promise<CarteraSnapshot> {
         const customerName =
           leafCustomerName(customerFullName) ||
           `Cliente ${customerId.slice(-4)}`;
-        if (excludedCustomers.has(customerKey(customerName))) continue;
+        if (exclusions.names.has(customerKey(customerName))) continue;
+        if (exclusions.clientIds.has(`${company.realmId}-${customerId}`)) continue;
 
         const client = getOrCreateClient(company.realmId, customerId, customerName);
 
