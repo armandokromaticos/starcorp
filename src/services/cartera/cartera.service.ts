@@ -14,6 +14,9 @@
  * LLC: PJW Allentown/Bethlehem, Urbn Bristol/Echo/Moya, ~$40K). Usar el
  * reporte evita perseguir cada tipo de transacción uno por uno.
  *
+ * Solo se consultan los realms de `CARTERA_REALM_IDS` (5 STARS, ONEA,
+ * Seasons), no todas las empresas conectadas.
+ *
  * Las invocaciones por realm corren en paralelo. Los clientes se
  * identifican por `${realmId}-${customerId}` para evitar colisiones entre
  * Realms.
@@ -34,6 +37,12 @@
  *     intercompañía se filtra con la tabla `qb_customer_exclusions`
  *     (match por nombre normalizado, no por customerId: los ids cambian
  *     entre realms).
+ *   - Esa misma tabla también permite exclusiones puntuales por
+ *     `client_id` (`${realmId}-${customerId}`, ver 0058) para el caso de
+ *     un cliente externo real que aparece en dos tarjetas con el mismo
+ *     nombre (otra empresa del grupo le factura también, o hay un
+ *     duplicado/sub-cliente en el mismo QB) y solo una de ellas debe
+ *     ocultarse sin tocar el saldo real de la otra.
  *   - El nombre de cliente del reporte viene calificado por jerarquía de
  *     sub-cliente ("PATRIOT LLC:URBN BRISTOL"): se usa solo el último
  *     segmento, igual que mostraba el path de Invoice antes.
@@ -107,7 +116,7 @@ function parseIsoDate(value: string | undefined): string {
  * Clave de match de exclusiones: mayúsculas y solo alfanuméricos, para que
  * "ONE A SOLUTIONS LLC" y "ONEA SOLUTIONS LLC" caigan en la misma clave.
  */
-function customerKey(name: string): string {
+export function customerKey(name: string): string {
   return name.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
@@ -192,18 +201,42 @@ function buildColumnIndex(
 }
 
 /**
- * Customers que no son cartera real (las empresas del grupo facturándose
- * entre sí). Si la tabla no se puede leer se propaga el error en vez de
- * seguir: es preferible que el informe falle a que los saldos
- * intercompañía reaparezcan inflando el total sin que se note.
+ * Realms de QB que cuentan para Cartera: 5 STARS, ONEA y Seasons. Las otras
+ * empresas conectadas (MCS, Blue Star, Clean With Me) siguen conectadas
+ * para el resto de la app, pero su AR no es cartera del grupo.
  */
-async function fetchExcludedCustomerKeys(): Promise<Set<string>> {
+export const CARTERA_REALM_IDS: readonly string[] = [
+  '9130357845952726', // 5 STARS SOLUTIONSS LLC
+  '9130353874610006', // ONEA SOLUTIONS LLC
+  '9130353890052036', // Seasons Solutions LLC
+];
+
+export interface QBExclusions {
+  /** Nombres (normalizados) excluidos en todos los realms: intercompañía. */
+  names: Set<string>;
+  /** `${realmId}-${customerId}` excluidos puntualmente, sin importar el nombre. */
+  clientIds: Set<string>;
+}
+
+/**
+ * Customers que no son cartera real (las empresas del grupo facturándose
+ * entre sí, o tarjetas puntuales ocultadas por `client_id`). Si la tabla no
+ * se puede leer se propaga el error en vez de seguir: es preferible que el
+ * informe falle a que los saldos intercompañía reaparezcan inflando el
+ * total sin que se note.
+ */
+export async function fetchExclusions(): Promise<QBExclusions> {
   const { data, error } = await supabase
     .from('qb_customer_exclusions')
-    .select('customer_name');
+    .select('customer_name, client_id');
   if (error) throw new Error(`load qb_customer_exclusions: ${error.message}`);
-  const rows = (data ?? []) as { customer_name: string }[];
-  return new Set(rows.map((r) => customerKey(r.customer_name)));
+  const rows = (data ?? []) as { customer_name: string; client_id: string | null }[];
+  return {
+    names: new Set(
+      rows.filter((r) => !r.client_id).map((r) => customerKey(r.customer_name)),
+    ),
+    clientIds: new Set(rows.filter((r) => r.client_id).map((r) => r.client_id!)),
+  };
 }
 
 interface RealmAgedReceivable {
@@ -246,10 +279,13 @@ async function fetchRealmAgedReceivable(
 }
 
 async function fetchFromQB(): Promise<CarteraSnapshot> {
-  const [{ companies }, excludedCustomers] = await Promise.all([
+  const [status, exclusions] = await Promise.all([
     qbStatus(),
-    fetchExcludedCustomerKeys(),
+    fetchExclusions(),
   ]);
+  const companies = status.companies.filter((c) =>
+    CARTERA_REALM_IDS.includes(c.realmId),
+  );
   if (companies.length === 0) {
     return { clients: [], updatedAt: todayIso() };
   }
@@ -328,7 +364,8 @@ async function fetchFromQB(): Promise<CarteraSnapshot> {
         const customerName =
           leafCustomerName(customerFullName) ||
           `Cliente ${customerId.slice(-4)}`;
-        if (excludedCustomers.has(customerKey(customerName))) continue;
+        if (exclusions.names.has(customerKey(customerName))) continue;
+        if (exclusions.clientIds.has(`${company.realmId}-${customerId}`)) continue;
 
         const client = getOrCreateClient(company.realmId, customerId, customerName);
 
