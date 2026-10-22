@@ -113,7 +113,7 @@ function parseIsoDate(value: string | undefined): string {
  * Clave de match de exclusiones: mayúsculas y solo alfanuméricos, para que
  * "ONE A SOLUTIONS LLC" y "ONEA SOLUTIONS LLC" caigan en la misma clave.
  */
-function customerKey(name: string): string {
+export function customerKey(name: string): string {
   return name.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
@@ -197,7 +197,7 @@ function buildColumnIndex(
   return idx;
 }
 
-interface QBExclusions {
+export interface QBExclusions {
   /** Nombres (normalizados) excluidos en todos los realms: intercompañía. */
   names: Set<string>;
   /** `${realmId}-${customerId}` excluidos puntualmente, sin importar el nombre. */
@@ -211,7 +211,7 @@ interface QBExclusions {
  * informe falle a que los saldos intercompañía reaparezcan inflando el
  * total sin que se note.
  */
-async function fetchExclusions(): Promise<QBExclusions> {
+export async function fetchExclusions(): Promise<QBExclusions> {
   const { data, error } = await supabase
     .from('qb_customer_exclusions')
     .select('customer_name, client_id');
