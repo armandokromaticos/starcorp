@@ -14,6 +14,9 @@
  * LLC: PJW Allentown/Bethlehem, Urbn Bristol/Echo/Moya, ~$40K). Usar el
  * reporte evita perseguir cada tipo de transacción uno por uno.
  *
+ * Solo se consultan los realms de `CARTERA_REALM_IDS` (5 STARS, ONEA,
+ * Seasons), no todas las empresas conectadas.
+ *
  * Las invocaciones por realm corren en paralelo. Los clientes se
  * identifican por `${realmId}-${customerId}` para evitar colisiones entre
  * Realms.
@@ -197,6 +200,17 @@ function buildColumnIndex(
   return idx;
 }
 
+/**
+ * Realms de QB que cuentan para Cartera: 5 STARS, ONEA y Seasons. Las otras
+ * empresas conectadas (MCS, Blue Star, Clean With Me) siguen conectadas
+ * para el resto de la app, pero su AR no es cartera del grupo.
+ */
+export const CARTERA_REALM_IDS: readonly string[] = [
+  '9130357845952726', // 5 STARS SOLUTIONSS LLC
+  '9130353874610006', // ONEA SOLUTIONS LLC
+  '9130353890052036', // Seasons Solutions LLC
+];
+
 export interface QBExclusions {
   /** Nombres (normalizados) excluidos en todos los realms: intercompañía. */
   names: Set<string>;
@@ -265,10 +279,13 @@ async function fetchRealmAgedReceivable(
 }
 
 async function fetchFromQB(): Promise<CarteraSnapshot> {
-  const [{ companies }, exclusions] = await Promise.all([
+  const [status, exclusions] = await Promise.all([
     qbStatus(),
     fetchExclusions(),
   ]);
+  const companies = status.companies.filter((c) =>
+    CARTERA_REALM_IDS.includes(c.realmId),
+  );
   if (companies.length === 0) {
     return { clients: [], updatedAt: todayIso() };
   }

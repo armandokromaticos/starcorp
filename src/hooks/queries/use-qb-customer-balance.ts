@@ -12,8 +12,8 @@
  *   2. server-side por token + match client-side normalizado (case y
  *      acentos insensible, en ambas direcciones)
  *   3. escaneo paginado de Customers + match normalizado
- *   4. repetir en los otros realms conectados (el customer puede vivir
- *      en la otra compañía)
+ *   4. repetir en los otros realms de Cartera (`CARTERA_REALM_IDS`; el
+ *      customer puede vivir en otra compañía del grupo)
  * Los Customers de `qb_customer_exclusions` se saltan, igual que en el
  * Informe Cartera (intercompañía por nombre, tarjetas puntuales por
  * `${realmId}-${customerId}`, ver 0058).
@@ -22,6 +22,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import {
+  CARTERA_REALM_IDS,
   customerKey,
   fetchExclusions,
   type QBExclusions,
@@ -78,20 +79,13 @@ function pickBestMatch(
 
 function isExcluded(
   c: QBCustomerLite,
-  realmId: string | undefined,
+  realmId: string,
   exclusions: QBExclusions,
 ): boolean {
   if (c.DisplayName && exclusions.names.has(customerKey(c.DisplayName))) {
     return true;
   }
-  if (!c.Id) return false;
-  if (realmId) return exclusions.clientIds.has(`${realmId}-${c.Id}`);
-  // Sin realm explícito qb-query usa el realm por defecto, que no
-  // conocemos acá: basta con que el customerId coincida en alguno.
-  for (const id of exclusions.clientIds) {
-    if (id.endsWith(`-${c.Id}`)) return true;
-  }
-  return false;
+  return !!c.Id && exclusions.clientIds.has(`${realmId}-${c.Id}`);
 }
 
 async function queryCustomers(
@@ -111,7 +105,7 @@ const SCAN_MAX = 3000;
 
 async function findCustomer(
   trimmed: string,
-  realmId: string | undefined,
+  realmId: string,
   exclusions: QBExclusions,
 ): Promise<QBCustomerLite | null> {
   const escaped = escapeQBString(trimmed);
@@ -180,25 +174,22 @@ export function useQBCustomerBalance(qbName: string | null | undefined) {
     enabled,
     queryFn: async () => {
       try {
-        const exclusions = await fetchExclusions();
-        const customer = await findCustomer(
-          trimmed,
-          realmId ?? undefined,
-          exclusions,
-        );
-        if (customer) return toBalance(customer);
-
-        // 4) El customer puede estar en la otra compañía conectada (5 STARS
-        //    vs MCS). Best-effort: si algo falla aquí, devolvemos null.
-        try {
-          const { companies } = await qbStatus();
-          for (const company of companies) {
-            if (company.realmId === realmId || company.reauthRequired) continue;
-            const alt = await findCustomer(trimmed, company.realmId, exclusions);
-            if (alt) return toBalance(alt);
-          }
-        } catch {
-          return null;
+        const [{ companies }, exclusions] = await Promise.all([
+          qbStatus(),
+          fetchExclusions(),
+        ]);
+        // 4) Solo los realms de Cartera; el activo primero si es uno de
+        //    ellos, después los demás (el customer puede vivir en otra
+        //    compañía del grupo).
+        const realms = companies
+          .filter(
+            (c) => CARTERA_REALM_IDS.includes(c.realmId) && !c.reauthRequired,
+          )
+          .map((c) => c.realmId)
+          .sort((a, b) => Number(b === realmId) - Number(a === realmId));
+        for (const realm of realms) {
+          const customer = await findCustomer(trimmed, realm, exclusions);
+          if (customer) return toBalance(customer);
         }
         return null;
       } catch (e) {
