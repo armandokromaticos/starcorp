@@ -310,9 +310,27 @@ Deno.serve(async (req) => {
       from = new Date(body.from + "T00:00:00Z");
       to = new Date(body.to + "T00:00:00Z");
     } else {
-      to = new Date(
-        Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1),
+      const tomorrow = Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate() + 1,
       );
+      // El Auxiliar puede traer asientos ya contabilizados a futuro dentro del
+      // mes en curso (ej. nómina pre-cerrada para el 26 si hoy es 21). "Mes
+      // corriente" en Power BI suma el mes calendario completo sin tope en
+      // "hoy", así que el sync tiene que llegar al menos hasta fin de mes para
+      // que la app pueda calzar. `from` se ancla a este `to` extendido (no al
+      // "mañana" original) para que la ventana siga pesando ~90 días en vez
+      // de crecer: una corrida más pesada ya tocó el tope de CPU de la edge
+      // function (546 WORKER_RESOURCE_LIMIT) al ancharla sin compensar. El
+      // histórico más viejo que este desplazamiento deja fuera lo cubre el
+      // backfill semanal de 12 meses (refresh_12m_por_tandas).
+      const monthEndExclusive = Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth() + 1,
+        1,
+      );
+      to = new Date(Math.max(tomorrow, monthEndExclusive));
       from = new Date(to.getTime() - DEFAULT_LOOKBACK_DAYS * 86400_000);
     }
     if (isNaN(from.getTime()) || isNaN(to.getTime()) || from >= to) {
