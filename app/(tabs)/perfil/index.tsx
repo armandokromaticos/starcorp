@@ -13,6 +13,7 @@ import { AtTypography } from '@/src/components/atoms/at-typography';
 import { MlRoleChip } from '@/src/components/molecules/ml-role-chip';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
+import { getAppVersionLabel } from '@/src/config/ota-updates';
 import { useAuthStore } from '@/src/stores/auth.store';
 import { useGlobalSearchStore } from '@/src/stores/global-search.store';
 
@@ -114,6 +115,16 @@ export default function PerfilScreen() {
             ************
           </AtTypography>
         </View>
+
+        <AtTypography
+          variant="caption"
+          color="#A0AEC0"
+          className="self-center"
+          style={{ marginTop: 24 }}
+          selectable
+        >
+          {getAppVersionLabel()}
+        </AtTypography>
       </ScrollView>
 
       <OrDrawer
