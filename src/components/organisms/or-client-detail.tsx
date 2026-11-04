@@ -377,6 +377,8 @@ export function OrClientDetail({
           (carteraClientId
             ? `${CARTERA_INDEX_ROUTE}/${encodeURIComponent(carteraClientId)}`
             : CARTERA_INDEX_ROUTE) as Parameters<typeof router.push>[0],
+          // Cross-tab: carga el grid de Informes debajo (ver informes/_layout).
+          { withAnchor: true },
         );
         return;
       }

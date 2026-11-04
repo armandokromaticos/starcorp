@@ -207,6 +207,10 @@ export default function HomeScreen() {
               (INFORME_ROUTES[id] ?? "/informes") as Parameters<
                 typeof router.push
               >[0],
+              // Carga el grid de Informes debajo (anchor en
+              // informes/_layout) para que el informe no quede como raíz
+              // del tab y se apile con el siguiente.
+              { withAnchor: true },
             )
           }
         />
