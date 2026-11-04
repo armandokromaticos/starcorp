@@ -32,6 +32,7 @@ import 'react-native-reanimated';
 import '@/src/global.css';
 import { queryClient } from '@/src/config/query-client';
 import { subscribeAppStateFocus } from '@/src/config/query-focus';
+import { subscribeOtaUpdates } from '@/src/config/ota-updates';
 import { OrToast } from '@/src/components/organisms/or-toast';
 import { useAuthStore } from '@/src/stores/auth.store';
 
@@ -57,6 +58,9 @@ export default function RootLayout() {
 
   // Sin este puente, refetchOnWindowFocus no dispara en native.
   useEffect(() => subscribeAppStateFocus(), []);
+
+  // Aplica las updates OTA sin esperar a un arranque en frío.
+  useEffect(() => subscribeOtaUpdates(), []);
 
   const ready = fontsLoaded && authStatus !== 'loading';
 
