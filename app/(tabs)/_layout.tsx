@@ -43,6 +43,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: "#E8952E",
         tabBarInactiveTintColor: "#20307E",
         headerShown: false,
+        // Ancho fijo por tab: con Dynamic Type grande las etiquetas se truncan.
+        tabBarAllowFontScaling: false,
         tabBarStyle: {
           backgroundColor: "#F6F8FA",
           borderTopWidth: 1,
