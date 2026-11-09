@@ -15,7 +15,8 @@ import { useTopClients } from "@/src/hooks/queries/use-top-clients";
 import { tokens } from "@/src/theme/tokens";
 import { formatCurrency } from "@/src/utils/currency";
 import React, { memo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from '@/src/tw';
 
 export const TopClientsSection = memo(() => {
   const { data, isLoading } = useTopClients(8);

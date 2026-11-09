@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '@/src/tw';
 import { startQuickBooksOAuth } from '@/src/services/quickbooks/oauth';
 import { useQBCompanyInfo } from '@/src/hooks/queries/use-qb-company-info';
 import { useQBCustomers } from '@/src/hooks/queries/use-qb-customers';
