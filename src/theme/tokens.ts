@@ -96,3 +96,11 @@ export const tokens = {
 
 export type TokenColors = typeof tokens.color;
 export type TokenSpacing = keyof typeof tokens.spacing;
+
+/**
+ * Tope al escalado de fuente del sistema (Dynamic Type en iOS, "Tamaño de
+ * fuente" en Android). Sin tope, un iPhone con texto grande multiplica las
+ * fuentes ×1.3–3 y rompe columnas de ancho fijo ("Client/e", "Tota/l").
+ * Lo aplican por defecto los wrappers Text/TextInput de `@/src/tw`.
+ */
+export const MAX_FONT_SCALE = 1.15;
