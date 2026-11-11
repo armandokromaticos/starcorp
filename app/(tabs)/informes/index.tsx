@@ -53,7 +53,16 @@ export default function InformesScreen() {
   );
 
   return (
-    <TmInformes onMenuPress={() => setDrawerVisible(true)}>
+    <TmInformes
+      onMenuPress={() => setDrawerVisible(true)}
+      // Atrás del grid = Home, siempre: router.back() podía caer en el
+      // historial de pestañas. Sin permiso de Consolidado no hay a dónde.
+      onBack={
+        hasPermission(user, 'consolidado.ver')
+          ? () => router.navigate('/')
+          : undefined
+      }
+    >
       <View className="flex-row flex-wrap gap-3 px-4">
         {allowedReports.map((report) => (
           <View key={report.id} style={{ width: '48%' }}>
