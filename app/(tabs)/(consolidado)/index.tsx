@@ -30,6 +30,7 @@ import { useQBStore } from "@/src/stores/qb.store";
 import { View } from "@/src/tw";
 import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_LABELS, PERIOD_SHORT_LABELS } from "@/src/utils/date";
+import { setInformeOrigin } from "@/src/utils/informe-origin";
 import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 
@@ -202,7 +203,9 @@ export default function HomeScreen() {
       {can("informes.ver") ? (
         <OrInformesSection
           periodLabel={PERIOD_LABELS[activePeriodKey]}
-          onViewAll={(id) =>
+          onViewAll={(id) => {
+            // El atrás del informe vuelve a Home (ver informes/_layout).
+            setInformeOrigin("home");
             router.push(
               (INFORME_ROUTES[id] ?? "/informes") as Parameters<
                 typeof router.push
@@ -211,8 +214,8 @@ export default function HomeScreen() {
               // informes/_layout) para que el informe no quede como raíz
               // del tab y se apile con el siguiente.
               { withAnchor: true },
-            )
-          }
+            );
+          }}
         />
       ) : null}
 
