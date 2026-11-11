@@ -55,7 +55,11 @@ export default function ForgotPasswordScreen() {
           <MlBackHeader />
 
           <View className="gap-4 items-center" style={{ marginTop: 72 }}>
-            <AtTypography variant="h2" color="#1A1F36">
+            <AtTypography
+              variant="h2"
+              color="#1A1F36"
+              style={{ textAlign: 'center' }}
+            >
               ¿Olvidaste la contraseña?
             </AtTypography>
             <AtTypography

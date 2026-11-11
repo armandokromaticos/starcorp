@@ -58,7 +58,11 @@ export default function ResetPasswordScreen() {
           <MlBackHeader />
 
           <View className="items-center" style={{ marginTop: 72 }}>
-            <AtTypography variant="h2" color="#1A1F36">
+            <AtTypography
+              variant="h2"
+              color="#1A1F36"
+              style={{ textAlign: 'center' }}
+            >
               Reestablece tu contraseña
             </AtTypography>
           </View>

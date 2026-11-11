@@ -13,6 +13,7 @@ import { useAuthStore } from "@/src/stores/auth.store";
 import { Pressable, TextInput, View } from "@/src/tw";
 import { useRouter } from "expo-router";
 import React, { memo, useState } from "react";
+import { useWindowDimensions } from "react-native";
 
 interface MlSearchBarProps {
   placeholder?: string;
@@ -38,9 +39,18 @@ export const MlSearchBar = memo<MlSearchBarProps>(
     const router = useRouter();
     const user = useAuthStore((s) => s.user);
     const isTrigger = typeof onPress === "function";
+    // 320dp: con gap-4 y pl-5/pr-5 el placeholder quedaba en ~120px.
+    const narrow = useWindowDimensions().width < 360;
+    const pillClass = narrow
+      ? "flex-1 flex-row items-center gap-3 bg-bg-card pl-4 pr-4 py-4 rounded-full"
+      : "flex-1 flex-row items-center gap-3 bg-bg-card pl-5 pr-5 py-4 rounded-full";
 
     return (
-      <View className="flex-row items-center gap-4">
+      <View
+        className={
+          narrow ? "flex-row items-center gap-3" : "flex-row items-center gap-4"
+        }
+      >
         <Pressable onPress={onMenuPress} hitSlop={12}>
           <AtIcon name="menu" size="lg" color="#1A1F36" />
         </Pressable>
@@ -48,7 +58,7 @@ export const MlSearchBar = memo<MlSearchBarProps>(
         {isTrigger ? (
           <Pressable
             onPress={onPress}
-            className="flex-1 flex-row items-center gap-3 bg-bg-card pl-5 pr-5 py-4 rounded-full"
+            className={pillClass}
             style={{
               borderCurve: "continuous",
               boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
@@ -66,7 +76,7 @@ export const MlSearchBar = memo<MlSearchBarProps>(
           </Pressable>
         ) : (
           <View
-            className="flex-1 flex-row items-center gap-3 bg-bg-card pl-5 pr-5 py-4 rounded-full"
+            className={pillClass}
             style={{
               borderCurve: "continuous",
               boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",

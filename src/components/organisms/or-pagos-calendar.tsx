@@ -11,6 +11,7 @@
  */
 
 import React, { memo, useMemo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -68,6 +69,11 @@ function weekdayMondayIndex(year: number, monthIdx: number, day: number): number
 }
 
 function formatCompactMoney(value: number): string {
+  // ≥1M en "M" ("$1.2M"): "$1234k" no cabía en la celda (~22px a 320dp).
+  if (value >= 999_500) {
+    const mm = value / 1_000_000;
+    return `$${mm < 9.95 ? mm.toFixed(1) : Math.round(mm)}M`;
+  }
   if (value >= 1000) return `$${Math.round(value / 1000)}k`;
   return `$${Math.round(value)}`;
 }
@@ -84,6 +90,9 @@ export const OrPagosCalendar = memo<OrPagosCalendarProps>(
     const [y, m] = yearMonth.split('-').map(Number);
     const monthIdx = m - 1;
     const total = daysInMonth(y, monthIdx);
+    // 320dp: columnas de ~36px; se recorta el padding interno de la celda
+    // para dejarle más ancho al monto.
+    const compact = useWindowDimensions().width < 360;
 
     const cells = useMemo<(DayCellData | null)[]>(() => {
       const out: (DayCellData | null)[] = [];
@@ -170,6 +179,7 @@ export const OrPagosCalendar = memo<OrPagosCalendarProps>(
                   key={`${rowIdx}-${colIdx}`}
                   cell={cell}
                   selected={!!cell && cell.iso === selectedDay}
+                  compact={compact}
                   onPress={cell && cell.total > 0 ? () => onSelectDay(cell.iso) : undefined}
                 />
               ))}
@@ -214,6 +224,7 @@ interface DayCellProps {
   cell: DayCellData | null;
   selected?: boolean;
   onPress?: () => void;
+  compact?: boolean;
 }
 
 /**
@@ -231,7 +242,7 @@ const SLOT_STYLE = {
   padding: 2,
 } as const;
 
-const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress }) => {
+const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress, compact = false }) => {
   if (!cell) {
     return <View style={SLOT_STYLE} />;
   }
@@ -267,6 +278,7 @@ const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress }) => {
           borderWidth: selected ? 2 : 1,
           borderColor: selected ? '#1A1F36' : tone.border,
           padding: 4,
+          paddingHorizontal: compact ? 2 : 4,
           borderCurve: 'continuous',
           justifyContent: 'space-between',
         }}
@@ -278,6 +290,8 @@ const DayCell = memo<DayCellProps>(({ cell, selected = false, onPress }) => {
           variant="caption"
           color={tone.text}
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
           style={{ fontSize: 10 }}
         >
           {formatCompactMoney(cell.total)}

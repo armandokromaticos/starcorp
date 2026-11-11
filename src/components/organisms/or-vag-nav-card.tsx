@@ -51,7 +51,8 @@ export const OrVagNavCard = memo<OrVagNavCardProps>(
           </View>
           <AtDeltaIndicator value={deltaPct} size="md" appearance="dark" />
         </View>
-        <View className="flex-row items-end justify-between gap-2">
+        {/* 320dp: monto + "Datos a …" no caben en una línea; la fecha baja */}
+        <View className="flex-row flex-wrap items-end justify-between gap-x-2 gap-y-1">
           <AtTypography
             variant="metricSmall"
             color="#FFFFFF"
@@ -113,9 +114,14 @@ export const OrVagNavTile = memo<OrVagNavTileProps>(
         >
           {title}
         </AtTypography>
+        {/* 320dp: el tile mide ~115px; el monto se achica en vez de partirse
+            y la fecha se recorta con elipsis. */}
         <AtTypography
           variant="bodyBold"
           color="#FFFFFF"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
           style={{ fontVariant: ['tabular-nums'], fontSize: 17 }}
         >
           {formatCurrency(total)}
@@ -123,9 +129,14 @@ export const OrVagNavTile = memo<OrVagNavTileProps>(
         <AtDeltaIndicator value={deltaPct} size="md" appearance="dark" />
 
         {ultimaFecha ? (
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-1" style={{ maxWidth: '100%' }}>
             <AtIcon name="schedule" size="sm" color={MUTED} />
-            <AtTypography variant="caption" color={MUTED} numberOfLines={1}>
+            <AtTypography
+              variant="caption"
+              color={MUTED}
+              numberOfLines={1}
+              style={{ flexShrink: 1 }}
+            >
               {`Datos a ${formatShortDate(ultimaFecha)}`}
             </AtTypography>
           </View>

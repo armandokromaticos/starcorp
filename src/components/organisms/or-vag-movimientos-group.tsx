@@ -12,6 +12,7 @@
  */
 
 import React, { memo, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -48,6 +49,7 @@ export const OrVagMovimientosGroup = memo<OrVagMovimientosGroupProps>(
     hideMeta = false,
   }) => {
     const [expanded, setExpanded] = useState(initiallyExpanded);
+    const narrow = useWindowDimensions().width < 360;
 
     const total = movimientos.reduce((s, m) => s + m.valor, 0);
 
@@ -75,17 +77,27 @@ export const OrVagMovimientosGroup = memo<OrVagMovimientosGroupProps>(
               {hideMeta ? nombre : `${nombre} (${movimientos.length})`}
             </AtTypography>
           </View>
-          {!hideMeta && (
+          {/* 320dp: el mes (ya visible en el stepper) se oculta y el monto
+              toma su ancho natural; con mitades iguales quedaba en ~56px. */}
+          {!hideMeta && !narrow && (
             <AtTypography variant="caption" color="#4A5568">
               {monthLabel}
             </AtTypography>
           )}
-          <View className="flex-1 flex-row items-center justify-end gap-2 pl-2">
+          <View
+            className={
+              narrow
+                ? 'flex-row items-center justify-end gap-2 pl-2'
+                : 'flex-1 flex-row items-center justify-end gap-2 pl-2'
+            }
+          >
             <AtTypography
               variant="captionBold"
               color="#1A1F36"
               numberOfLines={1}
-              style={{ fontVariant: ['tabular-nums'] }}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={{ fontVariant: ['tabular-nums'], flexShrink: 1 }}
             >
               {formatCurrency(total)}
             </AtTypography>
@@ -116,7 +128,8 @@ export const OrVagMovimientosGroup = memo<OrVagMovimientosGroupProps>(
                   }}
                 >
                   <MlDetailGrid
-                    columns={3}
+                    // 320dp: 3 columnas de ~70px parten "Observaciones"
+                    columns={narrow ? 2 : 3}
                     pairs={[
                       { label: 'Movimiento', value: mov.tipo },
                       { label: 'Fecha', value: formatFecha(mov.fecha) },

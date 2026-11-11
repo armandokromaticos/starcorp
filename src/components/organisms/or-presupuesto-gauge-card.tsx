@@ -54,7 +54,9 @@ export const OrPresupuestoGaugeCard = memo<OrPresupuestoGaugeCardProps>(
         }}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <View className="flex-row items-center gap-2">
+        {/* flex-wrap: a 320dp título + badge + período no caben en una línea;
+            el período baja a la siguiente. */}
+        <View className="flex-row flex-wrap items-center gap-2">
           <AtTypography variant="h3" color="#1A1F36">
             Ejecución
           </AtTypography>

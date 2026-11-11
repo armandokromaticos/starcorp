@@ -6,7 +6,7 @@
  */
 
 import React, { memo } from 'react';
-import { ScrollView as RNScrollView } from 'react-native';
+import { ScrollView as RNScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View } from '@/src/tw';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
@@ -27,7 +27,10 @@ interface TmConsolidatedDetailProps {
   onFilterSelect: (key: string) => void;
   onBack?: () => void;
   onMenuPress?: () => void;
-  /** Rendered between the top filter bar and the scrollable area — stays pinned. */
+  /**
+   * Rendered between the top filter bar and the scrollable area — stays
+   * pinned on tall screens (height > 700); on short ones it scrolls.
+   */
   pinnedContent?: React.ReactNode;
   /** Optional ref to the inner ScrollView (for scrollTo etc.). */
   scrollRef?: React.RefObject<RNScrollView | null>;
@@ -51,6 +54,9 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
   }) => {
     const insets = useSafeAreaInsets();
     const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+    // 320×568: con el chart/donut fijo arriba casi no queda área de scroll;
+    // en pantallas bajas el pinnedContent pasa al inicio del scroll.
+    const pinContent = useWindowDimensions().height > 700;
     return (
       <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
         {/* Pinned top: search + breadcrumb + filter + optional pinned slot */}
@@ -74,7 +80,8 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
                   {metricLabel}
                 </AtTypography>
               )}
-              <View className="flex-row items-center gap-3">
+              {/* 320dp: si el monto + delta no caben, el delta baja de línea. */}
+              <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
                 <AtMetricValue value={metricValue} size="lg" />
                 {deltaPercent != null && (
                   <AtDeltaIndicator value={deltaPercent} size="sm" />
@@ -83,7 +90,7 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
             </View>
           )}
 
-          {pinnedContent}
+          {pinContent ? pinnedContent : null}
         </View>
 
         {/* Scrollable area */}
@@ -94,6 +101,7 @@ export const TmConsolidatedDetail = memo<TmConsolidatedDetailProps>(
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: 48, gap: 16 }}
         >
+          {pinContent ? null : pinnedContent}
           {children}
         </RNScrollView>
       </View>

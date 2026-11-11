@@ -64,7 +64,7 @@ export const OrConfirmModal = memo<OrConfirmModalProps>(
             }}
           >
             <View className="flex-row items-center justify-between mb-3">
-              <AtTypography variant="h3" color="#1A1F36">
+              <AtTypography variant="h3" color="#1A1F36" style={{ flexShrink: 1 }}>
                 {title}
               </AtTypography>
               <Pressable onPress={onCancel} hitSlop={8} disabled={loading}>
@@ -79,7 +79,8 @@ export const OrConfirmModal = memo<OrConfirmModalProps>(
               {question}
             </AtTypography>
 
-            <View className="flex-row items-center justify-end gap-5 mt-5">
+            {/* 320dp: si "Cancelar" + botón largo no caben, el botón baja */}
+            <View className="flex-row flex-wrap items-center justify-end gap-x-5 gap-y-3 mt-5">
               <Pressable onPress={onCancel} hitSlop={8} disabled={loading}>
                 <AtTypography variant="bodyBold" color={BLUE}>
                   Cancelar

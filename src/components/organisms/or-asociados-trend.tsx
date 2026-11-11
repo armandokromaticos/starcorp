@@ -127,7 +127,9 @@ export const OrAsociadosTrend = memo<OrAsociadosTrendProps>(
       >
         {/* Header */}
         <View className="flex-row items-center gap-2">
-          <AtTypography variant="bodyBold">Asociados por tendencia</AtTypography>
+          <AtTypography variant="bodyBold" style={{ flexShrink: 1 }}>
+            Asociados por tendencia
+          </AtTypography>
           {delta != null && <AtDeltaIndicator value={delta} size="sm" />}
         </View>
 

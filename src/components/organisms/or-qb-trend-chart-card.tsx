@@ -77,12 +77,13 @@ export const OrQBTrendChartCard = memo<OrQBTrendChartCardProps>(
           <AtTypography variant="captionBold" color="#4A5568">
             {label}
           </AtTypography>
-          <View className="flex-row items-center gap-3">
+          {/* 320dp: si métrica + delta no caben, el delta baja de línea */}
+          <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
             {isLoading ? (
               <Skeleton width={140} height={28} />
             ) : (
               <>
-                <AtMetricValue value={headerValue} size="lg" />
+                <AtMetricValue value={headerValue} size="lg" fit />
                 <AtDeltaIndicator
                   value={headerDelta}
                   appearance="dark"

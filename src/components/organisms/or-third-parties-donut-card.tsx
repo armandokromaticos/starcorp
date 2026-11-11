@@ -205,13 +205,15 @@ export const OrThirdPartiesDonutCard = memo<OrThirdPartiesDonutCardProps>(
                   variant="bodyBold"
                   color="#1A1F36"
                   numberOfLines={1}
+                  style={{ flexShrink: 1 }}
                 >
                   {name}
                 </AtTypography>
                 <AtTypography
                   variant="caption"
                   color="#8892A4"
-                  style={{ fontVariant: ['tabular-nums'] }}
+                  numberOfLines={1}
+                  style={{ fontVariant: ['tabular-nums'], flexShrink: 0 }}
                 >
                   {formatCurrency(amount)}
                 </AtTypography>

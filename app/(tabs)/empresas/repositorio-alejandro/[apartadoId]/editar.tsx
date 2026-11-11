@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { View } from '@/src/tw';
@@ -40,6 +40,7 @@ export default function EditarApartadoScreen() {
   const { apartadoId } = useLocalSearchParams<{ apartadoId: string }>();
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const narrow = useWindowDimensions().width < 360;
 
   const { data: apartado, isLoading: loadingApartado } =
     useRepoApartado(apartadoId);
@@ -206,19 +207,20 @@ export default function EditarApartadoScreen() {
             )}
           </View>
 
-          <View className="flex-row gap-3">
+          {/* 320dp: a media columna (~106px) los labels se parten; se apilan */}
+          <View className={narrow ? 'gap-3' : 'flex-row gap-3'}>
             <MlActionButton
               label="Eliminar apartado"
               variant="outline"
               onPress={() => setConfirmApartado(true)}
-              className="flex-1"
+              className={narrow ? undefined : 'flex-1'}
             />
             <MlActionButton
               label="Guardar cambios"
               onPress={handleSave}
               disabled={!nombre.trim()}
               loading={saving}
-              className="flex-1"
+              className={narrow ? undefined : 'flex-1'}
             />
           </View>
         </View>
