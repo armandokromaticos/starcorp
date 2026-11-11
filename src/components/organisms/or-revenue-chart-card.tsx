@@ -334,6 +334,10 @@ function prevField(bucket: TimeseriesBucket, category: CategoryId): number {
 }
 
 const X_AXIS_HEIGHT = 18;
+/** Ancho reservado por rótulo del eje X ("13 nov" ≈ 40px + aire). */
+const X_AXIS_LABEL_SLOT = 58;
+/** Bajo este ancho de pantalla la barra de toggles oculta el radio. */
+const NARROW_SCREEN = 380;
 
 export const ConsolidadoChart = memo<{
   corriente: number[];
@@ -542,8 +546,18 @@ export const ConsolidadoChart = memo<{
               marginTop: 4,
             }}
           >
-            {pickEvenly(xAxisLabels, 6).map((label, i) => (
-              <AtTypography key={`${label}-${i}`} variant="label" color="#8892A4">
+            {/* Cuántos rótulos caben según el ancho: con 6 fijos, en un
+                teléfono de 360dp se pegaban ("1 nov7 nov13 nov"). */}
+            {pickEvenly(
+              xAxisLabels,
+              Math.max(3, Math.min(6, Math.floor(chartWidth / X_AXIS_LABEL_SLOT))),
+            ).map((label, i) => (
+              <AtTypography
+                key={`${label}-${i}`}
+                variant="label"
+                color="#8892A4"
+                numberOfLines={1}
+              >
                 {label}
               </AtTypography>
             ))}
@@ -568,38 +582,59 @@ const TOGGLE_OPTIONS: {
 export const ConsolidadoToggleBar = memo<{
   value: ConsolidadoView;
   onChange: (next: ConsolidadoView) => void;
-}>(({ value, onChange }) => (
-  <View className="flex-row gap-2 mt-1">
-    {TOGGLE_OPTIONS.map((opt) => {
-      const selected = value === opt.key;
-      return (
-        <Pressable
-          key={opt.key}
-          onPress={() => onChange(opt.key)}
-          className="flex-1 flex-row items-center justify-between bg-bg-secondary rounded-md px-3 py-2"
-          style={{ borderCurve: 'continuous' }}
-        >
-          <View className="flex-row items-center gap-1.5">
-            {opt.swatch && (
-              <View
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 3,
-                  backgroundColor: opt.swatch,
-                }}
-              />
-            )}
-            <AtTypography variant="label" color="#1A1F36">
-              {opt.label}
-            </AtTypography>
-          </View>
-          <RadioDot selected={selected} />
-        </Pressable>
-      );
-    })}
-  </View>
-));
+}>(({ value, onChange }) => {
+  // En pantallas angostas (~360dp) cada chip mide ~93px: texto + swatch +
+  // radio no caben y el radio se montaba sobre el texto. Ahí la selección
+  // se marca con el borde naranja del chip en vez del radio.
+  const { width } = useWindowDimensions();
+  const narrow = width < NARROW_SCREEN;
+  return (
+    <View className="flex-row gap-2 mt-1">
+      {TOGGLE_OPTIONS.map((opt) => {
+        const selected = value === opt.key;
+        return (
+          <Pressable
+            key={opt.key}
+            onPress={() => onChange(opt.key)}
+            className={`flex-1 flex-row items-center bg-bg-secondary rounded-md py-2 ${
+              narrow ? 'justify-center px-2' : 'justify-between gap-1 px-3'
+            }`}
+            style={{
+              borderCurve: 'continuous',
+              borderWidth: 1.5,
+              borderColor: narrow && selected ? '#E8952E' : 'transparent',
+            }}
+          >
+            <View className="flex-row items-center gap-1.5" style={{ flexShrink: 1 }}>
+              {opt.swatch && (
+                <View
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: 3,
+                    backgroundColor: opt.swatch,
+                  }}
+                />
+              )}
+              <AtTypography
+                variant="label"
+                color="#1A1F36"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                // 320dp (zoom de pantalla al máximo): "Corriente" pide ~0.82.
+                minimumFontScale={0.75}
+                style={{ flexShrink: 1 }}
+              >
+                {opt.label}
+              </AtTypography>
+            </View>
+            {!narrow && <RadioDot selected={selected} />}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+});
 ConsolidadoToggleBar.displayName = 'ConsolidadoToggleBar';
 
 const RadioDot = memo<{ selected: boolean }>(({ selected }) => (

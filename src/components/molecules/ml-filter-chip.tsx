@@ -27,6 +27,8 @@ export const MlFilterChip = memo<MlFilterChipProps>(
           borderRadius: 999,
           borderCurve: 'continuous',
           overflow: 'hidden',
+          // Un label largo no debe sacar la X de la pantalla.
+          maxWidth: '100%',
         }}
       >
         <LinearGradient
@@ -42,7 +44,12 @@ export const MlFilterChip = memo<MlFilterChipProps>(
             paddingVertical: 6,
           }}
         >
-          <AtTypography variant="captionBold" color="#FFFFFF">
+          <AtTypography
+            variant="captionBold"
+            color="#FFFFFF"
+            numberOfLines={1}
+            style={{ flexShrink: 1 }}
+          >
             {label}
           </AtTypography>
           <Pressable onPress={onRemove} hitSlop={8}>
