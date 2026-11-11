@@ -16,6 +16,7 @@ import { formatCurrency } from "@/src/utils/currency";
 import type { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { memo } from "react";
+import { useWindowDimensions } from "react-native";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
@@ -44,6 +45,10 @@ function formatPercent(v: number): string {
 
 const MIN_WIDTH = 0.18;
 const MAX_WIDTH = 0.7;
+// 320dp: con 0.7 el lado derecho (~67px) no alcanza para flecha + monto.
+const MAX_WIDTH_NARROW = 0.55;
+// Ancho mínimo del pill = paddingHorizontal (18×2) + icono (22).
+const PILL_MIN_PX = 58;
 // Heuristic: label fits inside the pill when pillFlex covers icon + padding
 // + label width. Looser than strict-fit so short labels (e.g. "U. neta")
 // render inside in white whenever the pill has reasonable space; ellipsis
@@ -69,10 +74,12 @@ export const MlMetricBar = memo<MlMetricBarProps>(
       ? "north-east"
       : "south-east";
     const arrowColor = deltaPositive ? "#22C55E" : "#EF4444";
-    const pillFlex = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, widthPercent));
+    const { width: windowWidth } = useWindowDimensions();
+    const maxWidth = windowWidth < 360 ? MAX_WIDTH_NARROW : MAX_WIDTH;
+    const pillFlex = Math.max(MIN_WIDTH, Math.min(maxWidth, widthPercent));
     const rightFlex = 1 - pillFlex;
     const labelMinFlex = Math.min(
-      MAX_WIDTH,
+      maxWidth,
       LABEL_BASE_FLEX + label.length * LABEL_FLEX_PER_CHAR,
     );
     const labelOutside = pillFlex < labelMinFlex;
@@ -89,7 +96,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
         }}
       >
         <View className="flex-row items-center">
-          <View style={{ flex: pillFlex }}>
+          <View style={{ flex: pillFlex, minWidth: PILL_MIN_PX }}>
             <LinearGradient
               colors={
                 gradient as unknown as readonly [string, string, ...string[]]
@@ -152,7 +159,7 @@ export const MlMetricBar = memo<MlMetricBarProps>(
             )}
             <View
               className="flex-row items-center gap-2"
-              style={{ marginLeft: "auto" }}
+              style={{ marginLeft: "auto", flexShrink: 1 }}
             >
               {!isPlaceholder && (
                 <AtIcon name={arrowIcon} size={22} color={arrowColor} />
@@ -160,8 +167,10 @@ export const MlMetricBar = memo<MlMetricBarProps>(
               <AtTypography
                 variant="bodyBold"
                 color={isPlaceholder ? "#8892A4" : "#1A1F36"}
-                style={{ fontVariant: ["tabular-nums"] }}
+                style={{ fontVariant: ["tabular-nums"], flexShrink: 1 }}
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
               >
                 {isPlaceholder
                   ? "—"

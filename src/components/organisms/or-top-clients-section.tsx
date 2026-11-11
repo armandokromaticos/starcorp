@@ -71,8 +71,10 @@ export const OrTopClientsSection = memo<OrTopClientsSectionProps>(
               </AtTypography>
             </View>
           ) : (
-            <View className="flex-row gap-4">
-              <View className="flex-1 gap-0.5">
+            <View className="flex-row gap-3">
+              {/* La lista se lleva más ancho que el donut (que igual topa en
+                  180): a 50/50 los nombres quedaban en "WOODL…". */}
+              <View className="gap-0.5" style={{ flex: 1.35 }}>
                 {data.clients.map((client, i) => (
                   <MlClientRow
                     key={client.id}
@@ -84,6 +86,7 @@ export const OrTopClientsSection = memo<OrTopClientsSectionProps>(
                     selected={selectedIndex === i}
                     onPress={() => setSelectedIndex(i)}
                     centerTitle
+                    dense
                   />
                 ))}
               </View>

@@ -41,19 +41,22 @@ interface MlClientRowProps {
   className?: string;
   /** When true, the name text is centered within the remaining flex-1 space. */
   centerTitle?: boolean;
+  /** Padding y gap reducidos (px-2 / gap-2) para columnas angostas como la
+   *  lista del Top 8: con px-4 + gap-3 al nombre le quedaban ~65px. */
+  dense?: boolean;
 }
 
 export const MlClientRow = memo<MlClientRowProps>(
-  ({ name, color, gradientColors, revenue, deltaPercent, onPress, selected = false, outlined = false, highlighted = false, swatchSize, showArrow = false, className, centerTitle = false }) => {
+  ({ name, color, gradientColors, revenue, deltaPercent, onPress, selected = false, outlined = false, highlighted = false, swatchSize, showArrow = false, className, centerTitle = false, dense = false }) => {
     const useHighlight = selected && highlighted;
     const useOutline = selected && outlined && !highlighted;
     const resolvedSwatchSize = swatchSize ?? (gradientColors ? 'xl' : 'lg');
     return (
       <Pressable
         onPress={onPress}
-        className={`flex-row items-center gap-3 py-2 rounded-md ${
-          highlighted ? '' : 'px-4'
-        } ${
+        className={`flex-row items-center py-2 rounded-md ${
+          dense ? 'gap-2' : 'gap-3'
+        } ${highlighted ? '' : dense ? 'px-2' : 'px-4'} ${
           selected && !outlined && !highlighted ? 'bg-bg-secondary' : ''
         } ${className ?? ''}`}
         style={

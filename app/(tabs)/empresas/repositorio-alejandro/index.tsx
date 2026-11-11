@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { View } from '@/src/tw';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
@@ -24,6 +25,7 @@ export default function RepositorioScreen() {
   const router = useRouter();
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const narrow = useWindowDimensions().width < 360;
 
   const { data, isLoading, isError, refetch, isRefetching } = useRepoApartados();
   const apartados = data ?? [];
@@ -47,17 +49,18 @@ export default function RepositorioScreen() {
         />
       </View>
 
-      <View className="flex-row gap-3 px-4 pb-1">
+      {/* 320dp: a media columna (~106px) los labels se parten; se apilan */}
+      <View className={narrow ? 'gap-3 px-4 pb-1' : 'flex-row gap-3 px-4 pb-1'}>
         <MlActionButton
           label="Crear nuevo apartado"
           variant="outline"
           onPress={() => go('crear')}
-          className="flex-1"
+          className={narrow ? undefined : 'flex-1'}
         />
         <MlActionButton
           label="Subir archivo"
           onPress={() => go('subir')}
-          className="flex-1"
+          className={narrow ? undefined : 'flex-1'}
         />
       </View>
 

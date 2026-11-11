@@ -23,6 +23,7 @@ import type { PeriodKey } from "@/src/types/domain.types";
 import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PERIOD_OPTIONS = (["today", "1w", "1m", "3m", "12m"] as PeriodKey[]).map(
@@ -39,6 +40,9 @@ export default function UtilidadConsolidadaScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [query, setQuery] = useState("");
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
+  // 320×568: con la card del chart fija no queda área de scroll para la
+  // lista; en pantallas bajas el chart pasa a scrollear con la lista.
+  const pinChart = useWindowDimensions().height > 700;
 
   const filtered = useMemo(() => {
     if (!data) return null;
@@ -60,6 +64,18 @@ export default function UtilidadConsolidadaScreen() {
 
   const isPending = isLoading && !data;
   const isEmpty = !!data && data.length === 0;
+
+  // Misma card que Ingresos/Costos/Gastos: Totalizado (ambas series),
+  // Corriente o Histórico del cliente seleccionado.
+  const chartCard =
+    !isPending && !isEmpty && selected ? (
+      <OrRevenueChartCard
+        categoryId="utilidad"
+        label={selected.name}
+        period={activePeriodKey}
+        centroCosto={selected.id}
+      />
+    ) : null;
 
   return (
     <View className="flex-1 bg-bg-primary" style={{ paddingTop: insets.top }}>
@@ -86,15 +102,8 @@ export default function UtilidadConsolidadaScreen() {
           <View className="gap-3 px-4">
             <AtSkeleton width="100%" height={220} borderRadius={14} />
           </View>
-        ) : isEmpty ? null : selected ? (
-          // Misma card que Ingresos/Costos/Gastos: Totalizado (ambas series),
-          // Corriente o Histórico del cliente seleccionado.
-          <OrRevenueChartCard
-            categoryId="utilidad"
-            label={selected.name}
-            period={activePeriodKey}
-            centroCosto={selected.id}
-          />
+        ) : pinChart ? (
+          chartCard
         ) : null}
 
         {!isPending && !isEmpty ? (
@@ -151,16 +160,24 @@ export default function UtilidadConsolidadaScreen() {
           }
         />
       ) : filtered && filtered.length === 0 ? (
-        <MlEmptyState
-          icon="search-off"
-          title="Sin coincidencias"
-          description={`No hay clientes que coincidan con "${query.trim()}".`}
-        />
+        <>
+          {/* Pantalla baja: el chart vive en el scroll de la lista; que no
+              desaparezca cuando la búsqueda no encuentra nada. */}
+          {!pinChart && chartCard ? <View className="mb-3">{chartCard}</View> : null}
+          <MlEmptyState
+            icon="search-off"
+            title="Sin coincidencias"
+            description={`No hay clientes que coincidan con "${query.trim()}".`}
+          />
+        </>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerClassName="px-4 pb-12"
         >
+          {!pinChart && chartCard ? (
+            <View className="-mx-4 mb-3">{chartCard}</View>
+          ) : null}
           {filtered?.map((c) => {
             const originalIndex = data?.findIndex((d) => d.id === c.id) ?? -1;
             return (

@@ -81,7 +81,8 @@ export const OrHighlightedBarChartCard = memo<OrHighlightedBarChartCardProps>(
           <AtTypography variant="captionBold" color="#1A1F36">
             {title}
           </AtTypography>
-          <View className="flex-row items-center gap-3">
+          {/* 320dp: monto lg + delta no caben en una línea; el delta baja. */}
+          <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
             <AtMetricValue value={amount} size="lg" />
             {deltaPercent != null && (
               <AtDeltaIndicator value={deltaPercent} size="sm" appearance="dark" />

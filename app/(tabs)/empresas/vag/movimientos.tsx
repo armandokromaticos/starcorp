@@ -10,6 +10,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, View } from '@/src/tw';
@@ -35,6 +36,7 @@ import type { VagMovimiento } from '@/src/types/vag.types';
 export default function VagMovimientosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const narrow = useWindowDimensions().width < 360;
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
   const { focus } = useLocalSearchParams<{ focus?: string }>();
 
@@ -132,20 +134,37 @@ export default function VagMovimientosScreen() {
             para que los títulos queden alineados como tabla; el spacer
             de 20 compensa el chevron de las filas. */}
         <View
-          className="mx-4 flex-row items-center px-4 pb-2"
+          className="mx-4 px-4 pb-2"
           style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' }}
         >
-          <View className="flex-1 pr-2">
-            <AtTypography variant="captionBold" color="#1A1F36">
-              {focusMode ? 'Movimiento' : 'Activo'}
-            </AtTypography>
-          </View>
-          {!focusMode && <MlMonthStepper value={effectiveMonth} onChange={setMonth} />}
-          <View className="flex-1 flex-row items-center justify-end gap-2 pl-2">
-            <AtTypography variant="captionBold" color="#1A1F36">
-              {focusMode ? 'Valor' : 'Consolidado'}
-            </AtTypography>
-            <View style={{ width: 20 }} />
+          {/* 320dp: el stepper no cabe entre las dos columnas; sube a su
+              propia fila y las filas de acordeón ocultan el mes. */}
+          {narrow && !focusMode && (
+            <View className="items-center pb-2">
+              <MlMonthStepper value={effectiveMonth} onChange={setMonth} />
+            </View>
+          )}
+          <View className="flex-row items-center">
+            <View className="flex-1 pr-2">
+              <AtTypography variant="captionBold" color="#1A1F36">
+                {focusMode ? 'Movimiento' : 'Activo'}
+              </AtTypography>
+            </View>
+            {!focusMode && !narrow && (
+              <MlMonthStepper value={effectiveMonth} onChange={setMonth} />
+            )}
+            <View
+              className={
+                narrow
+                  ? 'flex-row items-center justify-end gap-2 pl-2'
+                  : 'flex-1 flex-row items-center justify-end gap-2 pl-2'
+              }
+            >
+              <AtTypography variant="captionBold" color="#1A1F36">
+                {focusMode ? 'Valor' : 'Consolidado'}
+              </AtTypography>
+              <View style={{ width: 20 }} />
+            </View>
           </View>
         </View>
 

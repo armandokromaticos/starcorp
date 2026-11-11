@@ -143,7 +143,7 @@ export default function SeguroEmpresaDetailScreen() {
 
         <View className="flex-row items-center gap-2 px-4">
           <AtIcon name="account-balance" size="md" color="#1A1F36" />
-          <AtTypography variant="h2" color="#1A1F36">
+          <AtTypography variant="h2" color="#1A1F36" className="flex-1">
             {empresa?.name ?? '—'}
           </AtTypography>
         </View>

@@ -65,7 +65,12 @@ export const MlPagoCard = memo<MlPagoCardProps>(
                 backgroundColor: empresaColor,
               }}
             />
-            <AtTypography variant="bodyBold" color="#1A1F36" numberOfLines={1}>
+            <AtTypography
+              variant="bodyBold"
+              color="#1A1F36"
+              numberOfLines={1}
+              style={{ flexShrink: 1 }}
+            >
               {empresaName}
             </AtTypography>
           </View>
@@ -80,9 +85,17 @@ export const MlPagoCard = memo<MlPagoCardProps>(
 
         <AtDivider />
 
+        {/* 320dp: celdas de ~119px; "Centro de costos" en bodyBold partía a 2
+            líneas, se encoge para quedar en una. */}
         <View className="flex-row gap-4">
           <View className="flex-1 gap-1">
-            <AtTypography variant="bodyBold" color="#1A1F36">
+            <AtTypography
+              variant="bodyBold"
+              color="#1A1F36"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               Centro de costos
             </AtTypography>
             <AtTypography variant="caption" color="#4A5568">
@@ -90,7 +103,13 @@ export const MlPagoCard = memo<MlPagoCardProps>(
             </AtTypography>
           </View>
           <View className="flex-1 gap-1">
-            <AtTypography variant="bodyBold" color="#1A1F36">
+            <AtTypography
+              variant="bodyBold"
+              color="#1A1F36"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               Empleado/hotel
             </AtTypography>
             <AtTypography variant="caption" color="#4A5568">

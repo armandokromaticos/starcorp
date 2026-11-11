@@ -29,9 +29,13 @@ interface MlTimeFilterBarProps {
 }
 
 export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
-  ({ options, selectedKey, onSelect, className, fill = false }) => {
+  ({ options, selectedKey, onSelect, className, fill: fillProp = false }) => {
+    // Con scroll, "12 meses" quedaba fuera de vista sin pista de que había
+    // más (pasa hasta en 390dp). Hasta 5 opciones se reparten siempre a lo
+    // ancho, con padding chico y la letra achicándose si no cabe (320dp).
+    const fill = fillProp || options.length <= 5;
     const pillStyle = {
-      paddingHorizontal: 12,
+      paddingHorizontal: fill ? 4 : 12,
       paddingVertical: 10,
       borderRadius: 999,
       alignItems: "center",
@@ -53,13 +57,25 @@ export const MlTimeFilterBar = memo<MlTimeFilterBarProps>(
               end={gradients.brandOrange.end}
               style={pillStyle}
             >
-              <AtTypography variant="captionBold" color="#FFFFFF" numberOfLines={1}>
+              <AtTypography
+                variant="captionBold"
+                color="#FFFFFF"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {opt.label}
               </AtTypography>
             </LinearGradient>
           ) : (
             <View style={pillStyle}>
-              <AtTypography variant="captionBold" color="#1A1F36" numberOfLines={1}>
+              <AtTypography
+                variant="captionBold"
+                color="#1A1F36"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {opt.label}
               </AtTypography>
             </View>

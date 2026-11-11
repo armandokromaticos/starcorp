@@ -217,7 +217,8 @@ const DetailField = memo<DetailFieldProps>(
       <View className="flex-1 gap-1.5">
         <View className="flex-row items-center gap-2">
           <AtIcon name={iconName} size={18} color={iconColor} />
-          <AtTypography variant="h3" color={labelColor}>
+          {/* flexShrink: a 320dp "Apoyo requerido" desbordaba su columna */}
+          <AtTypography variant="h3" color={labelColor} style={{ flexShrink: 1 }}>
             {label}
           </AtTypography>
         </View>

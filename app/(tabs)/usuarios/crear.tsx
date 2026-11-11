@@ -77,7 +77,8 @@ export default function CrearUsuarioScreen() {
             style={{ gap: 4 }}
           >
             <AtIcon name="chevron-left" size="lg" color={NAVY_TITLE} />
-            <AtTypography variant="bodyBold" color={NAVY_TITLE}>
+            {/* flexShrink: a 320dp el título no cabe junto al chevron */}
+            <AtTypography variant="bodyBold" color={NAVY_TITLE} style={{ flexShrink: 1 }}>
               Usuarios y permisos / nuevo usuario
             </AtTypography>
           </Pressable>

@@ -8,7 +8,8 @@
  */
 
 import React, { memo, useMemo, useState } from 'react';
-import { Pressable, View } from '@/src/tw';
+import { useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, View } from '@/src/tw';
 import { AtMetricValue } from '@/src/components/atoms/at-metric-value';
 import { AtSkeleton } from '@/src/components/atoms/at-skeleton';
 import { AtStatusBadge } from '@/src/components/atoms/at-status-badge';
@@ -163,6 +164,10 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
       initialSelectedId ?? REPORT_CATEGORIES[0].id,
     );
     const [chartWidth, setChartWidth] = useState(0);
+    // 320dp: el sidebar de categorías deja el panel en ~100px; en pantallas
+    // angostas las categorías pasan a una fila horizontal encima del panel.
+    const { width: windowWidth } = useWindowDimensions();
+    const narrow = windowWidth < 360;
 
     // Cartera real (QuickBooks AR aging): total + montos por bucket.
     const carteraAgg = useMemo(() => {
@@ -362,19 +367,38 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
               '0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
           }}
         >
-          <View className="flex-row gap-3">
-            <View className="gap-1" style={{ minWidth: 84 }}>
-              {categories.map((r) => (
-                <MlReportCategoryRow
-                  key={r.id}
-                  label={r.label}
-                  icon={r.icon}
-                  color={r.color}
-                  selected={selected.id === r.id}
-                  onPress={() => setSelectedId(r.id)}
-                />
-              ))}
-            </View>
+          <View className={narrow ? 'gap-3' : 'flex-row gap-3'}>
+            {narrow ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerClassName="gap-1"
+              >
+                {categories.map((r) => (
+                  <MlReportCategoryRow
+                    key={r.id}
+                    label={r.label}
+                    icon={r.icon}
+                    color={r.color}
+                    selected={selected.id === r.id}
+                    onPress={() => setSelectedId(r.id)}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View className="gap-1" style={{ minWidth: 84 }}>
+                {categories.map((r) => (
+                  <MlReportCategoryRow
+                    key={r.id}
+                    label={r.label}
+                    icon={r.icon}
+                    color={r.color}
+                    selected={selected.id === r.id}
+                    onPress={() => setSelectedId(r.id)}
+                  />
+                ))}
+              </View>
+            )}
 
             <View className="flex-1 gap-2">
               <AtTypography variant="bodyBold" color="#1A1F36">
@@ -387,6 +411,9 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                   variant="metricSmall"
                   color="#1A1F36"
                   selectable
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
                   {formatNumber(displayTotal)}
@@ -396,6 +423,7 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                   value={displayTotal}
                   size="md"
                   currency={selected.currency}
+                  fit
                 />
               )}
 
@@ -469,7 +497,13 @@ export const OrInformesSection = memo<OrInformesSectionProps>(
                       justifyContent: 'center',
                     }}
                   >
-                    <AtTypography variant="captionBold" color="#FFFFFF">
+                    <AtTypography
+                      variant="captionBold"
+                      color="#FFFFFF"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
                       Ver {selected.label.toLowerCase()}
                     </AtTypography>
                   </LinearGradient>
@@ -489,6 +523,8 @@ OrInformesSection.displayName = 'OrInformesSection';
  * Corriente (línea de referencia recta en el total activo de hoy, naranja),
  * con leyenda debajo.
  */
+const X_LABEL_WIDTH = 30;
+
 const ReportDualLineChart = memo<{
   historico: number[];
   corriente: number[];
@@ -504,6 +540,25 @@ const ReportDualLineChart = memo<{
     [historico, corriente],
   );
   const yTicks = useMemo(() => [yMax, yMax / 2, 0], [yMax]);
+
+  // 12 meses no caben en el eje (se solapan incluso a 375dp): se muestra
+  // uno de cada 3, contando desde el último para que el mes actual siempre
+  // tenga etiqueta. x = misma posición que el punto en AreaChart.
+  const xLabels = useMemo(() => {
+    const n = labels.length;
+    const denom = n > 1 ? n - 1 : 1;
+    return labels
+      .map((text, i) => ({ text, i }))
+      .filter(({ i }) => (n - 1 - i) % 3 === 0)
+      .map(({ text, i }) => ({
+        text,
+        i,
+        left: Math.min(
+          Math.max(0, (i / denom) * chartWidth - X_LABEL_WIDTH / 2),
+          chartWidth - X_LABEL_WIDTH,
+        ),
+      }));
+  }, [labels, chartWidth]);
 
   return (
     <View style={{ width }}>
@@ -603,14 +658,24 @@ const ReportDualLineChart = memo<{
               position: 'absolute',
               top: chartHeight + 4,
               left: 0,
-              right: 0,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
+              width: chartWidth,
+              height: 18,
             }}
           >
-            {labels.map((m, i) => (
-              <AtTypography key={i} variant="label" color="#8892A4">
-                {m}
+            {xLabels.map((l) => (
+              <AtTypography
+                key={l.i}
+                variant="label"
+                color="#8892A4"
+                numberOfLines={1}
+                style={{
+                  position: 'absolute',
+                  left: l.left,
+                  width: X_LABEL_WIDTH,
+                  textAlign: 'center',
+                }}
+              >
+                {l.text}
               </AtTypography>
             ))}
           </View>
@@ -709,7 +774,8 @@ const ReportBancosDonut = memo<{ empresas: BancoSlice[]; width: number }>(
         : []),
     ];
 
-    const size = Math.min(150, Math.max(120, width));
+    // 320dp: sin piso de 120 para que el donut nunca exceda el panel.
+    const size = Math.min(150, width);
     const pct =
       selected != null && total > 0
         ? (slices[selected].value / total) * 100
@@ -871,6 +937,9 @@ const ReportSegurosStats = memo<{
           <AtTypography
             variant="h2"
             color="#1A1F36"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             style={{ fontVariant: ['tabular-nums'] }}
           >
             {String(values[c.key])}
@@ -879,6 +948,8 @@ const ReportSegurosStats = memo<{
             variant="caption"
             color="#6B7280"
             numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
             className="text-center"
           >
             {c.label}
@@ -1000,7 +1071,14 @@ const PagoDayCell = memo<{ day: PagoDay }>(({ day }) => {
       <AtTypography variant="captionBold" color={tone.text}>
         {String(day.day)}
       </AtTypography>
-      <AtTypography variant="label" color={tone.text} style={{ fontSize: 10 }}>
+      <AtTypography
+        variant="label"
+        color={tone.text}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        style={{ fontSize: 10, letterSpacing: 0 }}
+      >
         {compactMoney(day.total)}
       </AtTypography>
     </View>

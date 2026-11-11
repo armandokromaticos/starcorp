@@ -35,7 +35,14 @@ export const MlBancoEmpresaRow = memo<MlBancoEmpresaRowProps>(
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1 gap-1.5">
             <View className="flex-row items-center gap-1.5">
-              <AtTypography variant="bodyBold" color="#FFFFFF">
+              {/* flexShrink: un nombre largo empujaba la flecha contra el
+                  badge de delta (320dp). */}
+              <AtTypography
+                variant="bodyBold"
+                color="#FFFFFF"
+                numberOfLines={2}
+                style={{ flexShrink: 1 }}
+              >
                 {name}
               </AtTypography>
               <AtIcon name="arrow-forward" size={16} color="#FFFFFF" />

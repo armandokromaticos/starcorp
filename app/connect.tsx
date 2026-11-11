@@ -8,7 +8,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  useWindowDimensions,
+} from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, View } from '@/src/tw';
@@ -31,6 +36,7 @@ import {
 export default function ConnectScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const narrow = useWindowDimensions().width < 360;
   const status = useQbStatus();
   const openGlobalSearch = useGlobalSearchStore((s) => s.open);
   // Al drawer solo llega el super admin, pero "super admin de la app" y
@@ -226,20 +232,24 @@ export default function ConnectScreen() {
                 className="bg-bg-card flex-row items-center gap-3 p-4"
                 style={{ borderRadius: 14, borderCurve: 'continuous' }}
               >
-                <View
-                  className="items-center justify-center"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 8,
-                    borderCurve: 'continuous',
-                    backgroundColor: '#F6F8FA',
-                    borderWidth: 1,
-                    borderColor: 'rgba(0,0,0,0.08)',
-                  }}
-                >
-                  <AtIcon name="business" size="md" color="#1A2B6D" />
-                </View>
+                {/* 320dp: icono + "Desconectar" (minWidth 100) dejaban ~90px
+                    al nombre; se oculta el icono y el botón toma su ancho. */}
+                {!narrow && (
+                  <View
+                    className="items-center justify-center"
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 8,
+                      borderCurve: 'continuous',
+                      backgroundColor: '#F6F8FA',
+                      borderWidth: 1,
+                      borderColor: 'rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <AtIcon name="business" size="md" color="#1A2B6D" />
+                  </View>
+                )}
                 <View className="flex-1">
                   <AtTypography variant="bodyBold" color="#1A1F36" numberOfLines={1}>
                     {c.name ?? `Empresa ${c.realmId.slice(-4)}`}
@@ -261,7 +271,7 @@ export default function ConnectScreen() {
                       borderCurve: 'continuous',
                       borderWidth: 1,
                       borderColor: '#FCA5A5',
-                      minWidth: 100,
+                      minWidth: narrow ? undefined : 100,
                       opacity: disconnecting !== null ? 0.6 : 1,
                     }}
                   >

@@ -190,7 +190,10 @@ export const OrCarteraDonut = memo<OrCarteraDonutProps>(
         }}
       >
         <View className="flex-row items-center justify-between gap-2">
-          <AtTypography variant="bodyBold">{title}</AtTypography>
+          {/* flex-1: sin él un título largo empuja el badge fuera de la card. */}
+          <AtTypography variant="bodyBold" className="flex-1">
+            {title}
+          </AtTypography>
           {headerBadge}
         </View>
 

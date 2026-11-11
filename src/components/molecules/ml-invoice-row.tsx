@@ -7,6 +7,7 @@
  */
 
 import React, { memo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtDivider } from '@/src/components/atoms/at-divider';
@@ -19,6 +20,11 @@ function formatMoney(value: number): string {
 // Ancho de la columna de monto, compartido con el encabezado "Monto"
 // del detalle de cartera (app/(tabs)/informes/cartera/[clientId].tsx).
 export const INVOICE_AMOUNT_COL_W = 110;
+// Por debajo de este ancho la columna fija de monto dejaba celdas de ~54px
+// en la grilla 2x2 (fechas partidas). En angosto el monto va en su propia
+// línea arriba (con label "Monto") y la grilla ocupa todo el ancho; el
+// header del detalle oculta su columna "Monto".
+export const INVOICE_NARROW_MAX_W = 360;
 
 function formatDate(iso: string): string {
   const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
@@ -40,10 +46,31 @@ interface MlInvoiceRowProps {
 export const MlInvoiceRow = memo<MlInvoiceRowProps>(
   ({ date, daysOverdue, invoiceNumber, note, amount, showDivider = true }) => {
     const overdue = daysOverdue < 0;
+    const isNarrow = useWindowDimensions().width < INVOICE_NARROW_MAX_W;
+    const amountText = (
+      <AtTypography
+        variant="bodyBold"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {formatMoney(amount)}
+      </AtTypography>
+    );
     return (
       <View>
-        <View className="flex-row items-start px-4 py-3 gap-3">
-          <View className="flex-1 gap-2">
+        <View
+          className={
+            isNarrow ? 'px-4 py-3 gap-2' : 'flex-row items-start px-4 py-3 gap-3'
+          }
+        >
+          {isNarrow && (
+            <View className="gap-0.5">
+              <AtTypography variant="caption" color="#8892A4">
+                Monto
+              </AtTypography>
+              {amountText}
+            </View>
+          )}
+          <View className={isNarrow ? 'gap-2' : 'flex-1 gap-2'}>
             <View className="flex-row gap-6">
               <View className="flex-1 gap-0.5">
                 <AtTypography variant="caption" color="#8892A4">
@@ -80,14 +107,14 @@ export const MlInvoiceRow = memo<MlInvoiceRowProps>(
               </View>
             </View>
           </View>
-          <View style={{ width: INVOICE_AMOUNT_COL_W }} className="items-start">
-            <AtTypography
-              variant="bodyBold"
-              style={{ fontVariant: ['tabular-nums'] }}
+          {!isNarrow && (
+            <View
+              style={{ width: INVOICE_AMOUNT_COL_W }}
+              className="items-start"
             >
-              {formatMoney(amount)}
-            </AtTypography>
-          </View>
+              {amountText}
+            </View>
+          )}
         </View>
         {showDivider && <AtDivider className="mx-4" />}
       </View>

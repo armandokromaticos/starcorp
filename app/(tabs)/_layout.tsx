@@ -53,6 +53,9 @@ export default function TabLayout() {
           paddingBottom: insets.bottom,
           height: 60 + insets.bottom,
         },
+        // Sin el padding lateral por defecto (5px) cada tab tiene 64px a
+        // 320dp: alcanza para "Consolidado" (~60px a 11px).
+        tabBarItemStyle: { paddingHorizontal: 0 },
         tabBarLabelStyle: {
           fontFamily: "Roboto_500Medium",
           fontSize: 11,
@@ -127,7 +130,9 @@ export default function TabLayout() {
         <Tabs.Screen
           name="empresas"
           options={{
-            title: "Otras Compañías",
+            // "Otras Compañías" (~95px) no cabía en ningún teléfono; la
+            // pantalla conserva el título largo.
+            title: "Compañías",
             tabBarIcon: ({ focused, size }) => (
               <AtGradientIcon
                 name="briefcase"

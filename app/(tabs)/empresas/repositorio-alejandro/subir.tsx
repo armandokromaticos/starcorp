@@ -140,7 +140,7 @@ export default function SubirArchivoScreen() {
             </AtTypography>
 
             <View
-              className="flex-row items-center justify-between px-4"
+              className="flex-row items-center justify-between gap-2 px-4"
               style={{
                 borderRadius: 10,
                 borderCurve: 'continuous',
@@ -148,7 +148,14 @@ export default function SubirArchivoScreen() {
                 backgroundColor: '#F5F7FA',
               }}
             >
-              <AtTypography variant="body" color="#4A5568" style={{ fontSize: 14 }}>
+              {/* 320dp: "Archivo seleccionado" + "Subir archivo" no caben; el
+                  texto izquierdo cede ancho con elipsis. */}
+              <AtTypography
+                variant="body"
+                color="#4A5568"
+                numberOfLines={1}
+                style={{ fontSize: 14, flexShrink: 1 }}
+              >
                 {asset ? 'Archivo seleccionado' : 'Suba el archivo'}
               </AtTypography>
               <Pressable

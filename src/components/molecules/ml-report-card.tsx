@@ -44,6 +44,10 @@ export const MlReportCard = memo<MlReportCardProps>(
           variant="bodyBold"
           color="#FFFFFF"
           numberOfLines={2}
+          // 320dp: "Informe Asociados activos" pide 3 líneas en ~106px;
+          // se encoge un poco en vez de cortarse.
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
           style={{ minHeight: 44 }}
         >
           {title}
