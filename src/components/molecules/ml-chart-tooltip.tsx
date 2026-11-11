@@ -33,7 +33,8 @@ interface MlChartTooltipProps {
   top?: number;
 }
 
-const TOOLTIP_WIDTH = 140;
+// 140 cortaba "Históri…" junto al valor; 156 deja "Histórico 56.1K" entero.
+const TOOLTIP_WIDTH = 156;
 
 export const MlChartTooltip = memo<MlChartTooltipProps>(
   ({ x, plotWidth, title, lines, top = 4 }) => {

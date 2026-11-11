@@ -144,8 +144,8 @@ export const OrSecondaryMetrics = memo<OrSecondaryMetricsProps>(
               {m.label}
             </AtTypography>
 
-            {/* Amount */}
-            <AtMetricValue value={m.value} size="md" color="#1A1F36" />
+            {/* Amount — fit: a 320dp la card mide ~111px y el número se partía */}
+            <AtMetricValue value={m.value} size="md" color="#1A1F36" fit />
 
             {/* Delta */}
             {m.deltaPercent != null && (

@@ -7,6 +7,7 @@
  */
 
 import React, { memo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -26,6 +27,10 @@ function formatMoney(value: number): string {
 // (app/(tabs)/informes/cartera/index.tsx). Mantener sincronizados.
 export const CARTERA_BUCKET_COL_W = 108;
 export const CARTERA_TOTAL_COL_W = 96;
+// Por debajo de este ancho de pantalla las columnas fijas no dejan sitio
+// al nombre (a 320dp quedaban ~4px): fila, header y footer pasan a 2
+// líneas (nombre arriba, montos debajo alineados a la derecha).
+export const CARTERA_NARROW_MAX_W = 360;
 
 interface MlCarteraClientRowProps {
   name: string;
@@ -49,6 +54,7 @@ export const MlCarteraClientRow = memo<MlCarteraClientRowProps>(
     onToggle,
     onOpenDetail,
   }) => {
+    const isNarrow = useWindowDimensions().width < CARTERA_NARROW_MAX_W;
     return (
       <View
         className="bg-bg-card rounded-lg"
@@ -62,52 +68,66 @@ export const MlCarteraClientRow = memo<MlCarteraClientRowProps>(
           onPress={onToggle}
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          className="flex-row items-center px-4 py-3 gap-3"
+          className={
+            isNarrow
+              ? 'px-4 py-3 gap-1.5'
+              : 'flex-row items-center px-4 py-3 gap-3'
+          }
         >
           <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: color,
-            }}
-          />
-          <Pressable
-            onPress={onOpenDetail}
-            hitSlop={6}
-            className="flex-row items-center gap-1 flex-1"
+            className={`flex-row items-center gap-3 ${isNarrow ? '' : 'flex-1'}`}
           >
-            <AtTypography variant="captionBold" numberOfLines={2}>
-              {name}
-            </AtTypography>
-            <AtIcon name="arrow-forward" size="sm" color="#1A1F36" />
-          </Pressable>
-          <View
-            style={{ width: CARTERA_BUCKET_COL_W }}
-            className="items-end"
-          >
-            {!expanded && (
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: color,
+              }}
+            />
+            <Pressable
+              onPress={onOpenDetail}
+              hitSlop={6}
+              className="flex-row items-center gap-1 flex-1"
+            >
               <AtTypography
-                variant="caption"
-                color="#4A5568"
+                variant="captionBold"
+                numberOfLines={2}
+                style={{ flexShrink: 1 }}
+              >
+                {name}
+              </AtTypography>
+              <AtIcon name="arrow-forward" size="sm" color="#1A1F36" />
+            </Pressable>
+          </View>
+          <View className="flex-row items-center justify-end gap-3">
+            <View
+              style={{ width: CARTERA_BUCKET_COL_W }}
+              className="items-end"
+            >
+              {!expanded && (
+                <AtTypography
+                  variant="caption"
+                  color="#4A5568"
+                  numberOfLines={1}
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {formatMoney(buckets[activeBucket])}
+                </AtTypography>
+              )}
+            </View>
+            <View
+              style={{ width: CARTERA_TOTAL_COL_W }}
+              className="items-end"
+            >
+              <AtTypography
+                variant="captionBold"
                 numberOfLines={1}
                 style={{ fontVariant: ['tabular-nums'] }}
               >
-                {formatMoney(buckets[activeBucket])}
+                {formatMoney(total)}
               </AtTypography>
-            )}
-          </View>
-          <View
-            style={{ width: CARTERA_TOTAL_COL_W }}
-            className="items-end"
-          >
-            <AtTypography
-              variant="captionBold"
-              numberOfLines={1}
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {formatMoney(total)}
-            </AtTypography>
+            </View>
           </View>
         </Pressable>
 

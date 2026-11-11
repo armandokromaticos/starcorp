@@ -12,7 +12,7 @@
  */
 
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal } from 'react-native';
+import { Modal, useWindowDimensions } from 'react-native';
 import { Pressable, ScrollView, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -277,16 +277,19 @@ interface DateInputProps {
 }
 
 function DateInput({ label, value, onChange }: DateInputProps) {
+  // 320dp: con px-4 + icono al input le quedaban ~66px y "yyyy-mm-dd" no
+  // cabía; en angosto se oculta el icono y se reduce el padding.
+  const isNarrow = useWindowDimensions().width < 360;
   return (
     <View className="flex-1 gap-1">
       <AtTypography variant="caption" color="#4A5568">
         {label}
       </AtTypography>
       <View
-        className="flex-row items-center gap-2 rounded-full bg-bg-secondary px-4 py-3"
+        className={`flex-row items-center gap-2 rounded-full bg-bg-secondary py-3 ${isNarrow ? 'px-3' : 'px-4'}`}
         style={{ borderCurve: 'continuous' }}
       >
-        <AtIcon name="event" size="md" color="#8892A4" />
+        {!isNarrow && <AtIcon name="event" size="md" color="#8892A4" />}
         <TextInput
           value={value}
           onChangeText={onChange}

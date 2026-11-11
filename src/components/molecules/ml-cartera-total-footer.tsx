@@ -6,11 +6,13 @@
  */
 
 import React, { memo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import {
   CARTERA_BUCKET_COL_W,
   CARTERA_TOTAL_COL_W,
+  CARTERA_NARROW_MAX_W,
 } from '@/src/components/molecules/ml-cartera-client-row';
 
 interface MlCarteraTotalFooterProps {
@@ -29,6 +31,11 @@ function formatMoney(value: number): string {
 
 export const MlCarteraTotalFooter = memo<MlCarteraTotalFooterProps>(
   ({ bucketLabel, bucketValue, totalValue, showBucket = true, className }) => {
+    // 320dp: con las dos columnas fijas al label "Total" le quedaban ~28px
+    // y se partía ("Tot/al"). En angosto se omite: cada columna ya lleva su
+    // propio label (bucket / "Total").
+    const isNarrow = useWindowDimensions().width < CARTERA_NARROW_MAX_W;
+    const hideLabel = showBucket && isNarrow;
     return (
       <View
         className={`flex-row items-center rounded-lg px-4 py-3 gap-3 ${className ?? ''}`}
@@ -37,9 +44,18 @@ export const MlCarteraTotalFooter = memo<MlCarteraTotalFooterProps>(
           borderCurve: 'continuous',
         }}
       >
-        <AtTypography variant="bodyBold" color="#FFFFFF" className="flex-1">
-          Total
-        </AtTypography>
+        {hideLabel ? (
+          <View className="flex-1" />
+        ) : (
+          <AtTypography
+            variant="bodyBold"
+            color="#FFFFFF"
+            className="flex-1"
+            numberOfLines={1}
+          >
+            Total
+          </AtTypography>
+        )}
         {showBucket && (
           <View
             style={{ width: CARTERA_BUCKET_COL_W }}

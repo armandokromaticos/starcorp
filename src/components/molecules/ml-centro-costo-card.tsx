@@ -8,6 +8,7 @@
  */
 
 import React, { memo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { formatMoney2 } from '@/src/utils/currency';
@@ -37,6 +38,25 @@ const Field = memo<{ label: string; value: string }>(({ label, value }) => (
 Field.displayName = 'CentroCostoField';
 
 export const MlCentroCostoCard = memo<MlCentroCostoCardProps>(({ centro }) => {
+  const isNarrow = useWindowDimensions().width < 360;
+  const fields = [
+    { label: 'Proyectado', value: formatMoney2(centro.proyectado) },
+    { label: 'Ejecutado', value: formatMoney2(centro.ejecutado) },
+    { label: 'Concepto', value: centro.concepto || '—' },
+    { label: 'Categoría', value: centro.categoria || '—' },
+    {
+      label: 'Porcentaje',
+      value: `${formatNumber(centro.porcentajeEje, 2)}%`,
+    },
+    { label: 'Comentario', value: centro.comentario || '—' },
+  ];
+  // 320dp: 3 columnas quedaban de ~72px y montos/labels se partían a mitad
+  // de palabra; en angosto la rejilla pasa a 2 columnas × 3 filas.
+  const perRow = isNarrow ? 2 : 3;
+  const rows: (typeof fields)[] = [];
+  for (let i = 0; i < fields.length; i += perRow) {
+    rows.push(fields.slice(i, i + perRow));
+  }
   return (
     <View
       className="gap-3 p-3 rounded-lg"
@@ -56,20 +76,13 @@ export const MlCentroCostoCard = memo<MlCentroCostoCardProps>(({ centro }) => {
 
       <View className="h-px" style={{ backgroundColor: 'rgba(0,0,0,0.08)' }} />
 
-      <View className="flex-row gap-3">
-        <Field label="Proyectado" value={formatMoney2(centro.proyectado)} />
-        <Field label="Ejecutado" value={formatMoney2(centro.ejecutado)} />
-        <Field label="Concepto" value={centro.concepto || '—'} />
-      </View>
-
-      <View className="flex-row gap-3">
-        <Field label="Categoría" value={centro.categoria || '—'} />
-        <Field
-          label="Porcentaje"
-          value={`${formatNumber(centro.porcentajeEje, 2)}%`}
-        />
-        <Field label="Comentario" value={centro.comentario || '—'} />
-      </View>
+      {rows.map((row, i) => (
+        <View key={i} className="flex-row gap-3">
+          {row.map((f) => (
+            <Field key={f.label} label={f.label} value={f.value} />
+          ))}
+        </View>
+      ))}
     </View>
   );
 });

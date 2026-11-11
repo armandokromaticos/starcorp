@@ -9,6 +9,7 @@
  */
 
 import React, { memo, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -117,6 +118,7 @@ export const OrVagActivoCard = memo<OrVagActivoCardProps>(
     initiallyExpanded = false,
   }) => {
     const [expanded, setExpanded] = useState(initiallyExpanded);
+    const narrow = useWindowDimensions().width < 360;
 
     // Campos sin fuente contable llegan null → '--'.
     const money = (v: number | null) => (v == null ? '--' : formatCurrency(v));
@@ -194,13 +196,16 @@ export const OrVagActivoCard = memo<OrVagActivoCardProps>(
             <MlDetailGrid pairs={pairs} />
 
             {/* Ficha catastral + documento adjunto */}
+            {/* 320dp: las acciones dejaban ~40px a "Ficha catastral"; bajan a
+                una segunda línea alineadas con el texto (20 icono + 12 gap). */}
             <View
-              className="flex-row items-center gap-3 rounded-lg px-3 py-3"
+              className="flex-row flex-wrap items-center gap-3 rounded-lg px-3 py-3"
               style={{
                 borderCurve: 'continuous',
                 borderWidth: 1,
                 borderColor: '#5B8DEF',
                 backgroundColor: '#F4F8FF',
+                rowGap: narrow ? 8 : undefined,
               }}
             >
               <AtIcon name="menu-book" size="md" color="#1A1F36" />
@@ -220,54 +225,59 @@ export const OrVagActivoCard = memo<OrVagActivoCardProps>(
                     '--'}
                 </AtTypography>
               </View>
-              {doc ? (
-                <View className="flex-row items-center gap-3">
+              <View
+                className="flex-row"
+                style={narrow ? { width: '100%', paddingLeft: 32 } : undefined}
+              >
+                {doc ? (
+                  <View className="flex-row items-center gap-3">
+                    <Pressable
+                      onPress={() => onVerDocumento?.(doc)}
+                      disabled={uploading}
+                      className="flex-row items-center gap-1.5"
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ver documento"
+                    >
+                      <AtTypography variant="captionBold" color="#1A3FE8">
+                        Ver documento
+                      </AtTypography>
+                      <AtIcon name="visibility" size="sm" color="#1A3FE8" />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => onSubirDocumento?.(activo)}
+                      disabled={uploading}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Reemplazar documento"
+                    >
+                      <AtIcon
+                        name={uploading ? 'hourglass-empty' : 'file-upload'}
+                        size="sm"
+                        color="#1A3FE8"
+                      />
+                    </Pressable>
+                  </View>
+                ) : (
                   <Pressable
-                    onPress={() => onVerDocumento?.(doc)}
+                    onPress={() => onSubirDocumento?.(activo)}
                     disabled={uploading}
                     className="flex-row items-center gap-1.5"
                     hitSlop={6}
                     accessibilityRole="button"
-                    accessibilityLabel="Ver documento"
+                    accessibilityLabel="Subir documento"
                   >
                     <AtTypography variant="captionBold" color="#1A3FE8">
-                      Ver documento
+                      {uploading ? 'Subiendo…' : 'Subir documento'}
                     </AtTypography>
-                    <AtIcon name="visibility" size="sm" color="#1A3FE8" />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => onSubirDocumento?.(activo)}
-                    disabled={uploading}
-                    hitSlop={6}
-                    accessibilityRole="button"
-                    accessibilityLabel="Reemplazar documento"
-                  >
                     <AtIcon
                       name={uploading ? 'hourglass-empty' : 'file-upload'}
                       size="sm"
                       color="#1A3FE8"
                     />
                   </Pressable>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => onSubirDocumento?.(activo)}
-                  disabled={uploading}
-                  className="flex-row items-center gap-1.5"
-                  hitSlop={6}
-                  accessibilityRole="button"
-                  accessibilityLabel="Subir documento"
-                >
-                  <AtTypography variant="captionBold" color="#1A3FE8">
-                    {uploading ? 'Subiendo…' : 'Subir documento'}
-                  </AtTypography>
-                  <AtIcon
-                    name={uploading ? 'hourglass-empty' : 'file-upload'}
-                    size="sm"
-                    color="#1A3FE8"
-                  />
-                </Pressable>
-              )}
+                )}
+              </View>
             </View>
 
             {/* Movimientos consolidados */}

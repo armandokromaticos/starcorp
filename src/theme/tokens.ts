@@ -104,3 +104,12 @@ export type TokenSpacing = keyof typeof tokens.spacing;
  * Lo aplican por defecto los wrappers Text/TextInput de `@/src/tw`.
  */
 export const MAX_FONT_SCALE = 1.15;
+
+/**
+ * Si el texto sigue el tamaño de fuente del sistema. En `false` la app ignora
+ * por completo Dynamic Type / "Tamaño de fuente" (ni crece ni se achica) y
+ * MAX_FONT_SCALE deja de tener efecto: aun ×1.15 rompía columnas ajustadas
+ * en un iPhone con texto grande. Para volver a respetar el ajuste del
+ * usuario con tope, poner `true`.
+ */
+export const ALLOW_SYSTEM_FONT_SCALING = false;

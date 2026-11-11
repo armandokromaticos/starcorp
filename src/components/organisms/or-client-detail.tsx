@@ -36,6 +36,7 @@ import { PERIOD_SHORT_LABELS } from "@/src/utils/date";
 import type { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
@@ -160,6 +161,9 @@ export function OrClientDetail({
 }: OrClientDetailProps) {
   const centroCosto = decodeURIComponent(clientId ?? "");
   const insets = useSafeAreaInsets();
+  // 320×568: con el chart fijo arriba casi no queda área de scroll; en
+  // pantallas bajas el chart pasa al inicio del contenido scrolleable.
+  const pinChart = useWindowDimensions().height > 700;
 
   const activePeriodKey = useFiltersStore((s) => s.activePeriodKey);
   const setActivePeriod = useFiltersStore((s) => s.setActivePeriod);
@@ -399,6 +403,25 @@ export function OrClientDetail({
     [selectedMetric, entryCategory, clientId, canSeeCartera, carteraClientId],
   );
 
+  const chartCard = (
+    <OrRevenueChartCard
+      categoryId={chartCategory}
+      // Margen no es un monto: la card grafica utilidad/ingresos por
+      // bucket en vez de la serie de Utilidad.
+      metricMode={selectedMetric === "margen" ? "margen" : "category"}
+      label={
+        METRIC_CHART_LABEL[selectedMetric] ?? CATEGORY_LABEL[chartCategory]
+      }
+      period={activePeriodKey}
+      centroCosto={centroCosto}
+      headerValueOverride={carteraSelected ? (cartera ?? 0) : undefined}
+      headerTrend={
+        carteraSelected && hasCartera ? (cartera > 0 ? "up" : "down") : null
+      }
+      zeroData={carteraSelected && !hasCartera}
+    />
+  );
+
   return (
     <View className="flex-1 bg-bg-secondary" style={{ paddingTop: insets.top }}>
       {/* Pinned top: search + breadcrumb + period filter + chart */}
@@ -419,22 +442,7 @@ export function OrClientDetail({
           selectedKey={activePeriodKey}
           onSelect={handleFilterSelect}
         />
-        <OrRevenueChartCard
-          categoryId={chartCategory}
-          // Margen no es un monto: la card grafica utilidad/ingresos por
-          // bucket en vez de la serie de Utilidad.
-          metricMode={selectedMetric === "margen" ? "margen" : "category"}
-          label={
-            METRIC_CHART_LABEL[selectedMetric] ?? CATEGORY_LABEL[chartCategory]
-          }
-          period={activePeriodKey}
-          centroCosto={centroCosto}
-          headerValueOverride={carteraSelected ? (cartera ?? 0) : undefined}
-          headerTrend={
-            carteraSelected && hasCartera ? (cartera > 0 ? "up" : "down") : null
-          }
-          zeroData={carteraSelected && !hasCartera}
-        />
+        {pinChart ? chartCard : null}
       </View>
 
       {/* Scrollable content */}
@@ -442,6 +450,7 @@ export function OrClientDetail({
         showsVerticalScrollIndicator={false}
         contentContainerClassName="gap-6 pb-12"
       >
+        {pinChart ? null : chartCard}
         <MlLocationCard
           value={
             pickField(meta?.clienteData, [

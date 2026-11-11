@@ -179,10 +179,12 @@ export default function EditarPerfilScreen() {
               uri={pendingPhoto?.uri ?? user?.avatarUrl}
               name={user?.name}
             />
-            <View className="gap-1">
+            {/* flex-1: el aviso de foto nueva desbordaba la card */}
+            <View className="flex-1 gap-1">
               <Pressable
                 onPress={handlePickPhoto}
                 accessibilityRole="button"
+                className="self-start"
                 hitSlop={8}
                 disabled={saving}
                 style={{ opacity: saving ? 0.6 : 1 }}

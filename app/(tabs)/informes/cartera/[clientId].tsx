@@ -7,6 +7,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useWindowDimensions } from 'react-native';
 import { ScrollView, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
@@ -15,6 +16,7 @@ import { MlUpdatedAtCard } from '@/src/components/molecules/ml-updated-at-card';
 import {
   MlInvoiceRow,
   INVOICE_AMOUNT_COL_W,
+  INVOICE_NARROW_MAX_W,
 } from '@/src/components/molecules/ml-invoice-row';
 import { OrCarteraAgingCard } from '@/src/components/organisms/or-cartera-aging-card';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
@@ -34,6 +36,7 @@ export default function CarteraClientDetailScreen() {
   const router = useRouter();
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
   const { data } = useCartera();
+  const isNarrow = useWindowDimensions().width < INVOICE_NARROW_MAX_W;
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [search, setSearch] = useState('');
@@ -143,18 +146,25 @@ export default function CarteraClientDetailScreen() {
                     backgroundColor: client.color,
                   }}
                 />
-                <AtTypography variant="bodyBold" numberOfLines={1}>
+                <AtTypography
+                  variant="bodyBold"
+                  numberOfLines={1}
+                  style={{ flexShrink: 1 }}
+                >
                   {client.name}
                 </AtTypography>
               </View>
-              <View
-                style={{ width: INVOICE_AMOUNT_COL_W, marginRight: 16 }}
-                className="items-start"
-              >
-                <AtTypography variant="bodyBold" color="#1A1F36">
-                  Monto
-                </AtTypography>
-              </View>
+              {/* En angosto cada MlInvoiceRow lleva su propio label "Monto". */}
+              {!isNarrow && (
+                <View
+                  style={{ width: INVOICE_AMOUNT_COL_W, marginRight: 16 }}
+                  className="items-start"
+                >
+                  <AtTypography variant="bodyBold" color="#1A1F36">
+                    Monto
+                  </AtTypography>
+                </View>
+              )}
             </View>
           )}
 

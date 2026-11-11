@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useWindowDimensions } from 'react-native';
 import { View } from '@/src/tw';
 import { MlReportCard } from '@/src/components/molecules/ml-report-card';
 import { OrDrawer } from '@/src/components/organisms/or-drawer';
@@ -47,16 +48,29 @@ export default function InformesScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  // 2 columnas exactas: px-4 (32) + gap-3 (12). Con '48%' + gap a 320dp
+  // la suma pasaba de 100% y el grid caía a una columna.
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.floor((screenWidth - 32 - 12) / 2);
 
   const allowedReports = REPORTS.filter((r) =>
     hasPermission(user, REPORT_PERMISSION[r.id]),
   );
 
   return (
-    <TmInformes onMenuPress={() => setDrawerVisible(true)}>
+    <TmInformes
+      onMenuPress={() => setDrawerVisible(true)}
+      // Atrás del grid = Home, siempre: router.back() podía caer en el
+      // historial de pestañas. Sin permiso de Consolidado no hay a dónde.
+      onBack={
+        hasPermission(user, 'consolidado.ver')
+          ? () => router.navigate('/')
+          : undefined
+      }
+    >
       <View className="flex-row flex-wrap gap-3 px-4">
         {allowedReports.map((report) => (
-          <View key={report.id} style={{ width: '48%' }}>
+          <View key={report.id} style={{ width: cardWidth }}>
             <MlReportCard
               title={report.title}
               iconName={report.iconName}

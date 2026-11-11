@@ -9,7 +9,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ScrollView as RNScrollView } from 'react-native';
+import { ScrollView as RNScrollView, useWindowDimensions } from 'react-native';
 import { Pressable, TextInput, View } from '@/src/tw';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MlSearchBar } from '@/src/components/molecules/ml-search-bar';
@@ -23,6 +23,7 @@ import {
   MlCarteraClientRow,
   CARTERA_BUCKET_COL_W,
   CARTERA_TOTAL_COL_W,
+  CARTERA_NARROW_MAX_W,
 } from '@/src/components/molecules/ml-cartera-client-row';
 import { MlCarteraTotalFooter } from '@/src/components/molecules/ml-cartera-total-footer';
 import { OrCarteraAgingCard } from '@/src/components/organisms/or-cartera-aging-card';
@@ -170,6 +171,7 @@ export default function CarteraScreen() {
   // Cuando la lista queda en un único cliente, se muestra expandido con
   // todos los buckets; el header y footer se simplifican a Cliente/Total.
   const isSingleClient = visibleClients.length === 1;
+  const isNarrow = useWindowDimensions().width < CARTERA_NARROW_MAX_W;
 
   const totals = useMemo(() => {
     const bucketTotal = visibleClients.reduce(
@@ -328,15 +330,24 @@ export default function CarteraScreen() {
         </View>
 
         <View className="gap-2">
-          <View className="flex-row items-center px-4 gap-3">
+          {/* paddingRight 33 = px-4 de la lista + borde 1px + px-4 de
+              MlCarteraClientRow: con solo px-4 las columnas de montos del
+              header quedaban ~17px corridas a la derecha respecto de las de
+              la fila. En pantallas angostas el header pasa a 2 líneas igual
+              que la fila. */}
+          <View
+            className={isNarrow ? 'gap-1.5' : 'flex-row items-center gap-3'}
+            style={{ paddingLeft: 16, paddingRight: 33 }}
+          >
             <AtTypography
               variant="captionBold"
               color="#1A1F36"
-              className="flex-1"
+              className={isNarrow ? undefined : 'flex-1'}
               style={{ marginLeft: 22 }}
             >
               Cliente
             </AtTypography>
+            <View className="flex-row items-center justify-end gap-3">
             {!isSingleClient && (
               <View
                 style={{ width: CARTERA_BUCKET_COL_W }}
@@ -360,6 +371,7 @@ export default function CarteraScreen() {
               <AtTypography variant="captionBold" color="#1A1F36">
                 Total
               </AtTypography>
+            </View>
             </View>
           </View>
 

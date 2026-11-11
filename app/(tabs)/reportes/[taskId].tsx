@@ -49,8 +49,11 @@ export default function ReporteTareaScreen() {
         />
       </View>
 
-      <View className="flex-row items-center justify-between px-4">
-        <AtTypography variant="h2">Seguimiento de tareas</AtTypography>
+      {/* flex-1: a 320dp el h2 empujaba "Ver todas" fuera de pantalla */}
+      <View className="flex-row items-center justify-between gap-2 px-4">
+        <AtTypography variant="h2" style={{ flex: 1 }}>
+          Seguimiento de tareas
+        </AtTypography>
         <Pressable onPress={() => router.push('/(tabs)/reportes' as never)}>
           <AtTypography variant="bodyBold" color="#5B82E6">
             Ver todas

@@ -21,10 +21,15 @@ export const MlConsolidadoClientCard = memo<MlConsolidadoClientCardProps>(
         className="rounded-lg px-4 py-3 mx-4"
         style={{ borderCurve: 'continuous', backgroundColor: '#0A1432' }}
       >
-        <View className="flex-row justify-between items-start">
+        <View className="flex-row justify-between items-start gap-3">
           <View className="flex-1 gap-1">
             <View className="flex-row items-center gap-1">
-              <AtTypography variant="bodyBold" color="#FFFFFF" numberOfLines={1}>
+              <AtTypography
+                variant="bodyBold"
+                color="#FFFFFF"
+                numberOfLines={1}
+                style={{ flexShrink: 1 }}
+              >
                 {name}
               </AtTypography>
               <AtIcon name="arrow-forward" size={14} color="rgba(255,255,255,0.7)" />

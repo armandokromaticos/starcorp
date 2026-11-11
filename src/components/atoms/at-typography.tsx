@@ -28,6 +28,12 @@ export interface AtTypographyProps {
   className?: string;
   selectable?: boolean;
   numberOfLines?: number;
+  /** Achica la fuente para caber en una línea (con numberOfLines={1}). */
+  adjustsFontSizeToFit?: boolean;
+  /** Escala mínima al achicar (default de RN: 0.01). */
+  minimumFontScale?: number;
+  /** Dónde va el "…" al truncar ('head' conserva el final del texto). */
+  ellipsizeMode?: 'head' | 'middle' | 'tail' | 'clip';
   children: React.ReactNode;
   style?: StyleProp<TextStyle>;
 }
@@ -103,6 +109,9 @@ export const AtTypography = memo(function AtTypography({
   className,
   selectable,
   numberOfLines,
+  adjustsFontSizeToFit,
+  minimumFontScale,
+  ellipsizeMode,
   children,
   style,
 }: AtTypographyProps) {
@@ -111,6 +120,9 @@ export const AtTypography = memo(function AtTypography({
       className={className}
       selectable={selectable}
       numberOfLines={numberOfLines}
+      adjustsFontSizeToFit={adjustsFontSizeToFit}
+      minimumFontScale={minimumFontScale}
+      ellipsizeMode={ellipsizeMode}
       style={[variantStyles[variant], color ? { color } : undefined, style]}
     >
       {children}

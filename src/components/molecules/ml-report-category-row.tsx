@@ -56,6 +56,7 @@ export const MlReportCategoryRow = memo<MlReportCategoryRowProps>(
         <AtTypography
           variant="captionBold"
           color={selected ? '#1A1F36' : '#4A5568'}
+          numberOfLines={1}
         >
           {label}
         </AtTypography>

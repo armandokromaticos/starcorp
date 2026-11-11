@@ -21,7 +21,7 @@ import { useQBStore } from '@/src/stores/qb.store';
 import { Pressable, TextInput, View } from '@/src/tw';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Modal, ScrollView } from 'react-native';
+import { Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function OrGlobalSearchModal() {
@@ -29,6 +29,7 @@ export function OrGlobalSearchModal() {
   const close = useGlobalSearchStore((s) => s.close);
   const setActiveRealmId = useQBStore((s) => s.setActiveRealmId);
   const insets = useSafeAreaInsets();
+  const narrow = useWindowDimensions().width < 360;
   const [query, setQuery] = useState('');
 
   const { empresas, clientes, isLoading } = useGlobalSearch({ query });
@@ -71,8 +72,13 @@ export function OrGlobalSearchModal() {
       >
         {/* Header: search input + cancel */}
         <View className="flex-row items-center gap-3 px-4 pb-3 pt-2">
+          {/* 320dp: padding menor para que el placeholder no quede tan corto */}
           <View
-            className="flex-1 flex-row items-center gap-3 bg-bg-card pl-5 pr-5 py-3 rounded-full"
+            className={
+              narrow
+                ? 'flex-1 flex-row items-center gap-3 bg-bg-card pl-4 pr-4 py-3 rounded-full'
+                : 'flex-1 flex-row items-center gap-3 bg-bg-card pl-5 pr-5 py-3 rounded-full'
+            }
             style={{
               borderCurve: 'continuous',
               boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',

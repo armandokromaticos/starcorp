@@ -302,7 +302,14 @@ export default function AsociadosScreen() {
                 justifyContent: 'center',
               }}
             >
-              <AtTypography variant="bodyBold" color="#FFFFFF">
+              {/* 320dp: el label largo partía a 2 líneas; se encoge un poco. */}
+              <AtTypography
+                variant="bodyBold"
+                color="#FFFFFF"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
                 {vista === 'participacion'
                   ? 'Ver asociados por tendencia'
                   : 'Ver asociados por participación'}

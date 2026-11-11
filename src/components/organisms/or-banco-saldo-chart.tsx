@@ -69,7 +69,11 @@ export const OrBancoSaldoChart = memo<OrBancoSaldoChartProps>(
         }}
       >
         <View className="flex-row items-center gap-2">
-          <AtTypography variant="bodyBold" color="#5A8A9B">
+          <AtTypography
+            variant="bodyBold"
+            color="#5A8A9B"
+            style={{ flexShrink: 1 }}
+          >
             {title}
           </AtTypography>
           <AtDeltaIndicator value={deltaPct} size="sm" />

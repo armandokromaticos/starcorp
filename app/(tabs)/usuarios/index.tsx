@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, View } from '@/src/tw';
@@ -23,6 +24,7 @@ const BLUE = '#1A3FE8';
 const NAVY_TITLE = '#20307E';
 
 function UsuarioRow({ usuario, onPress }: { usuario: ManagedUser; onPress: () => void }) {
+  const narrow = useWindowDimensions().width < 360;
   return (
     <View
       className="bg-bg-card flex-row items-center gap-3 p-3"
@@ -41,21 +43,29 @@ function UsuarioRow({ usuario, onPress }: { usuario: ManagedUser; onPress: () =>
           {usuario.email}
         </AtTypography>
         {usuario.pending ? (
-          <AtTypography variant="caption" color="#E53E3E">
+          <AtTypography variant="caption" color="#E53E3E" numberOfLines={1}>
             Esperando confirmación
           </AtTypography>
         ) : null}
       </View>
+      {/* 320dp: "Ver permisos →" dejaba ~90px a nombre/correo; solo flecha */}
       <Pressable
         onPress={onPress}
         accessibilityRole="link"
+        accessibilityLabel="Ver permisos"
         hitSlop={8}
         className="flex-row items-center gap-1"
       >
-        <AtTypography variant="captionBold" color={BLUE}>
-          Ver permisos
-        </AtTypography>
-        <AtIcon name="arrow-forward" size="sm" color={BLUE} />
+        {narrow ? (
+          <AtIcon name="chevron-right" size="lg" color={BLUE} />
+        ) : (
+          <>
+            <AtTypography variant="captionBold" color={BLUE}>
+              Ver permisos
+            </AtTypography>
+            <AtIcon name="arrow-forward" size="sm" color={BLUE} />
+          </>
+        )}
       </Pressable>
     </View>
   );

@@ -44,7 +44,13 @@ export const OrEmpresaCard = memo<OrEmpresaCardProps>(
       >
         <View className="flex-row items-center justify-between gap-2">
           <View className="flex-row items-center gap-1.5 flex-1">
-            <AtTypography variant="bodyBold" color="#FFFFFF" numberOfLines={1}>
+            {/* flexShrink: un nombre largo empujaba la flecha sobre el delta */}
+            <AtTypography
+              variant="bodyBold"
+              color="#FFFFFF"
+              numberOfLines={1}
+              style={{ flexShrink: 1 }}
+            >
               {name}
             </AtTypography>
             <AtIcon name="arrow-forward" size={16} color="#FFFFFF" />

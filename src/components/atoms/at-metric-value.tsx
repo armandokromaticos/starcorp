@@ -20,6 +20,9 @@ interface AtMetricValueProps {
   /** Currency by default; 'percent' renders e.g. "42.3%" (mismo criterio
    *  que MlMetricBar, para métricas de ratio como Margen). */
   format?: 'currency' | 'percent';
+  /** Una sola línea: achica la fuente hasta 60% antes de partir el número
+   *  (columnas angostas a 320dp). */
+  fit?: boolean;
 }
 
 const sizeToVariant: Record<string, TypographyVariant> = {
@@ -37,6 +40,7 @@ export const AtMetricValue = memo<AtMetricValueProps>(
     color,
     className,
     format = 'currency',
+    fit = false,
   }) => {
     return (
       <AtTypography
@@ -44,7 +48,10 @@ export const AtMetricValue = memo<AtMetricValueProps>(
         color={color}
         selectable
         className={className}
-        style={{ fontVariant: ['tabular-nums'] }}
+        numberOfLines={fit ? 1 : undefined}
+        adjustsFontSizeToFit={fit || undefined}
+        minimumFontScale={fit ? 0.6 : undefined}
+        style={[{ fontVariant: ['tabular-nums'] }, fit ? { flexShrink: 1 } : null]}
       >
         {format === 'percent'
           ? `${value.toFixed(1)}%`

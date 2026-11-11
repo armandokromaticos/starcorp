@@ -41,8 +41,11 @@ export const MlOtpInput = memo<MlOtpInputProps>(
             <View
               key={i}
               className="bg-bg-card items-center justify-center"
+              // 320dp: 8×34 + gaps no cabe en 272; las cajas se encogen
+              // (flex 1) sin pasar de 34 en pantallas normales.
               style={{
-                width: 34,
+                flex: 1,
+                maxWidth: 34,
                 height: 48,
                 borderRadius: 10,
                 borderCurve: 'continuous',

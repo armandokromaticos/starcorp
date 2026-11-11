@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { Pressable, View } from '@/src/tw';
 import { AtTypography } from '@/src/components/atoms/at-typography';
 import { AtIcon } from '@/src/components/atoms/at-icon';
@@ -19,6 +20,22 @@ interface MlCostGroupRowProps {
 
 export const MlCostGroupRow = memo<MlCostGroupRowProps>(
   ({ label, amount, deltaPercent, icon, color, onPress }) => {
+    // 320dp: delta + monto en la misma fila dejan el label en ~64px;
+    // en pantallas angostas el monto baja bajo el label (como
+    // MlCostGroupAccordionRow) y el delta queda a la derecha.
+    const { width: windowWidth } = useWindowDimensions();
+    const narrow = windowWidth < 360;
+    const amountText = (
+      <AtTypography
+        variant={narrow ? 'caption' : 'body'}
+        color={narrow ? '#8892A4' : '#4A5568'}
+        selectable
+        numberOfLines={1}
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {formatCurrency(amount)}
+      </AtTypography>
+    );
     return (
       <Pressable
         onPress={onPress}
@@ -30,20 +47,27 @@ export const MlCostGroupRow = memo<MlCostGroupRowProps>(
         >
           <AtIcon name={icon} size="sm" color="#FFFFFF" />
         </View>
-        <AtTypography variant="bodyBold" className="flex-1" numberOfLines={1}>
-          {label} {'\u2192'}
-        </AtTypography>
-        <View className="flex-row items-center gap-2">
-          <AtDeltaIndicator value={deltaPercent} size="sm" />
-          <AtTypography
-            variant="body"
-            color="#4A5568"
-            selectable
-            style={{ fontVariant: ['tabular-nums'] }}
-          >
-            {formatCurrency(amount)}
-          </AtTypography>
-        </View>
+        {narrow ? (
+          <>
+            <View className="flex-1 gap-0.5">
+              <AtTypography variant="bodyBold" numberOfLines={1}>
+                {label} {'→'}
+              </AtTypography>
+              {amountText}
+            </View>
+            <AtDeltaIndicator value={deltaPercent} size="sm" />
+          </>
+        ) : (
+          <>
+            <AtTypography variant="bodyBold" className="flex-1" numberOfLines={1}>
+              {label} {'→'}
+            </AtTypography>
+            <View className="flex-row items-center gap-2">
+              <AtDeltaIndicator value={deltaPercent} size="sm" />
+              {amountText}
+            </View>
+          </>
+        )}
       </Pressable>
     );
   },

@@ -6,7 +6,7 @@ import {
 import { Link as RouterLink } from "expo-router";
 import Animated from "react-native-reanimated";
 import React from "react";
-import { MAX_FONT_SCALE } from "@/src/theme/tokens";
+import { ALLOW_SYSTEM_FONT_SCALING, MAX_FONT_SCALE } from "@/src/theme/tokens";
 import {
   View as RNView,
   Text as RNText,
@@ -53,7 +53,11 @@ export type TextProps = React.ComponentProps<typeof RNText> & {
 export const Text = (props: TextProps) => {
   return useCssElement(
     RNText,
-    { maxFontSizeMultiplier: MAX_FONT_SCALE, ...props },
+    {
+      allowFontScaling: ALLOW_SYSTEM_FONT_SCALING,
+      maxFontSizeMultiplier: MAX_FONT_SCALE,
+      ...props,
+    },
     { className: "style" }
   );
 };
@@ -87,7 +91,11 @@ export const TextInput = (
 ) => {
   return useCssElement(
     RNTextInput,
-    { maxFontSizeMultiplier: MAX_FONT_SCALE, ...props },
+    {
+      allowFontScaling: ALLOW_SYSTEM_FONT_SCALING,
+      maxFontSizeMultiplier: MAX_FONT_SCALE,
+      ...props,
+    },
     { className: "style" }
   );
 };
